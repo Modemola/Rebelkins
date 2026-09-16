@@ -1,0 +1,46 @@
+:root {
+  --ink: #07040d;
+  --neon: #ff3fa4;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: #e9e6f2;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#frame {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  /* wet purple pavement, bleeding past the letterbox */
+  background:
+    radial-gradient(1200px 700px at 20% 0%, rgba(255, 63, 164, 0.12), transparent 70%),
+    radial-gradient(900px 600px at 85% 100%, rgba(142, 247, 255, 0.1), transparent 70%),
+    var(--ink);
+}
+
+#stage {
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  display: block;
+  outline: none;
+  cursor: crosshair;
+  image-rendering: auto;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 40px 120px rgba(255, 63, 164, 0.18);
+}
+
+noscript {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}

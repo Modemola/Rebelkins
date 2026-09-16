@@ -1,0 +1,15 @@
+{
+  "name": "rebelkin-thread-war",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A crew of RebelKin pull social heists in a city where fashion is executable code.",
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes http-server . -p 8080 -c-1",
+    "playtest": "node tools/playtest.mjs",
+    "playtest:headed": "node tools/playtest.mjs --headed",
+    "doors": "node tools/verify-doors.mjs",
+    "bibles": "node tools/build-bibles.mjs",
+    "bibles:check": "node tools/build-bibles.mjs --check"
+  }
+}
