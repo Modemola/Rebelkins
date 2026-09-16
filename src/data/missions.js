@@ -6,6 +6,8 @@
  * touching a system.
  */
 
+import { LOWLINE_TERRACE } from './districts/lowline.js';
+
 export const DISTRICTS = {
   lowline: {
     id: 'lowline',
@@ -35,97 +37,6 @@ const border = (w, h) => [
   { x: 0, y: 0, w: 24, h },
   { x: w - 24, y: 0, w: 24, h },
 ];
-
-/* ---------------------------------------------------------------- GHOST FIT */
-
-const LOWLINE_GHOST = {
-  id: 'ghost-fit',
-  type: 'Ghost Fit',
-  name: 'GHOST FIT: THE BACK FLOOR',
-  district: 'lowline',
-  brief: 'A prototype jacket is sitting in a Lowline sample vault behind a members-only floor. Enter using only clothes. Take the jacket. Walk out looking like you were invited.',
-  objectiveText: 'Enter the members floor, extract the prototype, leave on the runway.',
-  targetMinutes: 12,
-  world: { w: 1900, h: 1200 },
-  spawn: { x: 130, y: 130 },
-  payout: { cred: 240, traits: 2 },
-  walls: [
-    ...border(1900, 1200),
-    // market stalls
-    { x: 140, y: 190, w: 180, h: 90, kind: 'stall' },
-    { x: 420, y: 140, w: 160, h: 100, kind: 'stall' },
-    { x: 180, y: 520, w: 140, h: 140, kind: 'stall' },
-    { x: 460, y: 610, w: 200, h: 90, kind: 'stall' },
-    { x: 250, y: 860, w: 180, h: 100, kind: 'stall' },
-    { x: 600, y: 300, w: 90, h: 220, kind: 'stall' },
-    { x: 620, y: 880, w: 160, h: 90, kind: 'stall' },
-    // the divider. gap at y 420-580 is the members door
-    { x: 890, y: 24, w: 30, h: 396 },
-    { x: 890, y: 580, w: 30, h: 596 },
-    // lounge floor / service corridor split. gap at x 1000-1130
-    { x: 920, y: 596, w: 80, h: 28 },
-    { x: 1130, y: 596, w: 746, h: 28 },
-    // vault wall. gap at y 900-1020 is the vault door
-    { x: 1370, y: 624, w: 28, h: 276 },
-    { x: 1370, y: 1020, w: 28, h: 156 },
-  ],
-  zones: [
-    {
-      id: 'market', name: 'Lowline Market', rect: { x: 24, y: 24, w: 866, h: 1152 },
-      access: 0, wants: [], rejects: [], tint: 'rgba(255,63,164,0.05)',
-    },
-    {
-      id: 'lounge', name: 'Members Floor', rect: { x: 920, y: 24, w: 956, h: 572 },
-      access: 1, wants: ['luxury', 'holo', 'quiet', 'new'], rejects: [], minDesire: 4,
-      tint: 'rgba(120,180,255,0.07)',
-      door: { x: 890, y: 420, w: 30, h: 160, facing: 'v' },
-    },
-    {
-      id: 'corridor', name: 'Service Corridor', rect: { x: 920, y: 624, w: 450, h: 552 },
-      access: 1, wants: [], rejects: [], tint: 'rgba(255,255,255,0.03)',
-    },
-    {
-      id: 'vault', name: 'Sample Vault', rect: { x: 1398, y: 624, w: 478, h: 552 },
-      access: 2, wants: ['luxury', 'holo'], rejects: [], minDesire: 6,
-      tint: 'rgba(255,214,0,0.06)',
-      door: { x: 1370, y: 900, w: 28, h: 120, facing: 'v' },
-    },
-  ],
-  cameras: [
-    { x: 700, y: 210, facing: 200, arc: 52, range: 330, sweep: 34, speed: 0.35 },
-    { x: 700, y: 760, facing: 160, arc: 52, range: 320, sweep: 40, speed: 0.28 },
-    { x: 1010, y: 500, facing: 180, arc: 46, range: 350, sweep: 22, speed: 0.4 },
-    { x: 1790, y: 110, facing: 145, arc: 58, range: 430, sweep: 30, speed: 0.25 },
-    { x: 1120, y: 940, facing: 10, arc: 50, range: 380, sweep: 46, speed: 0.33 },
-    { x: 1820, y: 1120, facing: 200, arc: 60, range: 440, sweep: 28, speed: 0.3 },
-  ],
-  guards: [
-    { path: [{ x: 780, y: 320 }, { x: 780, y: 940 }], speed: 62, sees: 260 },
-    { path: [{ x: 1080, y: 150 }, { x: 1760, y: 400 }, { x: 1080, y: 470 }], speed: 70, sees: 300 },
-    { path: [{ x: 1010, y: 1100 }, { x: 1320, y: 720 }], speed: 58, sees: 250 },
-  ],
-  crowd: { count: 34, areas: [{ x: 60, y: 60, w: 800, h: 1080 }] },
-  props: [
-    { id: 'jacket', kind: 'objective', x: 1740, y: 960, label: 'PROTOTYPE JACKET' },
-    { id: 'rack-1', kind: 'rack', x: 300, y: 400, label: 'STREET RACK' },
-    {
-      id: 'rack-2', kind: 'rack', x: 1120, y: 300, label: 'LOUNGE RACK',
-      grants: { tags: ['luxury', 'holo'], access: 1, duration: 75 },
-    },
-  ],
-  extraction: { x: 60, y: 1010, w: 200, h: 150 },
-  objectives: [
-    { id: 'lounge', text: 'Get onto the members floor', kind: 'enter-zone', zone: 'lounge' },
-    { id: 'jacket', text: 'Extract the prototype jacket', kind: 'prop', prop: 'jacket' },
-    { id: 'out', text: 'Leave on the runway', kind: 'extract' },
-  ],
-  tips: [
-    'Doors read the packet, not the person. Compile something the floor wants.',
-    'A rack is a key. Pull a piece off one and you read as the people who shop there.',
-    'A camera that fills its bar flags you. Heat is the clock, not a timer.',
-    'Crowds are cover. Three civilians close by and you scan slower.',
-  ],
-};
 
 /* ---------------------------------------------------------------- TRENDBOMB */
 
@@ -250,11 +161,17 @@ const MIRROR_FACEJACK = {
   ],
 };
 
-export const MISSIONS = [LOWLINE_GHOST, LOWLINE_TRENDBOMB, MIRROR_FACEJACK];
+/**
+ * The built city. Lowline is authored in metres against the VESTA architecture
+ * (src/data/districts/lowline.js) and checked by tools/verify-vesta.mjs.
+ * Trendbomb and Facejack are still on the pre-VESTA layouts and are queued for
+ * rebuild against the same street kit -- see docs/VESTA.md.
+ */
+export const MISSIONS = [LOWLINE_TERRACE, LOWLINE_TRENDBOMB, MIRROR_FACEJACK];
 export const MISSION_BY_ID = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
 
 /** A night is three contracts. */
-export const NIGHT = ['ghost-fit', 'trendbomb', 'facejack'];
+export const NIGHT = ['lowline-terrace', 'trendbomb', 'facejack'];
 
 export function getMission(id) {
   const m = MISSION_BY_ID[id];

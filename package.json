@@ -11,6 +11,7 @@
     "assets": "node tools/scan-assets.mjs",
     "assets:verbose": "node tools/scan-assets.mjs --verbose",
     "test:assets": "node tools/test-assets.mjs",
+    "vesta": "node tools/verify-vesta.mjs",
     "doors": "node tools/verify-doors.mjs",
     "bibles": "node tools/build-bibles.mjs",
     "bibles:check": "node tools/build-bibles.mjs --check"

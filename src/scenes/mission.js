@@ -12,6 +12,9 @@ import { getDistrict } from '../data/missions.js';
 import { getKin } from '../data/kin.js';
 import { drawKin, drawCivilian } from '../art/kinart.js';
 import * as City from '../art/city.js';
+import * as Vesta from '../art/vesta.js';
+import { populate, samplePath } from '../world/lanes.js';
+import { LANE } from '../world/units.js';
 import { FONT, panel, text, meter, Log, tagChip } from '../core/ui.js';
 import { RunwayScene } from './runway.js';
 import { ResultsScene } from './results.js';
@@ -91,11 +94,32 @@ export class MissionScene {
       node: 1, angle: 0, suspicion: 0, challenge: null,
     }));
 
-    // ---- crowd. taste buckets, not ten thousand unique brains.
+    // ---- crowd. Lanes where the district has them, taste buckets either way.
     this.civs = [];
+    this.laneDriven = Array.isArray(m.lanes) && m.lanes.length > 0;
     let seed = 1337;
     const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-    for (let i = 0; i < m.crowd.count; i++) {
+    if (this.laneDriven) {
+      // "Do not sprinkle NPCs. Build lanes." Everyone is on one.
+      for (const slot of populate(m.lanes, m.crowdCount ?? 40, 4242)) {
+        const ln = m.lanes[slot.laneIndex];
+        const civ = {
+          ...slot,
+          lane: ln,
+          x: 0, y: 0, hx: 0, hy: 0,
+          phase: slot.seedR * TAU,
+          color: CIV_COLORS[Math.floor(slot.seedR * 997) % CIV_COLORS.length],
+          hair: CIV_HAIR[Math.floor(slot.seedR * 331) % CIV_HAIR.length],
+          skin: CIV_SKIN[Math.floor(slot.seedR * 577) % CIV_SKIN.length],
+          taste: ln.type === LANE.POSE ? 'copy' : slot.seedR < 0.35 ? 'copy' : slot.seedR < 0.55 ? 'loyal' : 'neutral',
+          exposure: 0, copying: false, copyColor: '#ffd400',
+        };
+        const p0 = samplePath(ln, civ.dist);
+        civ.x = p0.x; civ.y = p0.y;
+        this.civs.push(civ);
+      }
+    }
+    for (let i = 0; this.laneDriven ? false : i < m.crowd.count; i++) {
       const area = m.crowd.areas[i % m.crowd.areas.length];
       const civ = {
         x: area.x + rnd() * area.w,
@@ -211,6 +235,7 @@ export class MissionScene {
 
     this.updateEffects(dt);
     this.updateCrew(dt, input);
+    this.updateScanStrips(dt);
     this.updateCameras(dt);
     this.updateGuards(dt);
     this.updateCrowd(dt);
@@ -225,6 +250,39 @@ export class MissionScene {
       if (this.timeLeft <= 0) this.fail('the window closed', 'timeout');
     }
     if (this.heat >= this.heatCap) this.fail('OVEREXPOSED — the district locked your identity', 'overexposed');
+  }
+
+  /**
+   * Identity gates. Floor strips of frosted glass that bloom a scan-line: they
+   * read the packet outright, with no cone to slip and no angle to dodge. Spark
+   * gets scanned the second they step onto the glass.
+   */
+  updateScanStrips(dt) {
+    this.stripCooldown = Math.max(0, (this.stripCooldown || 0) - dt);
+    const strips = this.mission.scanStrips || [];
+    if (!strips.length) return;
+    for (const c of this.crew) {
+      const on = strips.find((s) => c.x > s.x && c.x < s.x + s.w && c.y > s.y && c.y < s.y + s.h);
+      if (!on) { c.onStrip = null; continue; }
+      if (c.onStrip === on) continue;
+      c.onStrip = on;
+      if (this.stripCooldown > 0) continue;
+      this.stripCooldown = 1.2;
+
+      const zone = this.zoneAt(c.x, c.y);
+      const verdict = zone ? readDoor(this.accessPacket(c), zone) : { open: true };
+      if (verdict.open) {
+        const fame = 1.5 + this.accessPacket(c).desirability * 0.15;
+        this.raiseHeat(fame);
+        this.log.push(`> ${on.label}: ${c.kin.codename} reads clean`, 'rgba(142,247,255,0.85)');
+      } else {
+        this.flags += 1;
+        this.raiseHeat(10);
+        this.alert = Math.min(3, this.alert + 1);
+        this.shake = 1;
+        this.log.push(`> ${on.label} FLAGGED \u2014 ${verdict.reason}`, '#ff4a72');
+      }
+    }
   }
 
   updateEffects(dt) {
@@ -533,9 +591,19 @@ export class MissionScene {
     this.log.push(`> FLAGGED: ${actor.kin.codename} \u2014 ${verdict.reason}`, '#ff4a72');
   }
 
+  /** A volume where THREAD cannot hold a lock -- a hoodie tunnel, so far. */
+  inBlind(actor) {
+    for (const b of this.mission.blinds || []) {
+      if (actor.x > b.x && actor.x < b.x + b.w && actor.y > b.y && actor.y < b.y + b.h) return b;
+    }
+    return null;
+  }
+
   /** How fast this actor fills a scan bar right now. The whole stealth game. */
   scanRateFor(actor, idx) {
     if (idx < 0) return 2.4;
+    // Rack so dense it becomes a corridor. Cameras lose lock inside.
+    if (this.inBlind(actor)) return 0;
     let rate = actor.packet.scanRate;
 
     if (idx === this.active) {
@@ -645,6 +713,24 @@ export class MissionScene {
     const packet = me.packet;
     for (const c of this.civs) {
       c.phase += dt * 3;
+
+      if (c.lane) {
+        // Pose lanes hold still and check themselves. Everything else circulates.
+        if (c.lane.type === LANE.POSE) {
+          c.poseT += dt;
+          c.dist += Math.sin(c.poseT * 0.7) * 6 * dt;
+        } else {
+          c.dist += c.speed * c.dir * dt;
+        }
+        const p = samplePath(c.lane, c.dist);
+        const nx = -Math.sin(p.angle);
+        const ny = Math.cos(p.angle);
+        c.x = p.x + nx * c.offset;
+        c.y = p.y + ny * c.offset;
+        this.mimicPass(c, me, packet, dt);
+        continue;
+      }
+
       c.wanderT -= dt;
 
       let tx = c.hx;
@@ -665,17 +751,7 @@ export class MissionScene {
         else { c.hx = c.x; c.hy = c.y; c.wanderT = 0.4; }
       }
 
-      // mimicry: they copy the accessory, never the face
-      const dist = Math.hypot(me.x - c.x, me.y - c.y);
-      if (!c.copying && dist < 190 && this.clearLine(me.x, me.y, c.x, c.y)) {
-        c.exposure += dt * (1 - dist / 190);
-        if (c.exposure > 1.2 && Math.random() < mimicChance(packet, c) * dt * 1.2) {
-          c.copying = true;
-          c.copyColor = me.kin.palette.accent;
-          this.copies += 1;
-          this.style += 3;
-        }
-      }
+      this.mimicPass(c, me, packet, dt);
     }
 
     if (this.vip) {
@@ -688,6 +764,20 @@ export class MissionScene {
       d.y += d.vy * dt;
       d.phase += dt * 8;
       this.resolve(d, 12);
+    }
+  }
+
+  /** They copy the accessory, never the face. */
+  mimicPass(c, me, packet, dt) {
+    const dist = Math.hypot(me.x - c.x, me.y - c.y);
+    if (c.copying || dist >= 190) return;
+    if (!this.clearLine(me.x, me.y, c.x, c.y)) return;
+    c.exposure += dt * (1 - dist / 190);
+    if (c.exposure > 1.2 && Math.random() < mimicChance(packet, c) * dt * 1.2) {
+      c.copying = true;
+      c.copyColor = me.kin.palette.accent;
+      this.copies += 1;
+      this.style += 3;
     }
   }
 
@@ -832,6 +922,13 @@ export class MissionScene {
     const camX = Math.max(0, Math.min(m.world.w - w / zoom, me.x - w / zoom / 2));
     const camY = Math.max(0, Math.min(m.world.h - h / zoom, me.y - h / zoom / 2));
 
+    const vesta = Array.isArray(m.terraces) && m.terraces.length > 0;
+
+    // The skyline is a backdrop, not world geometry: the camera clamps to the
+    // world box, so a district on the far side of the basin has to be drawn in
+    // screen space with parallax or it is never visible at all.
+    if (vesta) this.drawBackdrop(ctx, game, camX, camY);
+
     ctx.save();
     if (this.shake > 0) {
       ctx.translate((Math.random() - 0.5) * this.shake * 9, (Math.random() - 0.5) * this.shake * 9);
@@ -839,9 +936,16 @@ export class MissionScene {
     ctx.scale(zoom, zoom);
     ctx.translate(-camX, -camY);
 
-    City.drawGround(ctx, m, this.district, null, this.t);
+    if (vesta) {
+      Vesta.drawGround(ctx, m, this.t);
+      for (const wl of m.walls) if (wl.kind === 'water') Vesta.drawWater(ctx, wl, this.t);
+      Vesta.drawDecor(ctx, m, this.t, 'ground');
+      Vesta.drawBounce(ctx, m, this.t);
+    } else {
+      City.drawGround(ctx, m, this.district, null, this.t);
+    }
     City.drawZones(ctx, m, this.accessPacket(me), this.t);
-    City.drawSignage(ctx, m, this.district, this.t);
+    if (!vesta) City.drawSignage(ctx, m, this.district, this.t);
 
     if (this.rally) {
       const a = 1 - this.rally.t / this.rally.dur;
@@ -852,7 +956,11 @@ export class MissionScene {
       ctx.stroke();
     }
 
-    for (const p of m.props) City.drawProp(ctx, p, this.t, this.taken[p.id]);
+    for (const st of m.stalls || []) Vesta.drawStall(ctx, st, this.t);
+    for (const p of m.props) {
+      if (p.kind === 'prop') Vesta.drawProp(ctx, p, this.t);
+      else City.drawProp(ctx, p, this.t, this.taken[p.id]);
+    }
     City.drawExtraction(ctx, m.extraction, this.t, this.armed);
 
     for (const c of this.civs) drawCivilian(ctx, c, 1);
@@ -872,6 +980,7 @@ export class MissionScene {
     }
 
     City.drawWalls(ctx, m, this.district);
+    if (vesta) Vesta.drawDecor(ctx, m, this.t, 'upright');
 
     for (const g of this.guards) City.drawGuard(ctx, g, this.t);
     for (const cam of this.cameras) {
@@ -892,9 +1001,11 @@ export class MissionScene {
     // crew drawn back-to-front so the active Kin is never hidden
     const order = this.crew.map((c, i) => ({ c, i })).sort((a, b) => a.c.y - b.c.y);
     for (const { c, i } of order) {
+      const hidden = this.inBlind(c);
       drawKin(ctx, {
         kin: c.kin, thread: c.thread, x: c.x, y: c.y, scale: 1.75,
         facing: c.facing, phase: c.phase, moving: c.moving,
+        alpha: hidden ? 0.55 : 1,
         expression: i === this.active ? undefined : 'neutral',
         flagged: this.cameras.some((cam) => cam.seeing === i),
       });
@@ -906,6 +1017,9 @@ export class MissionScene {
         ctx.stroke();
       }
     }
+
+    // wires and steam sit over everyone
+    if (vesta) Vesta.drawDecor(ctx, m, this.t, 'over');
 
     ctx.restore();
     this.drawHUD(ctx, game);
@@ -977,6 +1091,35 @@ export class MissionScene {
       ctx.ellipse(c.x * sx, c.y * sy, i === this.active ? 3.4 : 2.4, i === this.active ? 3.4 : 2.4, 0, 0, TAU);
       ctx.fill();
     });
+    ctx.restore();
+  }
+
+  /**
+   * Sky and distant districts. Bruised violet, no stars, low wet cloud.
+   * Parallaxed so the Spire drifts against the terrace as you walk.
+   */
+  drawBackdrop(ctx, game, camX, camY) {
+    const { w, h } = game;
+    const sky = ctx.createLinearGradient(0, 0, 0, h * 0.7);
+    sky.addColorStop(0, '#2a1140');
+    sky.addColorStop(0.55, '#1d0f33');
+    sky.addColorStop(1, '#150b26');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+
+    // holographic weather, like spilled highlighter
+    for (let i = 0; i < 3; i++) {
+      const hx = ((this.t * (6 + i * 4)) % (w + 400)) - 200;
+      const g = ctx.createRadialGradient(hx, 60 + i * 34, 10, hx, 60 + i * 34, 220);
+      g.addColorStop(0, ['rgba(201,255,74,0.07)', 'rgba(255,63,164,0.07)', 'rgba(142,247,255,0.06)'][i]);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(hx - 220, 0, 440, h * 0.6);
+    }
+
+    ctx.save();
+    ctx.translate(-camX * 0.22, -camY * 0.06 + h * 0.30);
+    Vesta.drawSkyline(ctx, this.mission, this.t);
     ctx.restore();
   }
 

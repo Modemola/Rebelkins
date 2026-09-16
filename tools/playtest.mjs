@@ -106,7 +106,8 @@ async function hold(next) {
 async function release() { await hold(new Set()); }
 
 /** Walk to a point with a simple hold-the-right-keys controller. */
-async function walkTo(tx, ty, { tol = 26, timeout = 22000, label = '' } = {}) {
+async function walkTo(tx, ty, opts = {}) {
+  const { tol = 26, timeout = 22000, label = '' } = opts;
   const t0 = Date.now();
   let last = null;
   let stuck = 0;
@@ -123,9 +124,12 @@ async function walkTo(tx, ty, { tol = 26, timeout = 22000, label = '' } = {}) {
       await release();
       throw new Error(`stuck walking to ${label || `${tx},${ty}`} at ${s.x},${s.y}`);
     }
+    // A 12 px deadzone cannot thread a 1.5 m stall aisle -- it stops correcting
+    // sideways while still pushing forward, and wedges on the rack.
+    const dead = opts.dead ?? 5;
     const keys = new Set();
-    if (dx > 12) keys.add(KEYS.right); else if (dx < -12) keys.add(KEYS.left);
-    if (dy > 12) keys.add(KEYS.down); else if (dy < -12) keys.add(KEYS.up);
+    if (dx > dead) keys.add(KEYS.right); else if (dx < -dead) keys.add(KEYS.left);
+    if (dy > dead) keys.add(KEYS.down); else if (dy < -dead) keys.add(KEYS.up);
     await hold(keys);
     await page.waitForTimeout(55);
   }
@@ -157,57 +161,53 @@ try {
   await deploy();
   let s = await state();
   if (s.scene !== 'MissionScene') throw new Error(`deploy failed, scene is ${s.scene}`);
-  log(`deployed  thread=${s.thread} heatCap=${s.heatCap}`);
+  log(`deployed  ${s.thread}  heatCap=${s.heatCap}`);
 
-  // 1. cross the market to the members door
-  await walkTo(300, 110, { label: 'market north' });
-  await walkTo(800, 110, { label: 'market east' });
-  await walkTo(800, 500, { label: 'door approach' });
-  await shot('1-door-approach');
+  // The Lowline terrace: arcade wall down to the river lip, west along the
+  // stall band to the shoe altar, then the arched bridge.
+  const M = 26;
+  const at = (xm, ym) => [xm * M, ym * M];
 
-  // 2. the loud thread is the key: be too interesting to refuse
-  s = await compile('KeyC', 'Too Much');
-  log(`compiled Too Much  access=${s.access} desire=${s.desire}`);
-  await walkTo(1000, 500, { label: 'members floor' });
+  // 1. down the terrace, east of the stalls, to the river lip
+  await walkTo(...at(46, 45), { label: 'stall band' });
+  await walkTo(...at(46, 29), { label: 'river lip' });
   s = await state();
-  if (!s.done.lounge) throw new Error(`members floor did not open (access ${s.access}, desire ${s.desire})`);
-  log(`✓ objective: members floor   heat=${s.heat}/${s.heatCap}`);
-  await shot('2-lounge');
+  if (!s.done.lip) throw new Error('river lip objective did not fire');
+  log(`\u2713 objective: river lip   heat=${s.heat}/${s.heatCap}`);
+  await shot('1-river-lip');
 
-  // 3. the rack is the second key
-  await walkTo(1120, 330, { label: 'lounge rack' });
+  // 2. west along the south face of the stall band to the shoe altar
+  await walkTo(...at(46, 38.6), { label: 'band south face' });
+  await walkTo(...at(25.7, 38.4), { tol: 30, label: 'shoe altar' });
+  await shot('2-shoe-altar');
   await press('KeyE');
   s = await state();
-  if (!s.borrowed) throw new Error('rack did not lend a piece');
-  log(`✓ borrowed the floor's stock (${s.borrowed}s)  access=${s.access}`);
+  if (!s.done.sneaker) throw new Error(`sample sneaker not taken (prompt=${s.prompt})`);
+  log(`\u2713 objective: sample sneaker  heat=${s.heat}/${s.heatCap}`);
 
-  // 4. drop the loud thread now the door is behind us
-  s = await compile('KeyZ', 'Matchhead');
-  log(`back to Matchhead  access=${s.access} desire=${s.desire} heat=${s.heat}`);
+  // 3. the hoodie tunnel must actually blind the cameras. It is a corridor, so
+  //    you enter at an end, not through the racks.
+  await walkTo(...at(22.1, 44), { label: 'south of the tunnel' });
+  await walkTo(...at(22.1, 43), { tol: 14, dead: 3, label: 'lined up on the throat' });
+  await walkTo(...at(22.1, 41), { tol: 18, dead: 3, label: 'tunnel mouth' });
+  await walkTo(...at(22.1, 38.5), { tol: 18, dead: 3, label: 'inside the tunnel' });
+  const blind = await page.evaluate(() => {
+    const sc = window.__THREADWAR__.scene;
+    return { inBlind: !!sc.inBlind(sc.me), rate: sc.scanRateFor(sc.me, sc.active) };
+  });
+  if (!blind.inBlind) throw new Error('hoodie tunnel did not register as a blind volume');
+  if (blind.rate !== 0) throw new Error(`cameras still hold lock inside the tunnel (rate ${blind.rate})`);
+  log('\u2713 hoodie tunnel: cameras lose lock inside');
 
-  // 5. down to the vault
-  await walkTo(1060, 560, { label: 'stairs' });
-  await walkTo(1060, 760, { label: 'corridor' });
-  await walkTo(1300, 960, { label: 'vault door' });
-  await walkTo(1500, 960, { label: 'vault' });
-  await walkTo(1730, 960, { tol: 40, label: 'prototype' });
-  await shot('3-vault');
-  await press('KeyE');
-  s = await state();
-  if (!s.done.jacket) throw new Error(`prototype not taken (prompt=${s.prompt}, access=${s.access})`);
-  log(`✓ objective: prototype jacket  heat=${s.heat}/${s.heatCap}`);
-
-  // 6. the long walk back out
-  await walkTo(1300, 960, { label: 'vault exit' });
-  await walkTo(1060, 760, { label: 'corridor back' });
-  await walkTo(1060, 560, { label: 'stairs back' });
-  await walkTo(960, 500, { label: 'lounge back' });
-  await walkTo(830, 500, { label: 'market back' });
-  await walkTo(820, 1000, { label: 'market south' });
-  await walkTo(400, 1060, { label: 'runway approach' });
+  // 4. out and across the Hem
+  await walkTo(...at(22.1, 44), { tol: 24, dead: 3, label: 'tunnel exit' });
+  await walkTo(...at(50, 39.5), { label: 'band east' });
+  await walkTo(...at(62, 30), { label: 'bridge approach' });
   s = await state();
   if (!s.armed) throw new Error('extraction never armed');
-  await walkTo(160, 1085, { tol: 40, timeout: 12000, label: 'runway' });
+  await shot('3-bridge');
+  await walkTo(...at(62, 12), { tol: 30, label: 'the Hem' });
+  await walkTo(...at(62, 2.2), { tol: 40, timeout: 12000, label: 'far bank' });
   await shot('4-runway-approach');
 
   // 7. the extraction walk
