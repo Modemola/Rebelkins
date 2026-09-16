@@ -53,6 +53,7 @@ export const KIN = [
       head: 'human',
       mark: 'star',
       build: 'wiry',
+      height: 0.96,
     },
     threads: [
       {
@@ -107,7 +108,7 @@ export const KIN = [
       'I’ll be at the door. Don’t look for me.',
     ],
     palette: { skin: '#e0ae86', hair: '#2b2b33', hair2: '#4a4a57', cloth: '#3a3d47', accent: '#f3f1ea', shoe: '#cfcabb' },
-    look: { hair: 'flat', head: 'hood', mark: 'none', build: 'small' },
+    look: { hair: 'flat', head: 'hood', mark: 'none', build: 'small', height: 0.92 },
     threads: [
       {
         id: 'hoodprotocol', name: 'Hood Protocol',
@@ -161,7 +162,7 @@ export const KIN = [
       'If they chase, I want the ugly route.',
     ],
     palette: { skin: '#ffd21f', hair: '#ffb300', hair2: '#ff7a1a', cloth: '#1f2f6e', accent: '#ff4f2a', shoe: '#f4f4f4' },
-    look: { hair: 'crest', head: 'bird', mark: 'none', build: 'stub' },
+    look: { hair: 'crest', head: 'bird', mark: 'none', build: 'stub', height: 0.72 },
     threads: [
       {
         id: 'belted', name: 'Belted',
@@ -215,7 +216,7 @@ export const KIN = [
       'Give it back in ninety seconds. Maybe.',
     ],
     palette: { skin: '#8d5a3c', hair: '#141019', hair2: '#6d4bff', cloth: '#b9c6ff', accent: '#8ef7ff', shoe: '#e8e8f2' },
-    look: { hair: 'sleek', head: 'human', mark: 'none', build: 'tall', holo: true },
+    look: { hair: 'sleek', head: 'human', mark: 'none', build: 'tall', holo: true, height: 1.1 },
     threads: [
       {
         id: 'glasscoat', name: 'Glass Coat',
@@ -269,7 +270,7 @@ export const KIN = [
       'This is not a costume. The city just forgot the word.',
     ],
     palette: { skin: '#a9694a', hair: '#3b1f14', hair2: '#d4373c', cloth: '#f2ead5', accent: '#c5122b', shoe: '#2f6f4f' },
-    look: { hair: 'dressed', head: 'human', mark: 'none', build: 'grounded', folk: true },
+    look: { hair: 'dressed', head: 'human', mark: 'none', build: 'grounded', folk: true, height: 1 },
     threads: [
       {
         id: 'beadwork', name: 'Beadwork',
@@ -324,7 +325,7 @@ export const KIN = [
       'Moss: "If they follow me, you did too much again."',
     ],
     palette: { skin: '#cf8b63', hair: '#ff9f1c', hair2: '#1b3b6f', cloth: '#7b2cbf', accent: '#3ddc97', shoe: '#ffffff' },
-    look: { hair: 'double', head: 'human', mark: 'none', build: 'duo' },
+    look: { hair: 'double', head: 'human', mark: 'none', build: 'duo', height: 1 },
     threads: [
       {
         id: 'onename', name: 'One Name',

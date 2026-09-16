@@ -439,8 +439,9 @@ export class HubScene {
     bg.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = bg;
     ctx.fillRect(278, top + 4, 296, 196);
+    // Framed so the tallest hair in the roster still clears the crop.
     drawKin(ctx, {
-      kin, thread: kin.threads[0], x: 426, y: top + 176, scale: 3.5,
+      kin, thread: kin.threads[0], x: 426, y: top + 190, scale: 2.8,
       facing: Math.PI / 2, phase: this.t * 2.2, moving: 0.15,
     });
     ctx.restore();

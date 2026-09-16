@@ -12,6 +12,7 @@ import { HubScene } from './scenes/hub.js';
 import { KIN } from './data/kin.js';
 import { drawKin } from './art/kinart.js';
 import { FONT, text, button, paragraph } from './core/ui.js';
+import { loadSprites, artSummary } from './art/sprites.js';
 
 const canvas = document.getElementById('stage');
 const input = new Input();
@@ -57,12 +58,12 @@ class TitleScene {
     // the crew, walking
     KIN.forEach((kin, i) => {
       const x = 150 + i * 165;
-      const y = 552 + Math.sin(this.t * 1.6 + i * 0.7) * 5;
+      const y = 574 + Math.sin(this.t * 1.6 + i * 0.7) * 5;
       drawKin(ctx, {
-        kin, thread: kin.threads[0], x, y, scale: 3.1,
+        kin, thread: kin.threads[0], x, y, scale: 2.7,
         facing: Math.PI / 2, phase: this.t * 4 + i, moving: 0.5,
       });
-      text(ctx, kin.codename, x, 592, {
+      text(ctx, kin.codename, x, 600, {
         font: FONT.mono(10, 800), color: 'rgba(255,255,255,0.45)', align: 'center',
       });
     });
@@ -85,6 +86,20 @@ class TitleScene {
       w / 2, h - 22, { font: FONT.mono(11, 500), color: 'rgba(255,255,255,0.3)', align: 'center' });
   }
 }
+
+// Artwork loads in the background. The title screen renders immediately with
+// whatever is ready, and dropped-in plates simply start appearing.
+loadSprites().then(() => {
+  const summary = artSummary();
+  if (summary.length) {
+    for (const k of summary) {
+      console.info(`[art] ${k.id}: ${k.plates.join(', ')}${k.ready ? '' : ' (failed to load)'}`);
+    }
+  } else {
+    console.info('[art] no plates yet \u2014 running on placeholder art. '
+      + 'Drop cutouts in assets/kin/<id>/ and run: node tools/scan-assets.mjs');
+  }
+});
 
 // Handle for the automated playtest in tools/. Harmless in a browser, and the
 // alternative is a test that can only click pixels and hope.

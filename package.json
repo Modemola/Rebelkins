@@ -8,6 +8,9 @@
     "start": "npx --yes http-server . -p 8080 -c-1",
     "playtest": "node tools/playtest.mjs",
     "playtest:headed": "node tools/playtest.mjs --headed",
+    "assets": "node tools/scan-assets.mjs",
+    "assets:verbose": "node tools/scan-assets.mjs --verbose",
+    "test:assets": "node tools/test-assets.mjs",
     "doors": "node tools/verify-doors.mjs",
     "bibles": "node tools/build-bibles.mjs",
     "bibles:check": "node tools/build-bibles.mjs --check"
