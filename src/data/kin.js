@@ -47,12 +47,15 @@ export const KIN = [
       'If the room is quiet, I did it wrong.',
       'Copy the belt. Not the face. The face is mine.',
     ],
-    palette: { skin: '#c9825c', hair: '#ff2e88', hair2: '#31e0ff', cloth: '#e5372f', accent: '#ffd400', shoe: '#ffe14d' },
+    palette: { skin: '#f2c8a4', hair: '#ff2e9a', hair2: '#3fe3d2', cloth: '#39c2ef', accent: '#ffd633', shoe: '#232a4d' },
     look: {
-      hair: 'spikes',
+      hair: 'buns',
       head: 'human',
-      mark: 'star',
+      mark: 'stripes',
       build: 'wiry',
+      belt: true,
+      fishnet: true,
+      legwear: '#5a4a7a',
       height: 0.96,
     },
     threads: [
@@ -107,7 +110,7 @@ export const KIN = [
       'If they remember my shoes, we failed.',
       'I’ll be at the door. Don’t look for me.',
     ],
-    palette: { skin: '#e0ae86', hair: '#2b2b33', hair2: '#4a4a57', cloth: '#3a3d47', accent: '#f3f1ea', shoe: '#cfcabb' },
+    palette: { skin: '#e8b892', hair: '#2b2b33', hair2: '#4a4a57', cloth: '#414553', accent: '#f3f1ea', shoe: '#d6d1c2' },
     look: { hair: 'flat', head: 'hood', mark: 'none', build: 'small', height: 0.92 },
     threads: [
       {
@@ -161,8 +164,8 @@ export const KIN = [
       'The car likes me. It tolerates you.',
       'If they chase, I want the ugly route.',
     ],
-    palette: { skin: '#ffd21f', hair: '#ffb300', hair2: '#ff7a1a', cloth: '#1f2f6e', accent: '#ff4f2a', shoe: '#f4f4f4' },
-    look: { hair: 'crest', head: 'bird', mark: 'none', build: 'stub', height: 0.72 },
+    palette: { skin: '#ffd21f', hair: '#ffb300', hair2: '#ff9a1f', cloth: '#2a4bc8', accent: '#f0a05c', shoe: '#f4f4f4' },
+    look: { hair: 'crest', head: 'bird', mark: 'none', build: 'stub', scar: true, seatbelt: true, height: 0.72 },
     threads: [
       {
         id: 'belted', name: 'Belted',
@@ -215,7 +218,7 @@ export const KIN = [
       'The door doesn’t know you. It knows the jacket.',
       'Give it back in ninety seconds. Maybe.',
     ],
-    palette: { skin: '#8d5a3c', hair: '#141019', hair2: '#6d4bff', cloth: '#b9c6ff', accent: '#8ef7ff', shoe: '#e8e8f2' },
+    palette: { skin: '#a9704c', hair: '#2a1f3d', hair2: '#8a5cff', cloth: '#c3ceff', accent: '#8ef7ff', shoe: '#e8e8f2' },
     look: { hair: 'sleek', head: 'human', mark: 'none', build: 'tall', holo: true, height: 1.1 },
     threads: [
       {
@@ -269,7 +272,7 @@ export const KIN = [
       'Stand closer. The pattern works better in a circle.',
       'This is not a costume. The city just forgot the word.',
     ],
-    palette: { skin: '#a9694a', hair: '#3b1f14', hair2: '#d4373c', cloth: '#f2ead5', accent: '#c5122b', shoe: '#2f6f4f' },
+    palette: { skin: '#b97a55', hair: '#4a2618', hair2: '#e8474d', cloth: '#f7efdb', accent: '#d6153a', shoe: '#2f6f4f' },
     look: { hair: 'dressed', head: 'human', mark: 'none', build: 'grounded', folk: true, height: 1 },
     threads: [
       {
@@ -324,8 +327,8 @@ export const KIN = [
       'Juno: "If they follow me, you already have the bag."',
       'Moss: "If they follow me, you did too much again."',
     ],
-    palette: { skin: '#cf8b63', hair: '#ff9f1c', hair2: '#1b3b6f', cloth: '#7b2cbf', accent: '#3ddc97', shoe: '#ffffff' },
-    look: { hair: 'double', head: 'human', mark: 'none', build: 'duo', height: 1 },
+    palette: { skin: '#e8ab7f', hair: '#ff7a1f', hair2: '#1b3b6f', cloth: '#7b2cbf', accent: '#ff3b3b', shoe: '#f4f4f4' },
+    look: { hair: 'double', head: 'human', mark: 'none', build: 'duo', stripedSleeve: true, height: 1 },
     threads: [
       {
         id: 'onename', name: 'One Name',

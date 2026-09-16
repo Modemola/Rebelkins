@@ -74,6 +74,7 @@ Relative stature (Driver short, Mirror tall) comes from `look.height` in
 `src/data/kin.js`.
 
 Full details, plate names and failure modes: [`assets/README.md`](assets/README.md).
+What the plates should look like: [`docs/ART_DIRECTION.md`](docs/ART_DIRECTION.md).
 
 ## What is actually implemented
 
@@ -100,10 +101,11 @@ Full details, plate names and failure modes: [`assets/README.md`](assets/README.
   transparent PNGs in a folder, run one command, see them in game. Handles
   trimming, height normalisation and ground-line anchoring so exports of any
   size just work.
-- **Procedural placeholder art** (`src/art/kinart.js`) — stand-in characters
-  drawn in code, with linework whose weight is keyed to on-screen scale. It holds
-  the gameplay together until real plates arrive, and gets out of the way the
-  moment they do. Nothing here is a stolen asset.
+- **Procedural placeholder art** (`src/art/kinart.js`) — cel-shaded stand-in
+  characters drawn in code: hard two-tone shadows, heavy structural linework,
+  anime face construction, saturated palettes. It follows the rules in
+  [`docs/ART_DIRECTION.md`](docs/ART_DIRECTION.md) so a half-arted roster reads
+  as one world, and gets out of the way per Kin the moment real plates arrive.
 
 ## What is deliberately not here
 
@@ -170,6 +172,7 @@ src/
   scenes/            hub, mission, runway, results
 docs/
   CHARACTER_BIBLES.md  generated from src/data
+  ART_DIRECTION.md     the style spec, derived from the collection's artwork
   DESIGN.md            systems, and what the full game still needs
 tools/
   playtest.mjs         automated browser playthrough
