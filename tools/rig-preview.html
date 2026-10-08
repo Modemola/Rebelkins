@@ -1,4 +1,4 @@
-<title>Kin 08 Rig Test</title>
+<title>RebelKin Rig Test</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 /* Layout: full-bleed dark stage, character on a wet floor; move list as a right
@@ -56,8 +56,10 @@ body {
 .grp { display: flex; flex-direction: column; gap: 8px; }
 .lbl {
   font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--dim); display: flex; justify-content: space-between; align-items: baseline;
+  color: var(--dim); display: flex; justify-content: space-between;
+  align-items: baseline; gap: 12px;
 }
+.lbl > span:last-child { text-align: right; flex: 0 1 auto; min-width: 0; }
 .moves { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 button {
   font-family: var(--mono); font-size: 12px; font-weight: 500;
@@ -93,16 +95,21 @@ td:last-child { text-align: right; color: var(--fg); font-variant-numeric: tabul
   <div id="stageCol">
     <canvas id="cv"></canvas>
     <div id="hud">
-      <h1>Kin 08</h1>
-      <div class="sub">rig test &middot; one source image</div>
+      <h1 id="hudName">Kin 08</h1>
+      <div class="sub">rig test &middot; one source image each</div>
     </div>
     <div id="readout">
       <div>move <b id="rMove">idle</b> &middot; frame <b id="rFrame">0</b></div>
-      <div>7 parts &middot; 83,491 px &middot; <b id="rFps">60</b> fps</div>
+      <div><b id="rParts">7</b> parts &middot; <b id="rFps">60</b> fps</div>
     </div>
   </div>
 
   <aside id="rail">
+    <div class="grp">
+      <div class="lbl"><span>Character</span><span id="charTag">arms clear of the body</span></div>
+      <div class="moves" id="chars"></div>
+    </div>
+
     <div class="grp">
       <div class="lbl"><span>Moves</span><span id="moveHint">click or 1&ndash;7</span></div>
       <div class="moves" id="moves"></div>
@@ -129,29 +136,53 @@ td:last-child { text-align: right; color: var(--fg); font-variant-numeric: tabul
 
     <div class="grp">
       <div class="lbl"><span>How this was made</span></div>
-      <p class="note">
-        One illustration, cut along seven polygons. The coat behind both sleeves
-        had no pixels underneath, so <b>13,961 occluded pixels</b> were grown back
-        from the surrounding panel before packing. Every pose here comes from that
-        single drawing &mdash; no extra art.
-      </p>
+      <p class="note" id="charNote"></p>
+      <p class="note">Every pose on both characters comes from one drawing each.
+        No extra art was made.</p>
     </div>
   </aside>
 </div>
 
 <script>
-const RIG = {"name":"kin08","atlasSize":[2048, 284],"root":"torso","ground":[300, 542],"parts":[
-{"name":"legL","parent":"hips","z":0,"rect":[384, 0, 77, 132],"pivot":[59, 12],"origin":[252, 418]},
-{"name":"legR","parent":"hips","z":0,"rect":[463, 0, 69, 129],"pivot":[24, 12],"origin":[314, 418]},
-{"name":"hips","parent":"torso","z":1,"rect":[796, 0, 105, 76],"pivot":[52, 14],"origin":[306, 380]},
-{"name":"torso","parent":null,"z":2,"rect":[0, 0, 220, 282],"pivot":[114, 110],"origin":[300, 250]},
-{"name":"armL","parent":"torso","z":3,"rect":[534, 0, 175, 99],"pivot":[157, 3],"origin":[282, 206]},
-{"name":"armR","parent":"torso","z":3,"rect":[711, 0, 83, 87],"pivot":[-1, -3],"origin":[344, 204]},
-{"name":"head","parent":"torso","z":4,"rect":[222, 0, 160, 160],"pivot":[76, 144],"origin":[306, 178]}]};
+const CHARS = {
+  kin08: {
+    label: 'Kin 08', tag: 'arms clear',
+    atlas: 'atlas8.png', ground: [300,542], root: 'torso',
+    parts: [
+      {name:'legL',parent:'hips',z:0,rect:[384,0,77,132],pivot:[59,12],origin:[252,418]},
+      {name:'legR',parent:'hips',z:0,rect:[463,0,69,129],pivot:[24,12],origin:[314,418]},
+      {name:'hips',parent:'torso',z:1,rect:[796,0,105,76],pivot:[52,14],origin:[306,380]},
+      {name:'torso',parent:null,z:2,rect:[0,0,220,282],pivot:[114,110],origin:[300,250]},
+      {name:'armL',parent:'torso',z:3,rect:[534,0,175,99],pivot:[157,3],origin:[282,206]},
+      {name:'armR',parent:'torso',z:3,rect:[711,0,83,87],pivot:[-1,-3],origin:[344,204]},
+      {name:'head',parent:'torso',z:4,rect:[222,0,160,160],pivot:[76,144],origin:[306,178]}],
+    note: 'Seven parts. Her sleeves sat clear of the coat, so the arms came away cleanly and <b>12,622 occluded pixels</b> of coat were grown back behind them. Full punch set.',
+    order: ['idle','walk','jab','hook','kick','block','hit'],
+  },
+  kin06: {
+    label: 'Kin 06', tag: 'arms folded',
+    atlas: 'atlas6.png', ground: [300,545], root: 'torso',
+    parts: [
+      {name:'legL',parent:'hips',z:0,rect:[389,0,105,122],pivot:[71,10],origin:[268,434]},
+      {name:'legR',parent:'hips',z:0,rect:[496,0,96,122],pivot:[22,10],origin:[320,434]},
+      {name:'hips',parent:'torso',z:1,rect:[594,0,104,76],pivot:[50,16],origin:[296,386]},
+      {name:'torso',parent:null,z:2,rect:[217,0,170,182],pivot:[84,62],origin:[304,300]},
+      {name:'head',parent:'torso',z:4,rect:[0,0,215,190],pivot:[127,182],origin:[300,240]}],
+    note: 'Five parts. His arms are folded across his chest, so separating them would have meant inventing <b>two thirds of his jacket</b> &mdash; and that came out a smear, not a garment. The arms stay welded on. He fights with legs and body.',
+    order: ['idle','walk','kick','stomp','charge','block','hit'],
+  },
+};
 
-const PART = {}; RIG.parts.forEach(p => PART[p.name] = p);
-const KIDS = {}; RIG.parts.forEach(p => { (KIDS[p.parent] ||= []).push(p); });
-const BYZ = RIG.parts.slice().sort((a,b) => a.z - b.z);
+let CUR = 'kin08';
+let RIG, PART, KIDS, BYZ;
+function useChar(key) {
+  CUR = key; RIG = CHARS[key];
+  PART = {}; RIG.parts.forEach(p => PART[p.name] = p);
+  KIDS = {}; RIG.parts.forEach(p => { (KIDS[p.parent] ||= []).push(p); });
+  BYZ = RIG.parts.slice().sort((a,b) => a.z - b.z);
+}
+useChar('kin08');
+
 const TINT = { legL:'#ff4d6d', legR:'#52d8ef', hips:'#f5c518', torso:'#7ee787',
                armL:'#b58cff', armR:'#ff9f45', head:'#ffffff' };
 
@@ -226,6 +257,23 @@ const MOVES = {
       armL:{rot:0.55*k}, armR:{rot:-0.70*k},
       legL:{rot:0.26*k}, legR:{rot:-0.20*k} }; } },
 };
+
+/* Moves for a character whose arms cannot leave his chest. Legs and body only --
+   and his folded arms already read as a guard, which is why his block is good. */
+MOVES.stomp = { label:'Stomp', dur:0.74, impact:0.46, pose(u){
+  const w = seg(u,0,.30), s = seg(u,.30,.46), r = seg(u,.58,1);
+  const k = out(s) - ease(r);
+  return { torso:{rot:-0.06*w + 0.12*k, y:-14*back(w) + 26*k},
+    hips:{rot:0.05*k}, head:{rot:-0.10*w + 0.18*k},
+    legR:{rot:-0.55*back(w) + 0.70*k}, legL:{rot:0.12*k} }; } };
+
+MOVES.charge = { label:'Charge', dur:0.80, impact:0.40, pose(u){
+  const w = seg(u,0,.26), s = seg(u,.26,.44), r = seg(u,.62,1);
+  const k = out(s) - ease(r);
+  return { torso:{rot:0.14*w - 0.34*k, x:16*w - 86*k, y:4*k},
+    hips:{rot:0.10*k}, head:{rot:0.22*w - 0.30*k},
+    legL:{rot:-0.30*w + 0.56*k}, legR:{rot:0.26*w - 0.40*k} }; } };
+
 const ORDER = ['idle','walk','jab','hook','kick','block','hit'];
 
 /* ---- scene ---- */
@@ -464,35 +512,60 @@ function impact() {
 
 /* ---- ui ---- */
 const movesEl = document.getElementById('moves');
-ORDER.forEach((k, i) => {
+const charsEl = document.getElementById('chars');
+
+Object.keys(CHARS).forEach(k => {
   const b = document.createElement('button');
-  b.type = 'button'; b.dataset.k = k;
-  b.textContent = `${i+1}  ${MOVES[k].label}`;
-  b.setAttribute('aria-pressed', String(k === move));
-  b.onclick = () => play(k);
-  movesEl.appendChild(b);
+  b.type = 'button'; b.dataset.c = k; b.textContent = CHARS[k].label;
+  b.onclick = () => pick(k);
+  charsEl.appendChild(b);
 });
+
+function buildMoves() {
+  movesEl.textContent = '';
+  RIG.order.forEach((k, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.k = k;
+    b.textContent = `${i+1}  ${MOVES[k].label}`;
+    b.onclick = () => play(k);
+    movesEl.appendChild(b);
+  });
+  const bt = document.getElementById('boneTable');
+  bt.textContent = '';
+  RIG.parts.slice().sort((a,b)=>a.z-b.z).forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.name}</td><td>${p.parent ?? 'root'}</td>`;
+    bt.appendChild(tr);
+  });
+  document.getElementById('boneName').textContent = `${RIG.parts.length} parts`;
+  document.getElementById('charTag').textContent = RIG.tag;
+  document.getElementById('hudName').textContent = RIG.label;
+  document.getElementById('charNote').innerHTML = RIG.note;
+  document.getElementById('rParts').textContent = RIG.parts.length;
+  syncButtons();
+}
 function syncButtons() {
   movesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === move)));
+  charsEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === CUR)));
   document.getElementById('rMove').textContent = move;
 }
 function play(k) { move = k; moveT = 0; history.length = 0; syncButtons(); }
+function pick(k) {
+  if (k === CUR) return;
+  useChar(k);
+  atlas.src = RIG.atlas;
+  move = 'idle'; moveT = 0; history.length = 0;
+  buildMoves();
+}
 addEventListener('keydown', e => {
   const i = parseInt(e.key, 10);
-  if (i >= 1 && i <= ORDER.length) play(ORDER[i-1]);
+  if (i >= 1 && i <= RIG.order.length) play(RIG.order[i-1]);
 });
 
-const bt = document.getElementById('boneTable');
-RIG.parts.slice().sort((a,b)=>a.z-b.z).forEach(p => {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td>${p.name}</td><td>${p.parent ?? 'root'}</td>`;
-  bt.appendChild(tr);
-});
-document.getElementById('boneName').textContent = `${RIG.parts.length} parts`;
 document.getElementById('boneBar').style.width = '100%';
-
 atlas.onload = () => { ready = true; resize(); };
-atlas.src = 'atlas.png';
+buildMoves();
+atlas.src = RIG.atlas;
 resize();
 requestAnimationFrame(loop);
 </script>

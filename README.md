@@ -56,9 +56,29 @@ distance, not in a slow close-up.
 
 ## Rigs
 
-| Rig | Character | Case |
-| --- | --- | --- |
-| `rigs/kin08.json` | yellow coat, white bob | arms clear of the body — the easy case |
+| Rig | Character | Parts | Case |
+| --- | --- | --- | --- |
+| `rigs/kin08.json` | yellow coat, white bob | 7 | arms clear of the body — the easy case |
+| `rigs/kin06.json` | navy jacket, cyan spikes | 5 | arms folded — arms stay welded on |
+
+### What the two cases established
+
+Separating a limb means inventing what was behind it. That is affordable when
+the hidden region is a narrow band at the edge of a large flat panel, which is
+why the coat healed: 12,622 pixels, and the arm sits back over most of them
+anyway.
+
+It is not affordable when the hidden region is wide and central. Folded arms
+hide two thirds of a jacket, the fill has to travel far from any real pixel,
+and what comes back is a horizontal smear rather than a garment.
+
+So the rule is: **heal only what a limb will stay near.** For folded-arm
+characters the arms stay welded to the torso, which costs the independent punch
+set and keeps everything else — idle, walk, kicks, stomps, body charges, hit
+reactions, and a guard pose their folded arms already read as.
+
+The lasting fix is one extra generation per folded-arm character, in an open
+pose with the limbs clear of the body. Five of the ten need it.
 
 ## Art direction
 

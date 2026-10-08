@@ -1,0 +1,36 @@
+{
+  "name": "kin06",
+  "note": "Arms folded across the chest. They are NOT separated: the occluded region is wide, central, and most of the jacket, so inpainting it produces a smear rather than a garment. The arms stay welded to the torso and the character fights with legs and body.",
+  "root": "torso",
+  "ground": [300, 545],
+  "parts": [
+    {
+      "name": "legL", "parent": "hips", "z": 0,
+      "poly": [[188,424],[302,424],[300,546],[186,546]],
+      "pivot": [268,434],
+      "limits": { "rot": [-50, 50] }
+    },
+    {
+      "name": "legR", "parent": "hips", "z": 0,
+      "poly": [[298,424],[408,424],[406,546],[300,546]],
+      "pivot": [320,434],
+      "limits": { "rot": [-50, 50] }
+    },
+    {
+      "name": "hips", "parent": "torso", "z": 1,
+      "poly": [[234,370],[352,370],[354,446],[238,446]],
+      "pivot": [296,386]
+    },
+    {
+      "name": "torso", "parent": null, "z": 2,
+      "poly": [[204,238],[402,238],[410,318],[402,372],[392,416],[230,420],[202,372],[194,318]],
+      "pivot": [304,300]
+    },
+    {
+      "name": "head", "parent": "torso", "z": 4,
+      "poly": [[158,50],[382,50],[388,140],[372,212],[332,244],[268,248],[212,218],[178,150]],
+      "pivot": [300,240],
+      "limits": { "rot": [-24, 24] }
+    }
+  ]
+}
