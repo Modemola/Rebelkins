@@ -1,9 +1,16 @@
 # RebelKin — fighter
 
-A one-on-one fighting game. You play the Kin; weapons unlock as you rank up.
+A one-on-one fighting game. You play the Kin.
 
-Nothing of the game itself is built yet. What exists is the art pipeline, which
-had to come first because it decides whether the game is possible at all.
+Two characters are playable, each rigged from a single illustration. Run it:
+
+```sh
+npx http-server . -p 8080 -c-1   # then open localhost:8080
+node tools/playtest.mjs          # drives a real browser and asserts the fight works
+```
+
+**P1** A/D move · W jump · S crouch · J light · K heavy · L special · Space guard
+**P2** arrows · `,` `.` `/` attacks · RShift guard
 
 ## The constraint everything else follows from
 
@@ -14,6 +21,33 @@ hero pose. A fighter needs each character in roughly fifteen poses.
 The way out is to stop treating an illustration as a picture and treat it as a
 set of parts. Cut it along polygons, give each part a pivot and a parent, and
 idle, walk, crouch, block, hit and most attacks all come out of that one drawing.
+
+## The fight
+
+The simulation runs at a **fixed 60Hz**, decoupled from rendering. Startup,
+active and recovery are counted in frames, so the same inputs give the same
+result whatever the display is doing.
+
+| | Kin 08 — striker | Kin 06 — bruiser |
+| --- | --- | --- |
+| light | Jab 4/3/9, 42 dmg | Low Kick 6/4/11, 54 dmg |
+| heavy | Hook 10/4/18, 98 dmg | Stomp 12/4/20, 115 dmg |
+| special | Runner 9/7/22, 86 dmg | Charge 11/8/24, 102 dmg |
+
+*(startup / active / recovery, in frames)*
+
+Kin 06 hits harder and moves slower, and has no independent arms — see below.
+
+**Hitboxes ride the rig.** A move names a part and a reach; the hitbox is placed
+at wherever that part actually is this frame, so what hits is what you can see.
+Hurtboxes are body-sized ellipses, which matters more than it sounds: the first
+version used a circle sitting near the ankles and *nothing ever connected*.
+
+**Hitstop** scales with damage, 6 frames up to 16. It is the single biggest
+contributor to whether a strike lands heavy or feels like a slap.
+
+The CPU blocks on reaction, respects spacing, and backs off when hurt. Blocked
+damage is chipped and clamped so a block can never finish a round.
 
 ## Pipeline
 

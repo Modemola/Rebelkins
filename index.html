@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>REBELKIN</title>
+<link rel="stylesheet" href="styles/game.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%A5%8A</text></svg>" />
+</head>
+<body>
+<div id="app">
+  <canvas id="stage"></canvas>
+
+  <div id="hud" hidden>
+    <div class="side left">
+      <div class="nameRow"><span class="nm" id="nameA"></span><span class="sub" id="subA"></span></div>
+      <div class="bar"><i id="hpA"></i><u id="hpAghost"></u></div>
+      <div class="pips" id="pipsA"></div>
+    </div>
+    <div class="middle">
+      <div class="timer" id="timer">60</div>
+      <div class="round" id="roundLabel">ROUND 1</div>
+    </div>
+    <div class="side right">
+      <div class="nameRow"><span class="sub" id="subB"></span><span class="nm" id="nameB"></span></div>
+      <div class="bar flip"><i id="hpB"></i><u id="hpBghost"></u></div>
+      <div class="pips" id="pipsB"></div>
+    </div>
+  </div>
+
+  <div id="announce" hidden><span id="announceText"></span></div>
+
+  <div id="select">
+    <div class="selWrap">
+      <h1>REBELKIN</h1>
+      <p class="tag">Two characters, each rigged from one illustration.</p>
+      <div class="chooser">
+        <button class="pick" data-kin="kin08" aria-pressed="true">
+          <b>KIN 08</b><span>striker &middot; jab, hook, runner</span>
+        </button>
+        <button class="pick" data-kin="kin06" aria-pressed="false">
+          <b>KIN 06</b><span>bruiser &middot; kick, stomp, charge</span>
+        </button>
+      </div>
+      <div class="chooser small">
+        <button class="mode" data-mode="ai" aria-pressed="true">vs CPU</button>
+        <button class="mode" data-mode="2p" aria-pressed="false">2 players</button>
+      </div>
+      <div class="chooser small" id="diffRow">
+        <button class="diff" data-diff="calm" aria-pressed="false">Calm</button>
+        <button class="diff" data-diff="brisk" aria-pressed="true">Brisk</button>
+        <button class="diff" data-diff="mean" aria-pressed="false">Mean</button>
+      </div>
+      <button id="startBtn">FIGHT</button>
+      <div class="keys">
+        <div><b>P1</b> A/D move &middot; W jump &middot; S crouch &middot; J light &middot; K heavy &middot; L special &middot; SPACE guard</div>
+        <div id="p2keys" hidden><b>P2</b> &larr;/&rarr; move &middot; &uarr; jump &middot; &darr; crouch &middot; , light &middot; . heavy &middot; / special &middot; RSHIFT guard</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="debug" hidden></div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

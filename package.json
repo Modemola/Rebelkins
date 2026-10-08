@@ -1,10 +1,13 @@
 {
   "name": "rebelkin-fighter",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "A RebelKin fighting game. Characters are rigged from single illustrations.",
   "type": "module",
   "scripts": {
+    "start": "npx --yes http-server . -p 8080 -c-1",
+    "playtest": "node tools/playtest.mjs",
+    "playtest:headed": "node tools/playtest.mjs --headed",
     "cutout": "node tools/cutout.mjs",
     "rig": "node tools/rig.mjs",
     "grid": "node tools/rig-grid.mjs"

@@ -1,0 +1,306 @@
+/**
+ * REBELKIN — boot and the render pass.
+ *
+ * The simulation runs at a fixed 60Hz and knows nothing about the screen; this
+ * file reads the state it produced and photographs it.
+ */
+
+import { Loop, TICK } from './engine/loop.js';
+import { Input } from './engine/input.js';
+import { Rig } from './render/rig.js';
+import { Camera, drawStage, drawFloor, drawVignette } from './render/stage.js';
+import { FX } from './render/fx.js';
+import { Match, PHASE, STAGE } from './fight/match.js';
+import { AI } from './fight/ai.js';
+import { STATE } from './fight/fighter.js';
+import { KIN08 } from './data/kin08.js';
+import { KIN06 } from './data/kin06.js';
+
+const DEFS = { kin08: KIN08, kin06: KIN06 };
+const cv = document.getElementById('stage');
+const ctx = cv.getContext('2d');
+const input = new Input();
+const fx = new FX();
+const cam = new Camera();
+
+const el = (id) => document.getElementById(id);
+const view = { w: 1280, h: 720 };
+let dpr = 1;
+
+function resize() {
+  // A fighter wants frames more than it wants pixels; 2x on a large display
+  // quadruples every full-screen pass for no visible gain at this art scale.
+  dpr = Math.min(1.5, window.devicePixelRatio || 1);
+  view.w = cv.clientWidth || window.innerWidth;
+  view.h = cv.clientHeight || window.innerHeight;
+  cv.width = Math.round(view.w * dpr);
+  cv.height = Math.round(view.h * dpr);
+}
+addEventListener('resize', resize);
+
+/* ---------------------------------------------------------------- assets */
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error(`could not load ${src}`));
+    im.src = src;
+  });
+}
+
+const rigs = {};
+async function loadRigs() {
+  await Promise.all(Object.values(DEFS).map(async (d) => {
+    rigs[d.id] = new Rig(d.rig, await loadImage(d.atlas));
+  }));
+}
+
+/* ----------------------------------------------------------------- match */
+
+let match = null;
+let ai = new AI('brisk');
+let mode = 'ai';
+let p1Kin = 'kin08';
+let slowCounter = 0;
+
+function startMatch() {
+  const p2Kin = p1Kin === 'kin08' ? 'kin06' : 'kin08';
+  match = new Match(DEFS[p1Kin], DEFS[p2Kin], rigs);
+  match.onEvent = onMatchEvent;
+  el('select').hidden = true;
+  el('hud').hidden = false;
+  input.clear('p1');
+  input.clear('p2');
+  paintNames();
+  announce(`ROUND ${match.round}`, 1100);
+}
+
+function onMatchEvent(kind, data) {
+  if (kind === 'hit') {
+    fx.hit(data.contact, data.move, data.ko);
+    cam.bump(data.ko ? 24 : 7 + data.move.damage / 14);
+    cam.kick.x = -data.attacker.facing * Math.min(16, data.move.damage / 7);
+    if (data.ko) announce('K.O.', 1600);
+  } else if (kind === 'block') {
+    fx.block(data.contact);
+    cam.bump(3);
+  } else if (kind === 'fight') {
+    announce('FIGHT', 700);
+  } else if (kind === 'roundEnd') {
+    setTimeout(() => {
+      if (match.over) {
+        const who = match.wins[0] > match.wins[1] ? match.a : match.b;
+        announce(`${who.def.name} WINS`, 2600);
+      }
+    }, 900);
+  }
+}
+
+let announceTimer = 0;
+function announce(text, ms) {
+  const node = el('announce');
+  el('announceText').textContent = text;
+  node.hidden = false;
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { node.hidden = true; }, ms);
+}
+
+/* --------------------------------------------------------------- intents */
+
+function readIntent(pad) {
+  return {
+    move: input.axis(pad),
+    crouch: input.held(pad, 'down'),
+    jump: input.take(pad, 'up'),
+    guard: input.held(pad, 'guard'),
+    attack: input.take(pad, 'light') ? 'light'
+      : input.take(pad, 'heavy') ? 'heavy'
+        : input.take(pad, 'special') ? 'special' : null,
+  };
+}
+
+/* ------------------------------------------------------------------ step */
+
+const poses = {};
+
+function update(frame) {
+  input.tick(frame);
+  if (!match) return;
+
+  // KO slow motion: the simulation runs at a third speed while the fall plays
+  if (match.slowmo > 0) {
+    match.slowmo--;
+    slowCounter = (slowCounter + 1) % 3;
+    if (slowCounter !== 0) return;
+  }
+
+  const a = readIntent('p1');
+  const b = mode === '2p' ? readIntent('p2') : ai.think(match.b, match.a, frame);
+
+  match.step(frame, { a, b }, solvePoses);
+  // step() only solves inside the fight phase, and returns early during the
+  // intro, hitstop and round-end. Render needs a current pose every frame
+  // regardless, and a solve is a handful of matrix multiplies.
+  solvePoses();
+}
+
+function solvePoses() {
+  for (const f of match.fighters) {
+    const rig = rigs[f.def.id];
+    poses[f.def.id] = rig.solve(f.pose(), {
+      x: f.x, y: f.y, scale: f.def.scale, facing: f.facing,
+    });
+  }
+  return poses;
+}
+
+/* ---------------------------------------------------------------- render */
+
+function render(alpha, dt) {
+  if (!match) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, view.w, view.h); return; }
+
+  fx.step(dt);
+  cam.follow(match.a, match.b, view, dt);
+
+  drawStage(ctx, view, cam, performance.now() / 1000, dpr);
+
+  cam.apply(ctx, view, dpr);
+  drawFloor(ctx, cam, view);
+
+  // Reflections reuse the matrices the simulation already solved, mirrored about
+  // the floor line -- a second solve per fighter per frame bought nothing.
+  ctx.save();
+  ctx.scale(1, -1);
+  for (const f of match.fighters) {
+    ctx.globalAlpha = 0.22;
+    rigs[f.def.id].draw(ctx, poses[f.def.id]);
+  }
+  ctx.restore();
+  // fade the reflection out with distance from the floor line
+  const fade = ctx.createLinearGradient(0, 0, 0, 420);
+  fade.addColorStop(0, 'rgba(10,7,14,0)');
+  fade.addColorStop(1, 'rgba(10,7,14,1)');
+  ctx.fillStyle = fade;
+  ctx.fillRect(-3000, 0, 6000, 420);
+
+  // contact shadows
+  for (const f of match.fighters) {
+    const lift = Math.max(0, -f.y);
+    const squash = 1 - Math.min(0.6, lift / 420);
+    const g = ctx.createRadialGradient(f.x, 0, 3, f.x, 0, 120 * squash);
+    g.addColorStop(0, `rgba(0,0,0,${0.55 * squash})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(f.x, 0, 120 * squash, 20 * squash, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // fighters, far one first so the near one overlaps correctly
+  const order = match.fighters.slice().sort((p, q) => p.x - q.x);
+  for (const f of order) {
+    const rig = rigs[f.def.id];
+    const M = poses[f.def.id];
+    // rim light picks the character off the backdrop
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.20;
+    ctx.translate(-4, -4);
+    rig.draw(ctx, M);
+    ctx.restore();
+
+    if (f.state === STATE.BLOCK) {
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#52d8ef';
+      ctx.lineWidth = 3 / cam.zoom;
+      ctx.beginPath();
+      ctx.ellipse(f.x + f.facing * 26, f.y - 86, 56, 86, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    rig.draw(ctx, M);
+  }
+
+  fx.drawWorld(ctx, cam.zoom);
+
+  fx.drawScreen(ctx, view, dpr);
+  drawVignette(ctx, view, dpr);
+  paintHud();
+}
+
+/* ------------------------------------------------------------------- hud */
+
+function paintNames() {
+  el('nameA').textContent = match.a.def.name;
+  el('subA').textContent = match.a.def.subtitle;
+  el('nameB').textContent = match.b.def.name;
+  el('subB').textContent = match.b.def.subtitle;
+  for (const [side, idx] of [['pipsA', 0], ['pipsB', 1]]) {
+    const host = el(side);
+    host.textContent = '';
+    for (let i = 0; i < 2; i++) {
+      const d = document.createElement('div');
+      d.className = `pip${match.wins[idx] > i ? ' on' : ''}`;
+      host.appendChild(d);
+    }
+  }
+}
+
+let lastWins = '';
+function paintHud() {
+  const pa = Math.max(0, match.a.health / match.a.def.health) * 100;
+  const pb = Math.max(0, match.b.health / match.b.def.health) * 100;
+  el('hpA').style.width = `${pa}%`;
+  el('hpB').style.width = `${pb}%`;
+  el('hpAghost').style.width = `${pa}%`;
+  el('hpBghost').style.width = `${pb}%`;
+  el('timer').textContent = String(Math.ceil(match.timer));
+  el('roundLabel').textContent = match.over ? 'MATCH' : `ROUND ${match.round}`;
+  const w = match.wins.join('-');
+  if (w !== lastWins) { lastWins = w; paintNames(); }
+}
+
+/* ------------------------------------------------------------------ menu */
+
+function wireMenu() {
+  const group = (sel, onPick) => {
+    const nodes = [...document.querySelectorAll(sel)];
+    nodes.forEach((b) => b.addEventListener('click', () => {
+      nodes.forEach((n) => n.setAttribute('aria-pressed', String(n === b)));
+      onPick(b);
+    }));
+  };
+  group('.pick', (b) => { p1Kin = b.dataset.kin; });
+  group('.mode', (b) => {
+    mode = b.dataset.mode;
+    el('diffRow').hidden = mode === '2p';
+    el('p2keys').hidden = mode !== '2p';
+  });
+  group('.diff', (b) => ai.set(b.dataset.diff));
+  el('startBtn').addEventListener('click', startMatch);
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' && match) {
+      match = null;
+      el('select').hidden = false;
+      el('hud').hidden = true;
+      el('announce').hidden = true;
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ boot */
+
+resize();
+wireMenu();
+loadRigs().then(() => {
+  const loop = new Loop({ update, render });
+  loop.start();
+  window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai,
+    start: (kin, m) => { p1Kin = kin || p1Kin; mode = m || mode; startMatch(); } };
+}).catch((err) => {
+  el('select').innerHTML = `<div class="selWrap"><h1>REBELKIN</h1>
+    <p class="tag">${err.message}</p></div>`;
+});
