@@ -72,6 +72,29 @@ body { font-family: var(--mono); color: var(--fg); -webkit-font-smoothing: antia
 h1 { font-size: clamp(38px, 9vw, 70px); margin: 0; letter-spacing: .06em; font-weight: 800; }
 .tag { margin: 0; color: var(--dim); font-size: 13px; }
 .chooser { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+
+/* ---- roster: both fighters are picked from the same ten portraits */
+.roster { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: start; }
+.roster .side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.roster .who { font-size: 10px; letter-spacing: .18em; color: var(--dim); }
+.roster .vs { align-self: center; font-size: 13px; color: var(--dim); letter-spacing: .1em; padding-top: 22px; }
+.roster .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.roster .read { font-size: 10px; letter-spacing: .06em; color: var(--dim); min-height: 2.6em; line-height: 1.3; }
+.roster .read b { color: var(--fg); letter-spacing: .1em; }
+.face {
+  padding: 0; aspect-ratio: 1; border-radius: 3px; overflow: hidden;
+  background: #15111d center/cover no-repeat; border: 1px solid var(--line);
+  position: relative; transition: border-color .1s, transform .1s;
+}
+.face:hover { transform: translateY(-2px); border-color: #594f68; background-color: #15111d; }
+.face[aria-pressed="true"] { border-color: var(--coat); box-shadow: 0 0 0 1px var(--coat); }
+.face[aria-pressed="true"]::after {
+  content: ''; position: absolute; inset: auto 0 0 0; height: 3px; background: var(--coat);
+}
+@media (max-width: 520px) {
+  .roster { grid-template-columns: 1fr; }
+  .roster .vs { padding: 0; }
+}
 .chooser.small { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
 button {
   font-family: var(--mono); color: var(--fg); background: #191520;
@@ -83,7 +106,10 @@ button:focus-visible { outline: 2px solid var(--stocking); outline-offset: 2px; 
 .pick { display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .pick b { font-size: 17px; letter-spacing: .05em; }
 .pick span { font-size: 10px; color: var(--dim); letter-spacing: .08em; }
-button[aria-pressed="true"] { background: var(--coat); border-color: var(--coat); color: #1a1505; }
+/* :not(.face) -- the shorthand would reset background-size on a portrait tile,
+   dropping it from `cover` to `auto` and showing the empty corner of a 192px
+   image inside a 56px button. */
+button[aria-pressed="true"]:not(.face) { background: var(--coat); border-color: var(--coat); color: #1a1505; }
 button[aria-pressed="true"] span { color: rgba(26,21,5,.72); }
 #startBtn {
   margin-top: 4px; padding: 15px; font-size: 17px; font-weight: 700; letter-spacing: .14em;

@@ -9,6 +9,7 @@
  */
 
 import { phases, seg, easeOut, easeInOut, anticipate } from './common.js';
+import { swingOf } from './kit.js';
 
 const RIG = {
   root: 'torso',
@@ -21,6 +22,9 @@ const RIG = {
     { name: 'head', parent: 'torso', z: 4, rect: [0, 0, 215, 190], pivot: [127, 182], origin: [300, 240] },
   ],
 };
+
+/** Measured, not guessed: how far each limb must turn to point at the opponent. */
+const SWING = { legL: swingOf(RIG, 'legL'), legR: swingOf(RIG, 'legR') };
 
 export const KIN06 = {
   id: 'kin06',
@@ -72,7 +76,7 @@ export const KIN06 = {
       // the folded arms are the guard; he just hunches behind them
       const j = Math.sin(t * 2.8) * 0.010;
       return {
-        torso: { rot: 0.20 + j, y: 12 }, hips: { rot: -0.08 }, head: { rot: 0.30 },
+        torso: { rot: 0.20 + j, y: 12 }, hips: { rot: -0.08 }, head: { rot: 0.20 },
         legL: { rot: 0.18 }, legR: { rot: -0.20 },
       };
     },
@@ -101,13 +105,14 @@ export const KIN06 = {
       startup: 6, active: 4, recovery: 11,
       damage: 54, hitstun: 15, blockstun: 9,
       knockback: 250, lift: 0, drive: 130,
-      strikePart: 'legL', reach: 62,
+      strikePart: 'legL', reach: 92,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
           torso: { rot: -0.08 * wind + 0.16 * strike, x: -8 * strike },
           hips: { rot: 0.06 * wind - 0.22 * strike }, head: { rot: -0.10 * strike },
-          legL: { rot: -0.26 * wind + 1.15 * strike }, legR: { rot: 0.08 * wind - 0.10 * strike },
+          legL: { rot: -0.22 * SWING.legL * wind + SWING.legL * strike },
+          legR: { rot: 0.08 * wind - 0.10 * strike },
         };
       },
     },

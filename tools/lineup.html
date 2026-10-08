@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>REBELKIN rig lineup</title>
+<style>
+  body { margin: 0; background: #0d0a12; color: #cfc6db; font: 12px ui-monospace, monospace; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<!--
+  Every rigged character, drawn through the real Rig in one chosen pose, all
+  facing the same way. The game only ever shows two at a time, so this is the
+  only place a whole-cast problem (a wrong art facing, a part left out of a
+  pose, a ground line off by twenty pixels) is visible at a glance.
+
+    ?pose=idle|walk|block|crouch|light|heavy|special   &facing=1|-1
+-->
+<canvas id="c"></canvas>
+<script type="module">
+import { Rig } from '../src/render/rig.js';
+import { KIN01 } from '../src/data/kin01.js';
+import { KIN02 } from '../src/data/kin02.js';
+import { KIN03 } from '../src/data/kin03.js';
+import { KIN04 } from '../src/data/kin04.js';
+import { KIN05 } from '../src/data/kin05.js';
+import { KIN06 } from '../src/data/kin06.js';
+import { KIN07 } from '../src/data/kin07.js';
+import { KIN08 } from '../src/data/kin08.js';
+import { KIN09 } from '../src/data/kin09.js';
+import { KIN10 } from '../src/data/kin10.js';
+
+const ROSTER = [KIN01, KIN02, KIN03, KIN04, KIN05, KIN06, KIN07, KIN08, KIN09, KIN10];
+const q = new URLSearchParams(location.search);
+const POSE = q.get('pose') || 'idle';
+const FACING = Number(q.get('facing') || 1);
+
+const CELL = 320;
+const COLS = 5;
+const ROWS = Math.ceil(ROSTER.length / COLS);
+const cv = document.getElementById('c');
+cv.width = CELL * COLS;
+cv.height = CELL * ROWS;
+const ctx = cv.getContext('2d');
+
+const load = (src) => new Promise((res, rej) => {
+  const im = new Image();
+  im.onload = () => res(im);
+  im.onerror = () => rej(new Error(src));
+  im.src = `../${src}`;
+});
+
+function poseFor(def) {
+  const s = def.stance;
+  if (s[POSE]) return POSE === 'walk' ? s.walk(1.1, 1) : POSE === 'air' ? s.air(-300) : s[POSE](1.1);
+  const m = def.moves[POSE];
+  if (!m) return s.idle(1.1);
+  // hold the first active frame, which is the frame the hitbox lives on
+  return m.pose(m.startup, m);
+}
+
+const rigs = await Promise.all(ROSTER.map(async (d) => new Rig(d.rig, await load(d.atlas))));
+
+ctx.fillStyle = '#0d0a12';
+ctx.fillRect(0, 0, cv.width, cv.height);
+ROSTER.forEach((def, i) => {
+  const cx = (i % COLS) * CELL + CELL / 2;
+  const cy = ((i / COLS) | 0) * CELL + CELL - 40;
+  ctx.strokeStyle = '#2a2336';
+  ctx.beginPath(); ctx.moveTo(cx - CELL / 2 + 8, cy); ctx.lineTo(cx + CELL / 2 - 8, cy); ctx.stroke();
+  // a mark where the opponent would be, so a wrong facing is unmistakable
+  ctx.fillStyle = '#f5c518';
+  ctx.fillRect(cx + FACING * 118 - 2, cy - 180, 4, 180);
+
+  const M = rigs[i].solve(poseFor(def), { x: cx, y: cy, scale: def.scale * 0.52, facing: FACING });
+  rigs[i].draw(ctx, M);
+
+  ctx.fillStyle = '#cfc6db';
+  ctx.font = '13px ui-monospace, monospace';
+  ctx.fillText(`${def.name}  ${def.subtitle}`, cx - CELL / 2 + 10, cy + 22);
+  ctx.fillStyle = '#7b7190';
+  ctx.fillText(`art ${def.rig.art ?? 1}  scale ${def.scale}`, cx - CELL / 2 + 10, cy + 36);
+});
+document.title = `lineup ${POSE} facing ${FACING}`;
+window.__READY__ = true;
+</script>
+</body>
+</html>

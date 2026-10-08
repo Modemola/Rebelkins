@@ -84,7 +84,11 @@ try {
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !!window.__REBELKIN__, { timeout: 15000 });
   console.log('\nboot');
-  check('rigs loaded', await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length) === 2);
+  check('rigs loaded', await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length) === 10,
+    `${await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length)} of 10`);
+  check('roster is on the select screen',
+    await page.evaluate(() => document.querySelectorAll('#rosterA .face').length) === 10
+    && await page.evaluate(() => document.querySelectorAll('#rosterB .face').length) === 10);
   await shot('0-select');
 
   await page.click('#startBtn');
@@ -138,6 +142,14 @@ try {
   await shot('3-trading');
 
   console.log('\nframe data is respected');
+  // Now that a hitbox sits on the striking limb rather than on the joint, the
+  // CPU can reach back -- and a counter-hit cancels the move this check is
+  // trying to time. Stand it down for the probes that need one clean swing.
+  const quietCpu = () => page.evaluate(() => {
+    window.__REBELKIN__.ai.cfg.aggression = 0;
+    window.__REBELKIN__.ai.cfg.block = 0;
+  });
+  await quietCpu();
   const probe = await page.evaluate(async () => {
     const g = window.__REBELKIN__;
     const a = g.match.a;
@@ -168,15 +180,27 @@ try {
   check('impact shakes the camera', fxProbe.shake > 0, fxProbe.shake.toFixed(1));
 
   console.log('\nKO ends the round');
+  await quietCpu();
   await page.evaluate(() => {
     const m = window.__REBELKIN__.match;
     m.b.health = 1;
+    m.a.health = m.a.def.health;
     m.a.x = m.b.x - 100;
   });
   let koed = false;
-  for (let i = 0; i < 30 && !koed; i++) {
-    await page.keyboard.press('KeyK');
-    await page.waitForTimeout(260);
+  for (let i = 0; i < 20 && !koed; i++) {
+    // Driven rather than typed. A heavy has ten startup frames and the CPU
+    // keeps its spacing even with aggression zeroed, so it simply walks out of
+    // range before the active frames arrive. What this check is about is the
+    // round ending when the last point of health goes, not the keyboard.
+    await page.evaluate(() => {
+      const m = window.__REBELKIN__.match;
+      if (!m || m.phase !== 'fight') return;
+      m.b.health = 1;
+      m.a.x = m.b.x - 100;
+      if (m.a.state !== 'attack') m.a.startMove('heavy');
+    });
+    await page.waitForTimeout(220);
     const cur = await state();
     koed = cur.b.hp === 0 || cur.phase === 'roundEnd' || cur.wins[0] > 0;
   }
@@ -206,6 +230,89 @@ try {
     return { muted, restored: !g.muted };
   });
   check('mute silences and restores', muteCheck.muted && muteCheck.restored);
+
+  console.log('\nevery move can reach');
+  // Thirty moves, each put at the stage's own spacing and asked to connect. A
+  // move that animates beautifully and cannot touch anybody is the failure this
+  // catches -- ten of the thirty were doing exactly that, silently, because the
+  // direction a limb has to swing is a property of the drawing and I had been
+  // choosing it by hand.
+  const reachReport = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    const bad = [];
+    for (const def of g.ROSTER) {
+      g.start(def.id, 'ai', def.id === 'kin06' ? 'kin08' : 'kin06');
+      await new Promise((r) => setTimeout(r, 60));
+      const m = g.match;
+      m.phase = 'fight';
+      g.ai.cfg.aggression = 0;
+      g.ai.cfg.block = 0;
+      for (const slot of ['light', 'heavy', 'special']) {
+        m.a.health = m.a.def.health;
+        m.b.health = m.b.def.health;
+        m.a.hitConnected = false;
+        m.a.x = m.b.x - 118;
+        m.a.startMove(slot);
+        let hit = false;
+        for (let i = 0; i < 60 && !hit; i++) {
+          await new Promise((r) => requestAnimationFrame(r));
+          hit = m.b.health < m.b.def.health;
+        }
+        m.a.state = 'idle';
+        if (!hit) bad.push(`${def.id} ${slot} (${m.a.def.moves[slot].strikePart})`);
+      }
+    }
+    return bad;
+  });
+  check('all 30 moves connect at stage spacing', reachReport.length === 0,
+    reachReport.length ? reachReport.join(', ') : '30 of 30');
+
+  console.log('\nevery character fights');
+  // Each of the ten was rigged from its own illustration, so a bad polygon or a
+  // pose naming a part that character does not have would only ever show up on
+  // that one character. Run them all.
+  const roster = await page.evaluate(() => window.__REBELKIN__.ROSTER.map((d) => d.id));
+  const broken = [];
+  for (const id of roster) {
+    const foe = id === 'kin06' ? 'kin08' : 'kin06';
+    const report = await page.evaluate(async ([who, against]) => {
+      const g = window.__REBELKIN__;
+      const errs = [];
+      const onErr = (e) => errs.push(String(e.message || e.error?.message || e));
+      addEventListener('error', onErr);
+      try {
+        g.start(who, 'ai', against);
+        const m = g.match;
+        // drive it through every state this character can be in
+        for (const slot of ['light', 'heavy', 'special']) {
+          m.a.x = m.b.x - 100;
+          m.a.startMove(slot);
+          for (let i = 0; i < 46; i++) await new Promise((r) => requestAnimationFrame(r));
+        }
+        m.a.jump?.();
+        for (let i = 0; i < 30; i++) await new Promise((r) => requestAnimationFrame(r));
+        const parts = Object.keys(g.rigs[who].byName);
+        const posed = Object.keys(g.rigs[who].solve(m.a.pose(), {
+          x: 0, y: 0, scale: 1, facing: 1,
+        }));
+        return {
+          errs,
+          parts: parts.length,
+          posed: posed.length,
+          hp: m.b.hp ?? m.b.health,
+          hit: m.b.health < m.b.def.health,
+        };
+      } finally { removeEventListener('error', onErr); }
+    }, [id, foe]);
+    const ok = report.errs.length === 0 && report.posed === report.parts && report.hit;
+    if (!ok) broken.push(`${id}: ${report.errs[0] ?? (report.hit ? 'pose/part mismatch' : 'never landed a hit')}`);
+    check(`${id} runs its three moves and connects`, ok,
+      `${report.parts} parts, ${report.posed} solved`);
+  }
+  if (broken.length) console.log(`  broken: ${broken.join('; ')}`);
+
+  await page.evaluate(() => window.__REBELKIN__.start('kin08', 'ai', 'kin06'));
+  await page.waitForTimeout(1500);
 
   console.log('\nperformance');
   await page.waitForTimeout(1200);

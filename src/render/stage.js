@@ -12,10 +12,15 @@ export class Camera {
   follow(a, b, view, dt) {
     const mid = (a.x + b.x) / 2;
     const spread = Math.abs(a.x - b.x);
-    const want = Math.max(0.62, Math.min(1.18, (view.w * 0.52) / (spread + 440)));
+    // Framing, not just following. The three numbers here, this clamp and the
+    // 0.63 and 150 below, are solved together: at the stage's minimum spacing a
+    // ~305-unit figure should stand about 62% of the frame tall with its feet
+    // near the bottom edge and enough headroom left over for a jump. Raise the
+    // zoom alone and the shoes go off the bottom of the screen.
+    const want = Math.max(0.60, Math.min(1.46, (view.w * 0.60) / (spread + 380)));
     this.zoom += (want - this.zoom) * Math.min(1, dt * 4);
     this.x += (mid - this.x) * Math.min(1, dt * 6);
-    const lift = -140 - Math.max(0, -Math.min(a.y, b.y)) * 0.35;
+    const lift = -150 - Math.max(0, -Math.min(a.y, b.y)) * 0.42;
     this.y += (lift - this.y) * Math.min(1, dt * 4);
     this.shake *= 0.86;
     this.kick.x *= 0.80;
@@ -26,7 +31,7 @@ export class Camera {
     const sx = (Math.random() - 0.5) * this.shake + this.kick.x;
     const sy = (Math.random() - 0.5) * this.shake + this.kick.y;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.translate(view.w / 2 + sx, view.h * 0.74 + sy);
+    ctx.translate(view.w / 2 + sx, view.h * 0.63 + sy);
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.x, -this.y - 0);
   }

@@ -17,6 +17,11 @@ const ROUNDS_TO_WIN = 2;
 // information in a fighter -- you have to be able to see the gap you are
 // trying to close.
 const MIN_GAP = 118;
+// ...but a swing has to be able to crowd in, or spacing becomes a wall. At
+// this art scale a limb reaches 60-110px past its joint, so holding every
+// fighter 118px apart means half the cast's moves can never touch anyone. An
+// attacker may close to this instead, and is pushed back out on recovery.
+const ATTACK_GAP = 84;
 
 export const PHASE = { INTRO: 'intro', FIGHT: 'fight', ROUND_END: 'roundEnd', MATCH_END: 'matchEnd' };
 
@@ -91,8 +96,10 @@ export class Match {
   separate() {
     const d = this.b.x - this.a.x;
     const gap = Math.abs(d);
-    if (gap >= MIN_GAP) return;
-    const push = (MIN_GAP - gap) / 2 * Math.sign(d || 1);
+    const swinging = this.a.state === STATE.ATTACK || this.b.state === STATE.ATTACK;
+    const floor = swinging ? ATTACK_GAP : MIN_GAP;
+    if (gap >= floor) return;
+    const push = (floor - gap) / 2 * Math.sign(d || 1);
     this.a.x -= push;
     this.b.x += push;
   }

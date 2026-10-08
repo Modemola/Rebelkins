@@ -13,11 +13,21 @@ import { FX } from './render/fx.js';
 import { Match, PHASE, STAGE } from './fight/match.js';
 import { AI } from './fight/ai.js';
 import { STATE } from './fight/fighter.js';
-import { KIN08 } from './data/kin08.js';
+import { KIN01 } from './data/kin01.js';
+import { KIN02 } from './data/kin02.js';
+import { KIN03 } from './data/kin03.js';
+import { KIN04 } from './data/kin04.js';
+import { KIN05 } from './data/kin05.js';
 import { KIN06 } from './data/kin06.js';
+import { KIN07 } from './data/kin07.js';
+import { KIN08 } from './data/kin08.js';
+import { KIN09 } from './data/kin09.js';
+import { KIN10 } from './data/kin10.js';
 import { Sfx } from './audio/sfx.js';
 
-const DEFS = { kin08: KIN08, kin06: KIN06 };
+/** Roster order is the order they were drawn in, not a power ranking. */
+const ROSTER = [KIN01, KIN02, KIN03, KIN04, KIN05, KIN06, KIN07, KIN08, KIN09, KIN10];
+const DEFS = Object.fromEntries(ROSTER.map((d) => [d.id, d]));
 const cv = document.getElementById('stage');
 const ctx = cv.getContext('2d');
 const input = new Input();
@@ -64,10 +74,10 @@ let match = null;
 let ai = new AI('brisk');
 let mode = 'ai';
 let p1Kin = 'kin08';
+let p2Kin = 'kin06';
 let slowCounter = 0;
 
 function startMatch() {
-  const p2Kin = p1Kin === 'kin08' ? 'kin06' : 'kin08';
   match = new Match(DEFS[p1Kin], DEFS[p2Kin], rigs);
   match.onEvent = onMatchEvent;
   el('select').hidden = true;
@@ -283,6 +293,42 @@ function paintHud() {
   if (w !== lastWins) { lastWins = w; paintNames(); }
 }
 
+/* ---------------------------------------------------------------- roster */
+
+/**
+ * Two grids of the same ten portraits, one per corner. Both sides are pickable
+ * because with ten characters the old "you get whoever you didn't choose" rule
+ * stops being a choice at all.
+ */
+function buildRoster() {
+  for (const side of ['A', 'B']) {
+    const host = el(`roster${side}`);
+    const read = el(`read${side}`);
+    const paint = () => {
+      const chosen = side === 'A' ? p1Kin : p2Kin;
+      const d = DEFS[chosen];
+      read.innerHTML = `<b>${d.name}</b> &middot; ${d.subtitle}<br>`
+        + Object.values(d.moves).map((m) => m.label).join(' &middot; ');
+      [...host.children].forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kin === chosen)));
+    };
+    for (const d of ROSTER) {
+      const b = document.createElement('button');
+      b.className = 'face';
+      b.dataset.kin = d.id;
+      b.type = 'button';
+      b.title = `${d.name} - ${d.subtitle}`;
+      b.setAttribute('aria-label', `${d.name}, ${d.subtitle}`);
+      b.style.backgroundImage = `url(assets/portraits/${d.id}.png)`;
+      b.addEventListener('click', () => {
+        if (side === 'A') p1Kin = d.id; else p2Kin = d.id;
+        paint();
+      });
+      host.appendChild(b);
+    }
+    paint();
+  }
+}
+
 /* ------------------------------------------------------------------ menu */
 
 function wireMenu() {
@@ -293,15 +339,16 @@ function wireMenu() {
       onPick(b);
     }));
   };
-  group('.pick', (b) => { p1Kin = b.dataset.kin; });
+  buildRoster();
   group('.mode', (b) => {
     mode = b.dataset.mode;
     el('diffRow').hidden = mode === '2p';
     el('p2keys').hidden = mode !== '2p';
+    el('whoB').textContent = mode === '2p' ? 'PLAYER 2' : 'CPU';
   });
   group('.diff', (b) => ai.set(b.dataset.diff));
   el('startBtn').addEventListener('click', () => { sfx.unlock(); sfx.ui(); startMatch(); });
-  document.querySelectorAll('.pick, .mode, .diff').forEach((b) => {
+  document.querySelectorAll('.face, .mode, .diff').forEach((b) => {
     b.addEventListener('click', () => { sfx.unlock(); sfx.ui(); });
   });
 
@@ -337,7 +384,13 @@ loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
   window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
-    start: (kin, m) => { p1Kin = kin || p1Kin; mode = m || mode; startMatch(); } };
+    ROSTER,
+    start: (kin, m, foe) => {
+      p1Kin = kin || p1Kin;
+      p2Kin = foe || p2Kin;
+      mode = m || mode;
+      startMatch();
+    } };
 }).catch((err) => {
   el('select').innerHTML = `<div class="selWrap"><h1>REBELKIN</h1>
     <p class="tag">${err.message}</p></div>`;

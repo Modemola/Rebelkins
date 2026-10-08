@@ -33,15 +33,22 @@
   <div id="select">
     <div class="selWrap">
       <h1>REBELKIN</h1>
-      <p class="tag">Two characters, each rigged from one illustration.</p>
-      <div class="chooser">
-        <button class="pick" data-kin="kin08" aria-pressed="true">
-          <b>KIN 08</b><span>striker &middot; jab, hook, runner</span>
-        </button>
-        <button class="pick" data-kin="kin06" aria-pressed="false">
-          <b>KIN 06</b><span>bruiser &middot; kick, stomp, charge</span>
-        </button>
+      <p class="tag">Ten characters, each rigged from a single illustration.</p>
+
+      <div class="roster" role="group" aria-label="Fighters">
+        <div class="side">
+          <span class="who" id="whoA">PLAYER 1</span>
+          <div class="grid" id="rosterA"></div>
+          <span class="read" id="readA"></span>
+        </div>
+        <div class="vs">VS</div>
+        <div class="side">
+          <span class="who" id="whoB">CPU</span>
+          <div class="grid" id="rosterB"></div>
+          <span class="read" id="readB"></span>
+        </div>
       </div>
+
       <div class="chooser small">
         <button class="mode" data-mode="ai" aria-pressed="true">vs CPU</button>
         <button class="mode" data-mode="2p" aria-pressed="false">2 players</button>

@@ -200,9 +200,9 @@ export class Fighter {
     if (this.state !== STATE.ATTACK || !this.move || this.hitConnected) return null;
     const m = this.move;
     if (this.moveFrame < m.startup || this.moveFrame >= m.startup + m.active) return null;
-    const p = rig.point(M, m.strikePart);
+    const p = rig.strikePoint(M, m.strikePart, this.facing, m.lead);
     if (!p) return null;
-    return { x: p.x, y: p.y, r: m.reach * this.def.scale * 1.6, move: m };
+    return { x: p.x, y: p.y, r: m.reach * this.def.scale, move: m };
   }
 
   /**

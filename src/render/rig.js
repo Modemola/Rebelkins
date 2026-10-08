@@ -39,7 +39,10 @@ export class Rig {
    *   which has to go through the same solve or the reflection desyncs by a frame.
    */
   solve(pose, place) {
-    const flip = place.facing < 0 ? -1 : 1;
+    // Each illustration was drawn facing whichever way its artist chose, and
+    // most of this cast happens to face screen-left. `art` records that, so
+    // `facing` can stay a plain "which way is the opponent" everywhere else.
+    const flip = place.facing * (this.def.art ?? 1) < 0 ? -1 : 1;
     const vy = place.flipY ? -1 : 1;
     const base = mul(
       T(place.x, place.y - this.rootLift * place.scale * vy),
@@ -90,6 +93,38 @@ export class Rig {
   point(M, partName) {
     const m = M[partName];
     return m ? { x: m[4], y: m[5] } : null;
+  }
+
+  /**
+   * Where a part actually strikes from, in world space.
+   *
+   * `point` returns the part's joint, which is where it hangs from, not where
+   * it hits: a jab measured at the shoulder is a jab with no reach, and with
+   * the stage holding fighters 118px apart almost nothing could land. The
+   * striking end is the corner of the part's own artwork that the swing has
+   * carried furthest in the direction the character faces -- the fist on an
+   * extended arm, the foot on a kick, the leading shoulder on a body charge --
+   * so it follows the pose for free and needs nothing declared per move.
+   *
+   * @param lead 1 sits on the silhouette's edge; a little under pulls the box
+   *   back inside the limb so a graze does not read as a connect.
+   */
+  strikePoint(M, partName, facing = 1, lead = 0.88) {
+    const m = M[partName];
+    const p = this.byName[partName];
+    if (!m || !p) return null;
+    const [, , w, h] = p.rect;
+    const [px, py] = p.pivot;
+    let bx = 0; let by = 0; let best = -Infinity;
+    for (const [cx, cy] of [[-px, -py], [w - px, -py], [-px, h - py], [w - px, h - py]]) {
+      const wx = m[0] * cx + m[2] * cy + m[4];
+      const ahead = wx * facing;
+      if (ahead > best) { best = ahead; bx = cx; by = cy; }
+    }
+    return {
+      x: m[0] * bx * lead + m[2] * by * lead + m[4],
+      y: m[1] * bx * lead + m[3] * by * lead + m[5],
+    };
   }
 }
 

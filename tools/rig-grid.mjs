@@ -7,6 +7,10 @@
  * part boundaries can be read off directly.
  *
  *   node tools/rig-grid.mjs <cutout.png> <out.png> [--scale 2] [--step 25]
+ *                             [--box x0,y0,x1,y1]
+ *
+ * --box reads a region in SOURCE pixels instead of trimming to the subject, so
+ * a joint can be zoomed in on without the labels shifting meaning.
  */
 
 import fs from 'node:fs';
@@ -23,11 +27,20 @@ const rgba = png.toRgba();
 const { width: w, height: h } = png;
 
 let x0 = w; let y0 = h; let x1 = -1; let y1 = -1;
-for (let y = 0; y < h; y++) {
-  for (let x = 0; x < w; x++) {
-    if (rgba[(y * w + x) * 4 + 3] < 24) continue;
-    if (x < x0) x0 = x; if (x > x1) x1 = x;
-    if (y < y0) y0 = y; if (y > y1) y1 = y;
+const boxArg = process.argv.includes('--box')
+  ? process.argv[process.argv.indexOf('--box') + 1].split(',').map(Number)
+  : null;
+if (boxArg) {
+  [x0, y0, x1, y1] = boxArg;
+  x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+  x1 = Math.min(w - 1, x1); y1 = Math.min(h - 1, y1);
+} else {
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (rgba[(y * w + x) * 4 + 3] < 24) continue;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
   }
 }
 const bw = x1 - x0 + 1;

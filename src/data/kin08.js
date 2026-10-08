@@ -7,9 +7,12 @@
  */
 
 import { phases, seg, easeOut, easeInOut, anticipate } from './common.js';
+import { swingOf } from './kit.js';
 
 const RIG = {
   root: 'torso',
+  // the illustration faces screen-left, so the rig mirrors to face right
+  art: -1,
   ground: [300, 542],
   parts: [
     { name: 'legL', parent: 'hips', z: 0, rect: [384, 0, 77, 132], pivot: [59, 12], origin: [252, 418] },
@@ -21,6 +24,9 @@ const RIG = {
     { name: 'head', parent: 'torso', z: 4, rect: [222, 0, 160, 160], pivot: [76, 144], origin: [306, 178] },
   ],
 };
+
+/** Measured, not guessed: how far each limb must turn to point at the opponent. */
+const SWING = { armL: swingOf(RIG, 'armL'), armR: swingOf(RIG, 'armR') };
 
 export const KIN08 = {
   id: 'kin08',
@@ -76,7 +82,7 @@ export const KIN08 = {
     block(t) {
       const j = Math.sin(t * 3.1) * 0.012;
       return {
-        torso: { rot: 0.14 + j, y: 6 }, hips: { rot: -0.06 }, head: { rot: 0.22 },
+        torso: { rot: 0.14 + j, y: 6 }, hips: { rot: -0.06 }, head: { rot: 0.15 },
         armL: { rot: -1.05 + j * 2 }, armR: { rot: 0.95 - j * 2 },
         legL: { rot: 0.14 }, legR: { rot: -0.16 },
       };
@@ -124,14 +130,17 @@ export const KIN08 = {
       startup: 10, active: 4, recovery: 18,
       damage: 98, hitstun: 22, blockstun: 13,
       knockback: 460, lift: -120, drive: 90,
-      strikePart: 'armR', reach: 58,
+      strikePart: 'armL', reach: 64,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
           torso: { rot: 0.22 * anticipate(wind) - 0.52 * strike, x: -6 * strike, y: 3 * strike },
           hips: { rot: -0.10 * strike }, head: { rot: 0.12 * wind - 0.22 * strike },
-          armR: { rot: -0.9 * anticipate(wind) + 2.1 * strike },
-          armL: { rot: 0.3 * wind - 0.5 * strike },
+          // Thrown with the lead arm. Her back arm is short, folded, and its
+          // joint sits 26px behind her centre -- swung flat out it still falls
+          // short of an opponent at the stage's own spacing.
+          armL: { rot: -0.26 * SWING.armL * anticipate(wind) + SWING.armL * 1.05 * strike },
+          armR: { rot: 0.3 * SWING.armR * wind - 0.4 * SWING.armR * strike },
           legL: { rot: -0.2 * strike }, legR: { rot: 0.26 * strike },
         };
       },
