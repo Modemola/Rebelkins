@@ -221,7 +221,7 @@ function paintPillars(cx, w, h, def, rand) {
 /** Far: a wall of screens, the brightest thing in the room. */
 function paintScreens(cx, w, h, def, rand) {
   // No full wall fill here: an opaque rectangle over most of the frame makes
-  // the layer unccroppable and costs a whole extra screen of compositing every
+  // the layer uncroppable and costs a whole extra screen of compositing every
   // frame. The sky gradient is already this room's wall; only the ribs and the
   // screens are painted, and they crop to the top half.
   for (let x = 0; x < w; x += 118) {

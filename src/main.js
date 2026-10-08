@@ -11,7 +11,7 @@ import { Rig } from './render/rig.js';
 import { Camera, drawStage, drawFloor, drawFore, setArena, arena } from './render/stage.js';
 import { ARENAS } from './render/arena.js';
 import { FX } from './render/fx.js';
-import { Match, PHASE, STAGE } from './fight/match.js';
+import { Match, PHASE, STAGE, fitStage } from './fight/match.js';
 import { AI } from './fight/ai.js';
 import { STATE } from './fight/fighter.js';
 import { KIN01 } from './data/kin01.js';
@@ -48,6 +48,7 @@ function resize() {
   view.h = cv.clientHeight || window.innerHeight;
   cv.width = Math.round(view.w * dpr);
   cv.height = Math.round(view.h * dpr);
+  fitStage(view);
 }
 addEventListener('resize', resize);
 
@@ -190,6 +191,18 @@ function solvePoses() {
   return poses;
 }
 
+/**
+ * Render switches, for measurement only.
+ *
+ * `hideFighters` draws the stage with nobody standing in it. Differencing that
+ * frame against a normal one gives the exact mask the characters occupy, which
+ * is what the legibility check needs: the brief says to silhouette the
+ * fighters in flat black and confirm you can still follow them, and a
+ * difference mask does that better than flat black would, because it measures
+ * the contrast of the colours actually on screen rather than a stand-in.
+ */
+const debugDraw = { hideFighters: false };
+
 /* ---------------------------------------------------------------- render */
 
 function render(alpha, dt) {
@@ -206,13 +219,15 @@ function render(alpha, dt) {
 
   // Reflections reuse the matrices the simulation already solved, mirrored about
   // the floor line -- a second solve per fighter per frame bought nothing.
-  ctx.save();
-  ctx.scale(1, -1);
-  for (const f of match.fighters) {
-    ctx.globalAlpha = 0.22;
-    rigs[f.def.id].draw(ctx, poses[f.def.id]);
+  if (!debugDraw.hideFighters) {
+    ctx.save();
+    ctx.scale(1, -1);
+    for (const f of match.fighters) {
+      ctx.globalAlpha = 0.22;
+      rigs[f.def.id].draw(ctx, poses[f.def.id]);
+    }
+    ctx.restore();
   }
-  ctx.restore();
   // fade the reflection out with distance from the floor line
   ctx.fillStyle = arena().reflectionFade(ctx);
   ctx.fillRect(-3000, 0, 6000, 420);
@@ -231,7 +246,7 @@ function render(alpha, dt) {
   }
 
   // fighters, far one first so the near one overlaps correctly
-  const order = match.fighters.slice().sort((p, q) => p.x - q.x);
+  const order = debugDraw.hideFighters ? [] : match.fighters.slice().sort((p, q) => p.x - q.x);
   for (const f of order) {
     const rig = rigs[f.def.id];
     const M = poses[f.def.id];
@@ -413,7 +428,12 @@ loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
   window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
-    ROSTER, ARENAS, arena,
+    ROSTER, ARENAS, arena, debugDraw, STAGE,
+    poses,
+    // One frame, on demand. The legibility and gradient checks need two frames
+    // of the same instant -- with the loop running, the crowd and the weather
+    // move between captures and the difference mask fills with their noise.
+    renderOnce: () => render(0, 0),
     setArena: (id) => { arenaId = id; },
     start: (kin, m, foe) => {
       p1Kin = kin || p1Kin;

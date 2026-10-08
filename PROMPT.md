@@ -30,8 +30,30 @@ Render it and look.**
 
 **Build the thing that can disagree with you.** When a check and the code share
 an assumption, the check cannot fail. Write the verifier against the spec, not
-against the implementation. If a check has never failed, break the code on
-purpose and confirm it goes red.
+against the implementation.
+
+`node tools/mutate.mjs` is how that is enforced: it breaks one load-bearing
+thing at a time, runs the suite, and demands that the check which claims to
+cover it goes red. A mutant that survives means that check is decoration. The
+first run scored 7/10 and found three checks that were lying:
+
+- *the audio check reached past the line it was meant to guard* and rang the
+  mixer itself, so deleting the call from the simulation changed nothing. Test
+  the wiring separately from the thing it is wired to.
+- *the crash check depended on a race.* It waited a second and asked whether
+  anything had thrown; the fault only fires on the first frame. Assert the
+  invariant in the same turn, where timing cannot save you.
+- *the phone check asked whether the fighters were on screen,* which they were,
+  at a quarter of the frame height. **On screen is not composed.** Measure the
+  size and the position, not the presence.
+
+Three rules fall out of that. Anchor a threshold to something outside the code
+(a gradient has exactly zero horizontal variance, so that zero is the anchor;
+the camera's own stated target is the anchor for framing). Put the check where
+the fault actually shows -- the camera's height constraint was unfalsifiable on
+a phone, because width binds there whatever the camera does. And never edit
+source while a mutation run is in flight: it restores from a copy it took
+before your edit.
 
 **Make failure legible.** `tools/depatch.mjs` prints each flood's colour and
 extent because a seed four pixels off ate a character's trousers while the

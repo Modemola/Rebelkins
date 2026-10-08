@@ -10,7 +10,24 @@
 import { TICK } from '../engine/loop.js';
 import { Fighter, STATE, GROUND } from './fighter.js';
 
+/**
+ * How far apart they can get. Mutable, because it depends on the window: a
+ * portrait phone cannot hold a 1520-unit arena and two readable fighters at the
+ * same time, and zooming out far enough to show both at the extremes makes them
+ * thumbnails. A narrow screen gets a narrower arena instead.
+ */
 export const STAGE = { left: -760, right: 760, floor: GROUND };
+
+export function fitStage(view) {
+  // 430 is read off the 16:9 case: 1.78 x 430 lands on the 760 this stage was
+  // designed at, so a normal landscape window is unchanged. The 300 floor is
+  // the narrowest arena that still gives ground to retreat to -- below it,
+  // backing off stops being an option and the fight becomes a shoving match.
+  const half = Math.max(300, Math.min(760, (view.w / Math.max(1, view.h)) * 430));
+  STAGE.left = -half;
+  STAGE.right = half;
+  return half;
+}
 const ROUND_SECONDS = 60;
 const ROUNDS_TO_WIN = 2;
 // Two 300px-tall figures at 76px apart read as one silhouette. Spacing is
@@ -37,8 +54,12 @@ export class Match {
   }
 
   reset(phase = PHASE.INTRO) {
-    this.a = new Fighter(this.defs[0], { x: -210, facing: 1, pad: 'p1' });
-    this.b = new Fighter(this.defs[1], { x: 210, facing: -1, pad: 'p2' });
+    // Opening distance is a fraction of the arena, not a constant: 210 either
+    // side was set against a 1280-wide window, and on a phone it opened the
+    // round with the camera pulled right back.
+    const apart = Math.min(210, STAGE.right * 0.52);
+    this.a = new Fighter(this.defs[0], { x: -apart, facing: 1, pad: 'p1' });
+    this.b = new Fighter(this.defs[1], { x: apart, facing: -1, pad: 'p2' });
     this.fighters = [this.a, this.b];
     this.timer = ROUND_SECONDS;
     this.hitstop = 0;

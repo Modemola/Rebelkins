@@ -35,7 +35,23 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' });
   fs.createReadStream(p).pipe(res);
 });
-await new Promise((r) => server.listen(PORT, r));
+/**
+ * Take the first free port from PORT upwards. A previous run's browser can
+ * still be holding the socket for a second or two after its parent exits, and
+ * a harness that dies on EADDRINUSE reports a failure that says nothing about
+ * the game -- which is exactly the kind of result that teaches you to ignore
+ * red.
+ */
+const port = await new Promise((resolve, reject) => {
+  let p = PORT;
+  const attempt = () => {
+    server.once('error', (err) => {
+      if (err.code === 'EADDRINUSE' && p < PORT + 20) { p++; attempt(); } else reject(err);
+    });
+    server.listen(p, () => resolve(p));
+  };
+  attempt();
+});
 
 const browser = await chromium.launch({
   headless: !HEADED,
@@ -80,8 +96,10 @@ const state = () => page.evaluate(() => {
     hitstop: m.hitstop, a: f(m.a), b: f(m.b), fps: g.loop.fps, sparks: g.fx.sparks.length };
 });
 
+const arenaIdsForLook = () => page.evaluate(() => window.__REBELKIN__.ARENAS.map((a) => a.id));
+
 try {
-  await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' });
+  await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !!window.__REBELKIN__, { timeout: 15000 });
   console.log('\nboot');
   check('rigs loaded', await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length) === 10,
@@ -90,6 +108,28 @@ try {
     await page.evaluate(() => document.querySelectorAll('#rosterA .face').length) === 10
     && await page.evaluate(() => document.querySelectorAll('#rosterB .face').length) === 10);
   await shot('0-select');
+
+  // The crash this guards against happened on the very first frame after a
+  // match was created, so waiting a second and asking whether anything threw
+  // is a coin toss -- the suite passed with the fix removed. Assert the
+  // invariant instead: a live match always has a pose to draw, checked in the
+  // same turn the match is made, before any frame can have run.
+  const posesReady = await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    g.start('kin08', 'ai', 'kin06');
+    return {
+      solved: Object.keys(g.poses).length,
+      hasParts: !!(g.poses.kin08 && g.poses.kin08.torso),
+    };
+  });
+  check('a new match has poses before its first frame',
+    posesReady.solved === 2 && posesReady.hasParts,
+    `${posesReady.solved} solved`);
+
+  // back to the menu, so the run proper starts from a clean match
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(120);
+
 
   await page.click('#startBtn');
   await page.waitForTimeout(1600);               // intro
@@ -217,10 +257,39 @@ try {
   check('ambient bed is running', au.osc >= 3, `${au.osc} oscillators`);
   check('impacts build voices', au.buf >= 3, `${au.buf} buffer sources`);
 
+  // Two separate claims, because they fail separately. Calling the mixer
+  // directly proves the voice exists; it says nothing about whether anything
+  // ever calls it. Disabling the one line that does was invisible here, because
+  // this check reaches past that line and rings the bell itself.
   const before = await page.evaluate(() => window.__AUDIO__.osc + window.__AUDIO__.buf);
   await page.evaluate(() => { window.__REBELKIN__.sfx.hit(98, false); window.__REBELKIN__.sfx.block(); });
   const after = await page.evaluate(() => window.__AUDIO__.osc + window.__AUDIO__.buf);
-  check('a hit and a block each spawn voices', after > before, `${before} -> ${after}`);
+  check('the impact voice builds its layers', after - before >= 3, `${before} -> ${after}`);
+
+  const wired = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    const real = g.sfx.hit.bind(g.sfx);
+    let calls = 0;
+    g.sfx.hit = (...a) => { calls++; return real(...a); };
+    try {
+      g.start('kin05', 'ai', 'kin10');
+      await new Promise((r) => setTimeout(r, 80));
+      const m = g.match;
+      m.phase = 'fight';
+      g.ai.cfg.aggression = 0;
+      g.ai.cfg.block = 0;
+      m.a.x = m.b.x - 118;
+      m.a.startMove('heavy');
+      let landed = false;
+      for (let i = 0; i < 60 && !landed; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+        landed = m.b.health < m.b.def.health;
+      }
+      return { landed, calls };
+    } finally { g.sfx.hit = real; }
+  });
+  check('a landed hit reaches the mixer', wired.landed && wired.calls >= 1,
+    `${wired.calls} impact voice${wired.calls === 1 ? '' : 's'} for ${wired.landed ? 'a landed hit' : 'nothing (it missed)'}`);
 
   const muteCheck = await page.evaluate(() => {
     const g = window.__REBELKIN__.sfx;
@@ -314,10 +383,101 @@ try {
   await page.evaluate(() => window.__REBELKIN__.start('kin08', 'ai', 'kin06'));
   await page.waitForTimeout(1500);
 
+  console.log('\nthe stage is a place, not a gradient');
+  // Two measurements on real pixels, taken from the same frozen instant.
+  //
+  // A vertical gradient has no horizontal structure at all, so the mean
+  // absolute horizontal change in luminance across the backdrop is the
+  // difference between a place and a wash. And differencing a frame against
+  // the same frame with nobody standing in it gives the exact mask the
+  // characters occupy, which is what legibility needs: how far each character
+  // pixel sits from the backdrop pixel directly behind it.
+  const look = await page.evaluate(async (ids) => {
+    const g = window.__REBELKIN__;
+    const cv = document.getElementById('stage');
+    const c2 = cv.getContext('2d');
+    const lumOf = (data) => {
+      const out = new Float32Array(cv.width * cv.height);
+      for (let i = 0; i < out.length; i++) {
+        const o = i * 4;
+        out[i] = 0.2126 * data[o] + 0.7152 * data[o + 1] + 0.0722 * data[o + 2];
+      }
+      return out;
+    };
+    const grab = () => lumOf(c2.getImageData(0, 0, cv.width, cv.height).data);
+    const rows = [];
+    for (const id of ids) {
+      g.setArena(id);
+      g.start('kin03', 'ai', 'kin07');
+      await new Promise((r) => setTimeout(r, 1500));
+      g.loop.stop();
+
+      g.debugDraw.hideFighters = false;
+      g.renderOnce();
+      const withFighters = grab();
+      g.debugDraw.hideFighters = true;
+      g.renderOnce();
+      const backdrop = grab();
+      g.debugDraw.hideFighters = false;
+      g.loop.start();
+
+      const W = cv.width;
+      const H = cv.height;
+      // Horizontal structure in the backdrop, as the mean standard deviation
+      // of luminance along a row. A vertical gradient -- which is what this
+      // stage used to be -- scores exactly zero, whatever its colours, because
+      // every pixel on a row is identical. That zero is the anchor: the
+      // threshold is not fitted to what the renderer happens to produce.
+      let grad = 0; let rows2 = 0;
+      for (let y = 0; y < H * 0.8; y += 2) {
+        let sum2 = 0; let sq = 0; let n = 0;
+        for (let x = 0; x < W; x += 2) {
+          const v = backdrop[y * W + x];
+          sum2 += v; sq += v * v; n++;
+        }
+        const mean = sum2 / n;
+        grad += Math.sqrt(Math.max(0, sq / n - mean * mean));
+        rows2++;
+      }
+      grad /= rows2;
+      // contrast between each character pixel and what is behind it
+      let mask = 0; let sum = 0; let faint = 0;
+      for (let i = 0; i < W * H; i++) {
+        const d = Math.abs(withFighters[i] - backdrop[i]);
+        if (d <= 6) continue;
+        mask++;
+        sum += d;
+        if (d < 14) faint++;
+      }
+      rows.push({
+        id,
+        name: g.arena().def.name,
+        grad,
+        mask,
+        contrast: mask ? sum / mask : 0,
+        faint: mask ? faint / mask : 1,
+      });
+    }
+    return rows;
+  }, await arenaIdsForLook());
+
+  for (const r of look) {
+    check(`${r.name} has horizontal structure`, r.grad > 6.0,
+      `${r.grad.toFixed(1)} mean row sigma (a gradient scores 0)`);
+    // 26 is a quarter of the way up the luminance range: below that a
+    // character and the thing behind it are the same tone to the eye. The
+    // second half of the test is what catches a stage that is mostly fine --
+    // if more than three in ten character pixels sit within 14 of their
+    // backdrop, some limb is disappearing into it even though the average
+    // looks healthy.
+    check(`${r.name} lets the fighters read`, r.contrast > 26 && r.faint < 0.30,
+      `${r.contrast.toFixed(0)} mean contrast, ${(r.faint * 100).toFixed(0)}% of the silhouette faint`);
+  }
+
   console.log('\nevery arena holds up');
   // A stage is where framerate goes to die. Each one is measured with a fight
   // actually running in it, not on an idle screen.
-  const arenaIds = await page.evaluate(() => window.__REBELKIN__.ARENAS.map((a) => a.id));
+  const arenaIds = await arenaIdsForLook();
   for (const id of arenaIds) {
     await page.evaluate(([a]) => {
       window.__REBELKIN__.setArena(a);
@@ -347,6 +507,113 @@ try {
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   check('no horizontal overflow', !overflow);
+
+  console.log('\nthe shot is composed');
+  // Measured on the main target, not just on a phone. The height constraint in
+  // the camera exists for *this* viewport: a wide window makes the width term
+  // enormous, and with nothing asking how tall the characters ended up they
+  // grow until their shoes leave the bottom of the frame. The phone cannot
+  // catch that -- there, width binds whatever the camera does.
+  await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    g.start('kin08', 'ai', 'kin06');
+  });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => {
+    const m = window.__REBELKIN__.match;
+    m.a.x = -60; m.b.x = 60;
+  });
+  await page.waitForTimeout(700);
+  const wide = await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    const cv = document.getElementById('stage');
+    const dpr = cv.width / window.innerWidth;
+    const m = g.match;
+    return {
+      bodyFrac: (m.a.def.bodyHeight * m.a.def.scale * g.cam.zoom * dpr) / cv.height,
+      floorFrac: ((window.innerHeight * 0.59 + 150 * g.cam.zoom) * dpr) / cv.height,
+      zoom: g.cam.zoom,
+    };
+  });
+  check('fighters are framed, not filling the window',
+    wide.bodyFrac > 0.45 && wide.bodyFrac < 0.75,
+    `${(wide.bodyFrac * 100).toFixed(0)}% of frame height at zoom ${wide.zoom.toFixed(2)}`);
+  // Upper bound 0.93, not 0.97: past that the floor is a sliver and the
+  // reflection the whole wet-floor pass exists for is off the bottom edge.
+  check('the floor line stays on screen', wide.floorFrac > 0.70 && wide.floorFrac < 0.93,
+    `floor at ${(wide.floorFrac * 100).toFixed(0)}% down`);
+
+  console.log('\nat phone width');
+  // Done last, because it resizes the viewport out from under everything else.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => { window.dispatchEvent(new Event('resize')); });
+  await page.waitForTimeout(500);
+  const phoneMenu = await page.evaluate(() => {
+    document.getElementById('select').hidden = false;
+    document.getElementById('hud').hidden = true;
+    const btn = document.getElementById('startBtn').getBoundingClientRect();
+    const faces = document.querySelectorAll('#rosterA .face').length;
+    return {
+      overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      btnOnScreen: btn.width > 60 && btn.left >= 0 && btn.right <= window.innerWidth + 1,
+      faces,
+      faceSize: document.querySelector('#rosterA .face')?.getBoundingClientRect().width ?? 0,
+    };
+  });
+  check('select screen fits a phone', !phoneMenu.overflow && phoneMenu.btnOnScreen,
+    `FIGHT ${phoneMenu.btnOnScreen ? 'on screen' : 'clipped'}, overflow ${phoneMenu.overflow}`);
+  check('portraits stay big enough to tap', phoneMenu.faceSize >= 28,
+    `${phoneMenu.faceSize.toFixed(0)}px tiles, ${phoneMenu.faces} of them`);
+  await shot('5-phone-select');
+
+  await page.evaluate(() => window.__REBELKIN__.start('kin05', 'ai', 'kin10'));
+  await page.waitForTimeout(1800);
+  // Measured at fighting distance, which is where the camera spends the round,
+  // rather than at the opening spacing -- but measured, not assumed: the camera
+  // is left to settle on its own after they are placed.
+  await page.evaluate(() => {
+    const m = window.__REBELKIN__.match;
+    m.a.x = -60; m.b.x = 60;
+  });
+  await page.waitForTimeout(700);
+  // "Both fighters are somewhere on the canvas" passed a composition in which
+  // they were the size of a thumbnail with two thirds of the frame empty. What
+  // matters is how big they are and where the floor is, so that is measured.
+  const phoneFight = await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    const cv = document.getElementById('stage');
+    const m = g.match;
+    const dpr = cv.width / window.innerWidth;
+    const bodyPx = m.a.def.bodyHeight * m.a.def.scale * g.cam.zoom * dpr;
+    const floorY = (window.innerHeight * 0.59 + 150 * g.cam.zoom) * dpr;
+    // world -> screen, the same transform the camera applies
+    const toScreen = (wx) => ((wx - g.cam.x) * g.cam.zoom + window.innerWidth / 2) * dpr;
+    const xs = [m.a, m.b].map((f) => toScreen(f.x));
+    return {
+      fps: g.loop.fps,
+      w: cv.width,
+      h: cv.height,
+      bodyFrac: bodyPx / cv.height,
+      floorFrac: floorY / cv.height,
+      bothOn: xs.every((x) => x > 0 && x < cv.width),
+      stage: g.STAGE.right,
+    };
+  });
+  // 0.45, not 0.34. The camera aims for 0.60 of the frame height and a phone's
+  // width constraint pulls that to about 0.52 at fighting range. A camera that
+  // has lost the height term altogether still lands near 0.36 here -- which the
+  // old 0.34 floor waved through, so the check could not tell a tight fit from
+  // a broken one. 0.45 sits between the two with room either side.
+  check('fighters fill a phone frame', phoneFight.bodyFrac > 0.45 && phoneFight.bothOn,
+    `${(phoneFight.bodyFrac * 100).toFixed(0)}% of frame height, both on screen ${phoneFight.bothOn}`);
+  // Both ends matter: above 0.66 and the fight is floating in the middle of
+  // the frame with dead space under it; past 0.98 and the shoes are off the
+  // bottom edge.
+  check('the floor sits low in the frame', phoneFight.floorFrac > 0.66 && phoneFight.floorFrac < 0.95,
+    `floor at ${(phoneFight.floorFrac * 100).toFixed(0)}% down`);
+  check('a fight runs at phone width', phoneFight.fps >= 40,
+    `${phoneFight.fps} fps at ${phoneFight.w}x${phoneFight.h}, arena half-width ${phoneFight.stage.toFixed(0)}`);
+  await shot('6-phone-fight');
 } catch (err) {
   console.error(`\nFAILED: ${err.message}`);
   await shot('fail');
