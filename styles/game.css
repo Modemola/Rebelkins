@@ -91,6 +91,10 @@ h1 { font-size: clamp(38px, 9vw, 70px); margin: 0; letter-spacing: .06em; font-w
 .face[aria-pressed="true"]::after {
   content: ''; position: absolute; inset: auto 0 0 0; height: 3px; background: var(--coat);
 }
+.stageRow { display: flex; flex-direction: column; gap: 6px; }
+.stageRow .who { font-size: 10px; letter-spacing: .18em; color: var(--dim); }
+.stageRow .read { font-size: 10px; color: var(--dim); letter-spacing: .06em; min-height: 1.3em; }
+
 @media (max-width: 520px) {
   .roster { grid-template-columns: 1fr; }
   .roster .vs { padding: 0; }

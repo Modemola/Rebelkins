@@ -314,7 +314,33 @@ try {
   await page.evaluate(() => window.__REBELKIN__.start('kin08', 'ai', 'kin06'));
   await page.waitForTimeout(1500);
 
+  console.log('\nevery arena holds up');
+  // A stage is where framerate goes to die. Each one is measured with a fight
+  // actually running in it, not on an idle screen.
+  const arenaIds = await page.evaluate(() => window.__REBELKIN__.ARENAS.map((a) => a.id));
+  for (const id of arenaIds) {
+    await page.evaluate(([a]) => {
+      window.__REBELKIN__.setArena(a);
+      window.__REBELKIN__.start('kin03', 'ai', 'kin07');
+    }, [id]);
+    await page.waitForTimeout(1800);
+    // keep the crowd and the bounce light live while measuring
+    await page.evaluate(() => { window.__REBELKIN__.arena().hit(1); });
+    await page.waitForTimeout(900);
+    const r = await page.evaluate(() => ({
+      fps: window.__REBELKIN__.loop.fps,
+      name: window.__REBELKIN__.arena().def.name,
+      people: window.__REBELKIN__.arena().people.length,
+      bits: window.__REBELKIN__.arena().bits.length,
+    }));
+    check(`${r.name} runs at 50fps or better`, r.fps >= 50,
+      `${r.fps} fps, ${r.people} in the crowd, ${r.bits} in the air`);
+    check(`${r.name} keeps its pools bounded`, r.people <= 420 && r.bits <= 260,
+      `${r.people} / ${r.bits}`);
+  }
+
   console.log('\nperformance');
+  await page.evaluate(() => window.__REBELKIN__.start('kin08', 'ai', 'kin06'));
   await page.waitForTimeout(1200);
   s = await state();
   check('runs at 50fps or better', s.fps >= 50, `${s.fps} fps`);

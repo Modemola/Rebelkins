@@ -8,7 +8,8 @@
 import { Loop, TICK } from './engine/loop.js';
 import { Input } from './engine/input.js';
 import { Rig } from './render/rig.js';
-import { Camera, drawStage, drawFloor, drawVignette } from './render/stage.js';
+import { Camera, drawStage, drawFloor, drawFore, setArena, arena } from './render/stage.js';
+import { ARENAS } from './render/arena.js';
 import { FX } from './render/fx.js';
 import { Match, PHASE, STAGE } from './fight/match.js';
 import { AI } from './fight/ai.js';
@@ -75,9 +76,11 @@ let ai = new AI('brisk');
 let mode = 'ai';
 let p1Kin = 'kin08';
 let p2Kin = 'kin06';
+let arenaId = 'towers';
 let slowCounter = 0;
 
 function startMatch() {
+  setArena(arenaId);
   match = new Match(DEFS[p1Kin], DEFS[p2Kin], rigs);
   match.onEvent = onMatchEvent;
   el('select').hidden = true;
@@ -95,6 +98,8 @@ function startMatch() {
 function onMatchEvent(kind, data) {
   if (kind === 'hit') {
     fx.hit(data.contact, data.move, data.ko);
+    arena().hit(Math.min(1, data.move.damage / 110));
+    if (data.ko) arena().ko();
     sfx.hit(data.move.damage, data.ko);
     sfx.swell(Math.min(1, data.move.damage / 110), data.ko ? 2.4 : 0.9);
     cam.bump(data.ko ? 24 : 7 + data.move.damage / 14);
@@ -191,6 +196,7 @@ function render(alpha, dt) {
   if (!match) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, view.w, view.h); return; }
 
   fx.step(dt);
+  arena().update(dt);
   cam.follow(match.a, match.b, view, dt);
 
   drawStage(ctx, view, cam, performance.now() / 1000, dpr);
@@ -208,10 +214,7 @@ function render(alpha, dt) {
   }
   ctx.restore();
   // fade the reflection out with distance from the floor line
-  const fade = ctx.createLinearGradient(0, 0, 0, 420);
-  fade.addColorStop(0, 'rgba(10,7,14,0)');
-  fade.addColorStop(1, 'rgba(10,7,14,1)');
-  ctx.fillStyle = fade;
+  ctx.fillStyle = arena().reflectionFade(ctx);
   ctx.fillRect(-3000, 0, 6000, 420);
 
   // contact shadows
@@ -256,8 +259,10 @@ function render(alpha, dt) {
 
   fx.drawWorld(ctx, cam.zoom);
 
+  // Weather and the out-of-focus crowd at the very front go over the fighters;
+  // passing behind something is most of what sells the depth.
+  drawFore(ctx, view, cam, dpr);
   fx.drawScreen(ctx, view, dpr);
-  drawVignette(ctx, view, dpr);
   paintHud();
 }
 
@@ -329,6 +334,29 @@ function buildRoster() {
   }
 }
 
+/** Where the fight happens. 'any' rolls a different place each match. */
+function buildArenaPicker() {
+  const host = el('arenaRow');
+  const read = el('arenaRead');
+  const options = [...ARENAS.map((a) => ({ id: a.id, label: a.name, blurb: a.blurb })),
+    { id: 'any', label: 'SURPRISE', blurb: 'A different place every match' }];
+  const paint = () => {
+    const o = options.find((x) => x.id === arenaId);
+    read.textContent = o ? o.blurb : '';
+    [...host.children].forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.arena === arenaId)));
+  };
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'arena';
+    b.dataset.arena = o.id;
+    b.textContent = o.label;
+    b.addEventListener('click', () => { arenaId = o.id; sfx.unlock(); sfx.ui(); paint(); });
+    host.appendChild(b);
+  }
+  paint();
+}
+
 /* ------------------------------------------------------------------ menu */
 
 function wireMenu() {
@@ -340,6 +368,7 @@ function wireMenu() {
     }));
   };
   buildRoster();
+  buildArenaPicker();
   group('.mode', (b) => {
     mode = b.dataset.mode;
     el('diffRow').hidden = mode === '2p';
@@ -384,7 +413,8 @@ loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
   window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
-    ROSTER,
+    ROSTER, ARENAS, arena,
+    setArena: (id) => { arenaId = id; },
     start: (kin, m, foe) => {
       p1Kin = kin || p1Kin;
       p2Kin = foe || p2Kin;
