@@ -88,7 +88,36 @@ export function readPng(buf) {
     hasAlpha: ihdr.colorType === 4 || ihdr.colorType === 6
       || (ihdr.colorType === 3 && !!trns),
     alphaAt: alphaReader(ihdr, channels, bytesPerSample, stride, out, trns),
+    /** Full RGBA, 8-bit, regardless of the source colour type. */
+    toRgba: () => toRgba(ihdr, channels, bytesPerSample, stride, out, trns),
   };
+
+}
+
+/** Normalise any supported colour type into a flat RGBA byte array. */
+function toRgba(ihdr, channels, bps, stride, out, trns) {
+  const { width, height, colorType } = ihdr;
+  const rgba = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const o = y * stride + x * channels * bps;
+      const d = (y * width + x) * 4;
+      if (colorType === 6) {
+        rgba[d] = out[o]; rgba[d + 1] = out[o + bps]; rgba[d + 2] = out[o + 2 * bps];
+        rgba[d + 3] = out[o + 3 * bps];
+      } else if (colorType === 2) {
+        rgba[d] = out[o]; rgba[d + 1] = out[o + bps]; rgba[d + 2] = out[o + 2 * bps];
+        rgba[d + 3] = 255;
+      } else if (colorType === 4) {
+        const g = out[o];
+        rgba[d] = g; rgba[d + 1] = g; rgba[d + 2] = g; rgba[d + 3] = out[o + bps];
+      } else {
+        const g = out[o];
+        rgba[d] = g; rgba[d + 1] = g; rgba[d + 2] = g; rgba[d + 3] = 255;
+      }
+    }
+  }
+  return rgba;
 }
 
 function paeth(a, b, c) {
