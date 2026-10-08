@@ -1,19 +1,12 @@
 {
-  "name": "rebelkin-thread-war",
-  "version": "0.1.0",
+  "name": "rebelkin-fighter",
+  "version": "0.0.1",
   "private": true,
-  "description": "A crew of RebelKin pull social heists in a city where fashion is executable code.",
+  "description": "A RebelKin fighting game. Characters are rigged from single illustrations.",
   "type": "module",
   "scripts": {
-    "start": "npx --yes http-server . -p 8080 -c-1",
-    "playtest": "node tools/playtest.mjs",
-    "playtest:headed": "node tools/playtest.mjs --headed",
-    "assets": "node tools/scan-assets.mjs",
-    "assets:verbose": "node tools/scan-assets.mjs --verbose",
-    "test:assets": "node tools/test-assets.mjs",
-    "vesta": "node tools/verify-vesta.mjs",
-    "doors": "node tools/verify-doors.mjs",
-    "bibles": "node tools/build-bibles.mjs",
-    "bibles:check": "node tools/build-bibles.mjs --check"
+    "cutout": "node tools/cutout.mjs",
+    "rig": "node tools/rig.mjs",
+    "grid": "node tools/rig-grid.mjs"
   }
 }
