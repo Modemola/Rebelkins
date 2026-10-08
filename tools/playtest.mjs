@@ -43,6 +43,23 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 760 } });
+// Count audio nodes as they are created. Headless has no speakers, so the only
+// honest check is that the graph gets built when the simulation says it should.
+await page.addInitScript(() => {
+  window.__AUDIO__ = { osc: 0, buf: 0, ctxs: 0 };
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  const wrap = (name, key) => {
+    const orig = AC.prototype[name];
+    AC.prototype[name] = function patched(...a) { window.__AUDIO__[key]++; return orig.apply(this, a); };
+  };
+  wrap('createOscillator', 'osc');
+  wrap('createBufferSource', 'buf');
+  const Orig = AC;
+  const Patched = function (...a) { window.__AUDIO__.ctxs++; return new Orig(...a); };
+  Patched.prototype = Orig.prototype;
+  window.AudioContext = Patched;
+});
 const problems = [];
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error') problems.push(`console: ${m.text()}`); });
@@ -166,6 +183,29 @@ try {
   s = await state();
   check('round ends on a KO', koed, `phase ${s.phase} wins ${s.wins}`);
   await shot('4-ko');
+
+  console.log('\naudio');
+  const au = await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    return { ready: g.sfx.ready, state: g.sfx.ctx ? g.sfx.ctx.state : 'none', ...window.__AUDIO__ };
+  });
+  check('audio context opened on the first gesture', au.ctxs >= 1 && au.ready, `state ${au.state}`);
+  check('ambient bed is running', au.osc >= 3, `${au.osc} oscillators`);
+  check('impacts build voices', au.buf >= 3, `${au.buf} buffer sources`);
+
+  const before = await page.evaluate(() => window.__AUDIO__.osc + window.__AUDIO__.buf);
+  await page.evaluate(() => { window.__REBELKIN__.sfx.hit(98, false); window.__REBELKIN__.sfx.block(); });
+  const after = await page.evaluate(() => window.__AUDIO__.osc + window.__AUDIO__.buf);
+  check('a hit and a block each spawn voices', after > before, `${before} -> ${after}`);
+
+  const muteCheck = await page.evaluate(() => {
+    const g = window.__REBELKIN__.sfx;
+    g.setMuted(true);
+    const muted = g.muted;
+    g.setMuted(false);
+    return { muted, restored: !g.muted };
+  });
+  check('mute silences and restores', muteCheck.muted && muteCheck.restored);
 
   console.log('\nperformance');
   await page.waitForTimeout(1200);

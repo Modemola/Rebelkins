@@ -15,6 +15,7 @@ import { AI } from './fight/ai.js';
 import { STATE } from './fight/fighter.js';
 import { KIN08 } from './data/kin08.js';
 import { KIN06 } from './data/kin06.js';
+import { Sfx } from './audio/sfx.js';
 
 const DEFS = { kin08: KIN08, kin06: KIN06 };
 const cv = document.getElementById('stage');
@@ -22,6 +23,7 @@ const ctx = cv.getContext('2d');
 const input = new Input();
 const fx = new FX();
 const cam = new Camera();
+const sfx = new Sfx();
 
 const el = (id) => document.getElementById(id);
 const view = { w: 1280, h: 720 };
@@ -73,35 +75,44 @@ function startMatch() {
   input.clear('p1');
   input.clear('p2');
   paintNames();
-  announce(`ROUND ${match.round}`, 1100);
+  // The loop renders on every animation frame but only simulates on whole
+  // ticks, so the first render after this call can land before any update.
+  // Solve once here so `poses` is never empty while `match` is live.
+  solvePoses();
+  announce(`ROUND ${match.round}`, 1100, 'round');
 }
 
 function onMatchEvent(kind, data) {
   if (kind === 'hit') {
     fx.hit(data.contact, data.move, data.ko);
+    sfx.hit(data.move.damage, data.ko);
+    sfx.swell(Math.min(1, data.move.damage / 110), data.ko ? 2.4 : 0.9);
     cam.bump(data.ko ? 24 : 7 + data.move.damage / 14);
     cam.kick.x = -data.attacker.facing * Math.min(16, data.move.damage / 7);
-    if (data.ko) announce('K.O.', 1600);
+    if (data.ko) announce('K.O.', 1600, 'ko');
   } else if (kind === 'block') {
     fx.block(data.contact);
+    sfx.block();
     cam.bump(3);
   } else if (kind === 'fight') {
-    announce('FIGHT', 700);
+    announce('FIGHT', 700, 'round');
   } else if (kind === 'roundEnd') {
     setTimeout(() => {
       if (match.over) {
         const who = match.wins[0] > match.wins[1] ? match.a : match.b;
-        announce(`${who.def.name} WINS`, 2600);
+        announce(`${who.def.name} WINS`, 2600, 'win');
+        sfx.swell(1, 3);
       }
     }, 900);
   }
 }
 
 let announceTimer = 0;
-function announce(text, ms) {
+function announce(text, ms, voice) {
   const node = el('announce');
   el('announceText').textContent = text;
   node.hidden = false;
+  if (voice) sfx.announce(voice);
   clearTimeout(announceTimer);
   announceTimer = setTimeout(() => { node.hidden = true; }, ms);
 }
@@ -139,6 +150,15 @@ function update(frame) {
   const b = mode === '2p' ? readIntent('p2') : ai.think(match.b, match.a, frame);
 
   match.step(frame, { a, b }, solvePoses);
+  for (const f of match.fighters) {
+    for (const ev of f.sounds) {
+      if (ev.t === 'whiff') sfx.whiff(ev.weight);
+      else if (ev.t === 'step') sfx.step();
+      else if (ev.t === 'jump') sfx.jump();
+      else if (ev.t === 'land') sfx.land();
+    }
+    f.sounds.length = 0;
+  }
   // step() only solves inside the fight phase, and returns early during the
   // intro, hitstop and round-end. Render needs a current pose every frame
   // regardless, and a solve is a handful of matrix multiplies.
@@ -280,7 +300,25 @@ function wireMenu() {
     el('p2keys').hidden = mode !== '2p';
   });
   group('.diff', (b) => ai.set(b.dataset.diff));
-  el('startBtn').addEventListener('click', startMatch);
+  el('startBtn').addEventListener('click', () => { sfx.unlock(); sfx.ui(); startMatch(); });
+  document.querySelectorAll('.pick, .mode, .diff').forEach((b) => {
+    b.addEventListener('click', () => { sfx.unlock(); sfx.ui(); });
+  });
+
+  let muted = false;
+  try { muted = localStorage.getItem('rebelkin.muted') === '1'; } catch { /* private window */ }
+  const muteBtn = el('muteBtn');
+  const paintMute = () => {
+    sfx.setMuted(muted);
+    muteBtn.setAttribute('aria-pressed', String(muted));
+    muteBtn.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+  };
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    try { localStorage.setItem('rebelkin.muted', muted ? '1' : '0'); } catch { /* ignore */ }
+    paintMute();
+  });
+  paintMute();
   addEventListener('keydown', (e) => {
     if (e.code === 'Escape' && match) {
       match = null;
@@ -298,7 +336,7 @@ wireMenu();
 loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
-  window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai,
+  window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
     start: (kin, m) => { p1Kin = kin || p1Kin; mode = m || mode; startMatch(); } };
 }).catch((err) => {
   el('select').innerHTML = `<div class="selWrap"><h1>REBELKIN</h1>

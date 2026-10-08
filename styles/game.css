@@ -90,6 +90,8 @@ button[aria-pressed="true"] span { color: rgba(26,21,5,.72); }
   background: var(--hot); border-color: var(--hot); color: #fff;
 }
 #startBtn:hover { background: #ff6b85; border-color: #ff6b85; }
+.mute { font-size: 11px; letter-spacing: .16em; padding: 9px; color: var(--dim); }
+.mute[aria-pressed="true"] { background: #191520; border-color: var(--line); color: var(--hot); }
 .keys { color: var(--dim); font-size: 10.5px; line-height: 1.9; margin-top: 2px; }
 .keys b { color: var(--fg); }
 

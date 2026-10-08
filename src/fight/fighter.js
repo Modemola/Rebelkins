@@ -36,6 +36,10 @@ export class Fighter {
     this.walkDir = 0;
     this.comboCount = 0;
     this.lastHitFrame = -999;
+    /** Drained by the host each frame. The simulation decides what is audible. */
+    this.sounds = [];
+    this.stepAccum = 0;
+    this.wasAirborne = false;
   }
 
   get grounded() { return this.y >= GROUND - 0.001 && this.state !== STATE.AIR; }
@@ -57,6 +61,9 @@ export class Fighter {
     this.moveFrame = 0;
     this.hitConnected = false;
     this.setState(STATE.ATTACK);
+    // the swing is audible before it is dangerous, which is what lets a player
+    // react to a heavy they cannot yet see landing
+    this.sounds.push({ t: 'whiff', weight: Math.min(1, m.damage / 120) });
     return true;
   }
 
@@ -148,6 +155,7 @@ export class Fighter {
       this.vy = -this.def.jumpVel;
       this.y -= 0.01;
       this.setState(STATE.AIR);
+      this.sounds.push({ t: 'jump' });
       this.physics(1);
       return;
     }
@@ -159,6 +167,10 @@ export class Fighter {
       this.vx = intent.move * (toward ? this.def.walkSpeed : this.def.backSpeed);
       this.walkDir = toward ? 1 : -1;
       this.setState(STATE.WALK);
+      // Footsteps keyed to distance covered, not to the animation clock: both
+      // characters walk at different speeds and the step has to land with the foot.
+      this.stepAccum += Math.abs(this.vx) * TICK;
+      if (this.stepAccum > 58) { this.stepAccum = 0; this.sounds.push({ t: 'step' }); }
     } else {
       this.vx = 0;
       this.setState(STATE.IDLE);
@@ -168,11 +180,13 @@ export class Fighter {
 
   physics(friction = 1) {
     if (this.y < GROUND || this.vy !== 0) {
+      this.wasAirborne = true;
       this.vy += GRAVITY * TICK;
       this.y += this.vy * TICK;
       if (this.y >= GROUND) {
         this.y = GROUND;
         this.vy = 0;
+        if (this.wasAirborne) { this.wasAirborne = false; this.sounds.push({ t: 'land' }); }
         if (this.state === STATE.AIR) this.setState(STATE.IDLE);
       }
     }
