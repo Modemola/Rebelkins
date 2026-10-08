@@ -1,0 +1,498 @@
+<title>Kin 08 Rig Test</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: full-bleed dark stage, character on a wet floor; move list as a right
+   rail that drops under the stage at phone width. Single committed dark look --
+   this is a lighting stage, not a document. */
+:root {
+  --stage:   #141217;
+  --stage-2: #1d1a22;
+  --panel:   #19171e;
+  --line:    #2e2a36;
+  --fg:      #ece7f2;
+  --dim:     #938da0;
+  --coat:    #f5c518;
+  --stocking:#52d8ef;
+  --hot:     #ff4d6d;
+  --ok:      #7ee787;
+  --display: 'Anton', 'Arial Narrow', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--stage); color: var(--fg);
+  font-family: var(--mono); font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+#wrap {
+  height: 100%; display: grid; grid-template-columns: 1fr 304px;
+  gap: 1px; background: var(--line);
+}
+#stageCol { position: relative; background: var(--stage); min-width: 0; overflow: hidden; }
+#cv { display: block; width: 100%; height: 100%; }
+
+#hud {
+  position: absolute; left: 16px; top: 16px; pointer-events: none;
+  display: flex; flex-direction: column; gap: 2px;
+}
+#hud h1 {
+  font-family: var(--display); font-weight: 400; margin: 0;
+  font-size: clamp(26px, 4.4vw, 44px); letter-spacing: .02em; line-height: .96;
+  text-transform: uppercase; color: var(--fg);
+}
+#hud .sub { color: var(--dim); letter-spacing: .14em; text-transform: uppercase; font-size: 10px; }
+#readout {
+  position: absolute; left: 16px; bottom: 16px; pointer-events: none;
+  color: var(--dim); font-size: 11px; line-height: 1.7;
+}
+#readout b { color: var(--coat); font-weight: 600; }
+
+#rail {
+  background: var(--panel); overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 18px; min-width: 0;
+}
+.grp { display: flex; flex-direction: column; gap: 8px; }
+.lbl {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--dim); display: flex; justify-content: space-between; align-items: baseline;
+}
+.moves { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+button {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  color: var(--fg); background: #241f2c; border: 1px solid var(--line);
+  padding: 9px 10px; border-radius: 3px; cursor: pointer; text-align: left;
+  transition: background .12s, border-color .12s, color .12s;
+}
+button:hover { border-color: #4a4356; background: #2b2535; }
+button[aria-pressed="true"] { background: var(--coat); border-color: var(--coat); color: #1a1505; font-weight: 600; }
+button:focus-visible { outline: 2px solid var(--stocking); outline-offset: 2px; }
+.toggles { display: flex; flex-direction: column; gap: 5px; }
+.tg {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 5px 2px; color: var(--dim); font-size: 12px;
+}
+.tg input { accent-color: var(--coat); width: 14px; height: 14px; margin: 0; }
+.tg:has(input:checked) { color: var(--fg); }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+td { padding: 3px 0; color: var(--dim); }
+td:last-child { text-align: right; color: var(--fg); font-variant-numeric: tabular-nums; }
+.note { color: var(--dim); font-size: 11px; line-height: 1.65; }
+.note b { color: var(--fg); font-weight: 600; }
+.bar { height: 3px; background: #241f2c; border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--stocking); width: 0; }
+@media (max-width: 760px) {
+  #wrap { grid-template-columns: 1fr; grid-template-rows: minmax(0,1fr) auto; }
+  #rail { max-height: 46vh; }
+}
+@media (prefers-reduced-motion: reduce) { .shakeable { animation: none !important; } }
+</style>
+
+<div id="wrap">
+  <div id="stageCol">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <h1>Kin 08</h1>
+      <div class="sub">rig test &middot; one source image</div>
+    </div>
+    <div id="readout">
+      <div>move <b id="rMove">idle</b> &middot; frame <b id="rFrame">0</b></div>
+      <div>7 parts &middot; 83,491 px &middot; <b id="rFps">60</b> fps</div>
+    </div>
+  </div>
+
+  <aside id="rail">
+    <div class="grp">
+      <div class="lbl"><span>Moves</span><span id="moveHint">click or 1&ndash;7</span></div>
+      <div class="moves" id="moves"></div>
+    </div>
+
+    <div class="grp">
+      <div class="lbl"><span>Stage</span></div>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="tBones"> Skeleton</label>
+        <label class="tg"><input type="checkbox" id="tParts"> Part colours</label>
+        <label class="tg"><input type="checkbox" id="tRefl" checked> Floor reflection</label>
+        <label class="tg"><input type="checkbox" id="tRim" checked> Rim light</label>
+        <label class="tg"><input type="checkbox" id="tTrail" checked> Motion trails</label>
+        <label class="tg"><input type="checkbox" id="tSlow"> Slow motion</label>
+        <label class="tg"><input type="checkbox" id="tFlip"> Face right</label>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="lbl"><span>Bone</span><span id="boneName">&mdash;</span></div>
+      <div class="bar"><i id="boneBar"></i></div>
+      <table id="boneTable"></table>
+    </div>
+
+    <div class="grp">
+      <div class="lbl"><span>How this was made</span></div>
+      <p class="note">
+        One illustration, cut along seven polygons. The coat behind both sleeves
+        had no pixels underneath, so <b>13,961 occluded pixels</b> were grown back
+        from the surrounding panel before packing. Every pose here comes from that
+        single drawing &mdash; no extra art.
+      </p>
+    </div>
+  </aside>
+</div>
+
+<script>
+const RIG = {"name":"kin08","atlasSize":[2048, 284],"root":"torso","ground":[300, 542],"parts":[
+{"name":"legL","parent":"hips","z":0,"rect":[384, 0, 77, 132],"pivot":[59, 12],"origin":[252, 418]},
+{"name":"legR","parent":"hips","z":0,"rect":[463, 0, 69, 129],"pivot":[24, 12],"origin":[314, 418]},
+{"name":"hips","parent":"torso","z":1,"rect":[796, 0, 105, 76],"pivot":[52, 14],"origin":[306, 380]},
+{"name":"torso","parent":null,"z":2,"rect":[0, 0, 220, 282],"pivot":[114, 110],"origin":[300, 250]},
+{"name":"armL","parent":"torso","z":3,"rect":[534, 0, 175, 99],"pivot":[157, 3],"origin":[282, 206]},
+{"name":"armR","parent":"torso","z":3,"rect":[711, 0, 83, 87],"pivot":[-1, -3],"origin":[344, 204]},
+{"name":"head","parent":"torso","z":4,"rect":[222, 0, 160, 160],"pivot":[76, 144],"origin":[306, 178]}]};
+
+const PART = {}; RIG.parts.forEach(p => PART[p.name] = p);
+const KIDS = {}; RIG.parts.forEach(p => { (KIDS[p.parent] ||= []).push(p); });
+const BYZ = RIG.parts.slice().sort((a,b) => a.z - b.z);
+const TINT = { legL:'#ff4d6d', legR:'#52d8ef', hips:'#f5c518', torso:'#7ee787',
+               armL:'#b58cff', armR:'#ff9f45', head:'#ffffff' };
+
+/* ---- 2D affine, as [a,b,c,d,e,f] ---- */
+const I = () => [1,0,0,1,0,0];
+const mul = (m,n) => [
+  m[0]*n[0]+m[2]*n[1], m[1]*n[0]+m[3]*n[1],
+  m[0]*n[2]+m[2]*n[3], m[1]*n[2]+m[3]*n[3],
+  m[0]*n[4]+m[2]*n[5]+m[4], m[1]*n[4]+m[3]*n[5]+m[5]];
+const T = (x,y) => [1,0,0,1,x,y];
+const R = (a) => [Math.cos(a),Math.sin(a),-Math.sin(a),Math.cos(a),0,0];
+const S = (x,y) => [x,0,0,y,0,0];
+
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const out = t => 1-Math.pow(1-t,3);
+const back = t => { const c=2.2; return 1+ (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
+const seg = (u,a,b) => Math.max(0, Math.min(1, (u-a)/(b-a)));
+
+/* ---- moves. Every one of these is the same seven pieces. ---- */
+const MOVES = {
+  idle: { label:'Idle', loop:true, dur:3.4, pose(t){
+    const b = Math.sin(t*2.0), s = Math.sin(t*0.9);
+    return { torso:{rot:s*0.015, y:b*2.2}, hips:{rot:-s*0.012},
+      head:{rot:-s*0.028 + Math.sin(t*0.6)*0.02},
+      armL:{rot:s*0.05 + 0.02}, armR:{rot:-s*0.055},
+      legL:{rot:s*0.01}, legR:{rot:-s*0.01} }; } },
+
+  walk: { label:'Walk', loop:true, dur:1.0, pose(t){
+    const p = t*6.6;
+    return { torso:{rot:Math.sin(p*2)*0.022, y:-Math.abs(Math.sin(p))*5},
+      hips:{rot:Math.sin(p)*0.05},
+      head:{rot:-Math.sin(p*2)*0.035},
+      legL:{rot:Math.sin(p)*0.42}, legR:{rot:Math.sin(p+Math.PI)*0.42},
+      armL:{rot:Math.sin(p+Math.PI)*0.30}, armR:{rot:Math.sin(p)*0.34} }; } },
+
+  jab: { label:'Jab', dur:0.42, impact:0.34, pose(u){
+    const w = seg(u,0,.22), s = seg(u,.22,.40), r = seg(u,.52,1);
+    const ext = out(s) - ease(r);
+    return { torso:{rot:0.05*w - 0.10*ext, x:-14*ext},
+      hips:{rot:0.04*ext}, head:{rot:0.06*w - 0.05*ext},
+      armL:{rot:0.45*w - 1.25*ext}, armR:{rot:-0.25*w + 0.35*ext},
+      legL:{rot:-0.10*ext}, legR:{rot:0.16*ext} }; } },
+
+  hook: { label:'Hook', dur:0.62, impact:0.40, pose(u){
+    const w = seg(u,0,.28), s = seg(u,.28,.46), r = seg(u,.58,1);
+    const sw = out(s) - ease(r);
+    return { torso:{rot:0.22*back(w) - 0.52*sw, x:-6*sw, y:3*sw},
+      hips:{rot:-0.10*sw}, head:{rot:0.12*w - 0.22*sw},
+      armR:{rot:-0.9*back(w) + 2.1*sw}, armL:{rot:0.3*w - 0.5*sw},
+      legL:{rot:-0.2*sw}, legR:{rot:0.26*sw} }; } },
+
+  kick: { label:'Kick', dur:0.72, impact:0.42, pose(u){
+    const w = seg(u,0,.26), s = seg(u,.26,.48), r = seg(u,.60,1);
+    const k = out(s) - ease(r);
+    return { torso:{rot:-0.10*w + 0.30*k, y:-6*k},
+      hips:{rot:0.10*w - 0.34*k}, head:{rot:-0.14*k},
+      legL:{rot:-0.30*w + 1.45*k}, legR:{rot:0.10*w - 0.12*k},
+      armL:{rot:-0.5*k}, armR:{rot:0.7*k} }; } },
+
+  block: { label:'Block', loop:true, dur:2.2, pose(t){
+    const j = Math.sin(t*3.1)*0.012;
+    return { torso:{rot:0.10+j, y:6}, hips:{rot:-0.06},
+      head:{rot:0.20}, armL:{rot:-1.05+j*2}, armR:{rot:0.95-j*2},
+      legL:{rot:0.14}, legR:{rot:-0.16} }; } },
+
+  hit: { label:'Hit', dur:0.58, impact:0.04, pose(u){
+    const s = seg(u,0,.14), r = seg(u,.22,1);
+    const k = out(s) - ease(r);
+    const shiver = Math.sin(u*58) * (1-u) * 0.03;
+    return { torso:{rot:0.30*k + shiver, x:26*k, y:-4*k},
+      hips:{rot:-0.14*k}, head:{rot:0.46*k + shiver*2},
+      armL:{rot:0.55*k}, armR:{rot:-0.70*k},
+      legL:{rot:0.26*k}, legR:{rot:-0.20*k} }; } },
+};
+const ORDER = ['idle','walk','jab','hook','kick','block','hit'];
+
+/* ---- scene ---- */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const layer = document.createElement('canvas'), lx = layer.getContext('2d');
+const tmp = document.createElement('canvas'), tx = tmp.getContext('2d');
+const atlas = new Image();
+let ready = false, W = 0, H = 0, DPR = 1;
+
+const ui = {
+  bones: document.getElementById('tBones'), parts: document.getElementById('tParts'),
+  refl: document.getElementById('tRefl'), rim: document.getElementById('tRim'),
+  trail: document.getElementById('tTrail'), slow: document.getElementById('tSlow'),
+  flip: document.getElementById('tFlip'),
+};
+let move = 'idle', moveT = 0, shake = 0, flash = 0, frame = 0;
+const sparks = [], history = [];
+
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  const r = cv.getBoundingClientRect();
+  W = Math.max(320, r.width); H = Math.max(260, r.height);
+  for (const c of [cv, layer, tmp]) { c.width = W * DPR; c.height = H * DPR; }
+  ctx.setTransform(DPR,0,0,DPR,0,0); lx.setTransform(DPR,0,0,DPR,0,0); tx.setTransform(DPR,0,0,DPR,0,0);
+}
+new ResizeObserver(resize).observe(cv);
+
+function transforms(pose) {
+  const scale = Math.min(H * 0.74 / 520, W * 0.52 / 300);
+  const groundY = H * 0.86;
+  const rootOrigin = PART.torso.origin;
+  const dy = (RIG.ground[1] - rootOrigin[1]) * scale;
+  const flip = ui.flip.checked ? -1 : 1;
+  let base = mul(T(W * 0.46, groundY - dy), S(scale * flip, scale));
+  const outM = {};
+  (function visit(part, m) {
+    const p = pose[part.name] || {};
+    let k = m;
+    if (part.parent) {
+      const par = PART[part.parent];
+      k = mul(k, T(part.origin[0] - par.origin[0], part.origin[1] - par.origin[1]));
+    }
+    if (p.x || p.y) k = mul(k, T(p.x || 0, p.y || 0));
+    if (p.rot) k = mul(k, R(p.rot));
+    outM[part.name] = k;
+    for (const c of (KIDS[part.name] || [])) visit(c, k);
+  })(PART[RIG.root], base);
+  return outM;
+}
+
+function paintFigure(g, M, alpha, tint) {
+  g.save();
+  g.globalAlpha = alpha;
+  for (const part of BYZ) {
+    const m = M[part.name]; if (!m) continue;
+    const [sx, sy, sw, sh] = part.rect, [px, py] = part.pivot;
+    g.setTransform(DPR,0,0,DPR,0,0);
+    g.transform(m[0],m[1],m[2],m[3],m[4],m[5]);
+    g.drawImage(atlas, sx, sy, sw, sh, -px, -py, sw, sh);
+    if (tint) {
+      g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = TINT[part.name] + 'b0';
+      g.fillRect(-px, -py, sw, sh);
+      g.globalCompositeOperation = 'source-over';
+    }
+  }
+  g.restore();
+  g.setTransform(DPR,0,0,DPR,0,0);
+}
+
+function silhouette(M, colour) {
+  tx.setTransform(DPR,0,0,DPR,0,0);
+  tx.clearRect(0,0,W,H);
+  paintFigure(tx, M, 1, null);
+  tx.globalCompositeOperation = 'source-in';
+  tx.fillStyle = colour;
+  tx.fillRect(0,0,W,H);
+  tx.globalCompositeOperation = 'source-over';
+  return tmp;
+}
+
+function drawBones(g, M) {
+  g.save();
+  g.setTransform(DPR,0,0,DPR,0,0);
+  for (const part of RIG.parts) {
+    const m = M[part.name]; if (!m) continue;
+    const x = m[4], y = m[5];
+    if (part.parent && M[part.parent]) {
+      g.strokeStyle = 'rgba(236,231,242,.4)'; g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(M[part.parent][4], M[part.parent][5]); g.lineTo(x, y); g.stroke();
+    }
+    g.fillStyle = TINT[part.name]; g.beginPath(); g.arc(x, y, 4.5, 0, Math.PI*2); g.fill();
+    g.strokeStyle = 'rgba(20,18,23,.85)'; g.lineWidth = 1.5; g.stroke();
+  }
+  g.restore();
+}
+
+function stage() {
+  const g = ctx;
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#201c28'); sky.addColorStop(0.55, '#17141c'); sky.addColorStop(1, '#100e14');
+  g.fillStyle = sky; g.fillRect(0,0,W,H);
+  const pool = g.createRadialGradient(W*0.46, H*0.56, 10, W*0.46, H*0.56, Math.max(W,H)*0.6);
+  pool.addColorStop(0, 'rgba(245,197,24,.09)'); pool.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = pool; g.fillRect(0,0,W,H);
+  const gy = H * 0.86;
+  const floor = g.createLinearGradient(0, gy, 0, H);
+  floor.addColorStop(0, '#15131a'); floor.addColorStop(1, '#0c0b10');
+  g.fillStyle = floor; g.fillRect(0, gy, W, H-gy);
+  g.strokeStyle = 'rgba(82,216,239,.22)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(0, gy+.5); g.lineTo(W, gy+.5); g.stroke();
+}
+
+function vignette() {
+  const v = ctx.createRadialGradient(W/2, H*0.5, Math.min(W,H)*0.32, W/2, H*0.5, Math.max(W,H)*0.78);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.58)');
+  ctx.fillStyle = v; ctx.fillRect(0,0,W,H);
+}
+
+let last = performance.now(), fps = 60, acc = 0, fcount = 0;
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (!ready) return;
+  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  acc += dt; fcount++;
+  if (acc > 0.5) { fps = Math.round(fcount/acc); acc = 0; fcount = 0; document.getElementById('rFps').textContent = fps; }
+  const rate = ui.slow.checked ? 0.28 : 1;
+  const def = MOVES[move];
+  const prevT = moveT;
+  moveT += dt * rate;
+
+  let u = def.loop ? moveT : Math.min(moveT / def.dur, 1);
+  if (def.impact != null) {
+    const pu = def.loop ? prevT : Math.min(prevT / def.dur, 1);
+    if (pu < def.impact && u >= def.impact) impact();
+  }
+  if (!def.loop && u >= 1) { move = 'idle'; moveT = 0; syncButtons(); }
+
+  const pose = def.pose(def.loop ? moveT : u);
+  const M = transforms(pose);
+  frame = Math.round((def.loop ? moveT : u * def.dur) * 60);
+  document.getElementById('rFrame').textContent = String(frame % 10000);
+
+  history.push(M); if (history.length > 4) history.shift();
+
+  shake *= 0.86; flash *= 0.82;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  stage();
+
+  const sxs = (Math.random()-0.5) * shake, sys = (Math.random()-0.5) * shake;
+  ctx.save(); ctx.translate(sxs, sys);
+
+  // reflection
+  if (ui.refl.checked) {
+    lx.setTransform(DPR,0,0,DPR,0,0); lx.clearRect(0,0,W,H);
+    paintFigure(lx, M, 1, ui.parts.checked);
+    const gy = H * 0.86;
+    ctx.save();
+    ctx.globalAlpha = 0.26;
+    ctx.translate(0, gy*2); ctx.scale(1,-1);
+    ctx.drawImage(layer, 0, 0, W, H);
+    ctx.restore();
+    const fade = ctx.createLinearGradient(0, gy, 0, H);
+    fade.addColorStop(0, 'rgba(16,14,20,0)'); fade.addColorStop(1, 'rgba(16,14,20,1)');
+    ctx.fillStyle = fade; ctx.fillRect(0, gy, W, H-gy);
+  }
+
+  // contact shadow
+  const gy2 = H*0.86;
+  ctx.save();
+  const sh = ctx.createRadialGradient(W*0.46, gy2, 4, W*0.46, gy2, 110);
+  sh.addColorStop(0, 'rgba(0,0,0,.6)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sh; ctx.beginPath(); ctx.ellipse(W*0.46, gy2, 110, 17, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Trails only on the striking limbs. Ghosting the head reads as a rendering
+  // fault rather than speed, which is exactly how it looked at full figure.
+  if (ui.trail.checked && !MOVES[move].loop && history.length > 2) {
+    const limbs = BYZ.filter(p => p.name === 'armL' || p.name === 'armR' || p.name === 'legL');
+    for (let i = 0; i < history.length - 1; i++) {
+      const a = 0.08 + 0.07 * i;
+      ctx.save(); ctx.globalAlpha = a; ctx.globalCompositeOperation = 'lighter';
+      for (const part of limbs) {
+        const m = history[i][part.name]; if (!m) continue;
+        const [sx2, sy2, sw, sh] = part.rect, [px, py] = part.pivot;
+        ctx.setTransform(DPR,0,0,DPR,0,0);
+        ctx.translate(sxs, sys);
+        ctx.transform(m[0],m[1],m[2],m[3],m[4],m[5]);
+        ctx.drawImage(atlas, sx2, sy2, sw, sh, -px, -py, sw, sh);
+      }
+      ctx.restore();
+    }
+    ctx.setTransform(DPR,0,0,DPR,0,0); ctx.translate(sxs, sys);
+  }
+
+  if (ui.rim.checked) {
+    const sil = silhouette(M, 'rgba(118,226,245,.55)');
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = .5; ctx.drawImage(sil, -3, -3, W, H);
+    ctx.globalAlpha = .3; ctx.drawImage(sil, 4, 2, W, H);
+    ctx.restore();
+  }
+
+  paintFigure(ctx, M, 1, ui.parts.checked);
+  if (ui.bones.checked) drawBones(ctx, M);
+
+  // sparks
+  for (let i = sparks.length-1; i >= 0; i--) {
+    const p = sparks[i];
+    p.life -= dt * 2.1;
+    if (p.life <= 0) { sparks.splice(i,1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt;
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.c;
+    ctx.fillRect(p.x, p.y, p.s, p.s);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  if (flash > 0.01) { ctx.fillStyle = `rgba(255,245,210,${flash*0.3})`; ctx.fillRect(0,0,W,H); }
+  vignette();
+}
+
+function impact() {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  shake = reduce ? 0 : 13; flash = 1;
+  const ox = W*0.46 + (ui.flip.checked ? 120 : -120), oy = H*0.50;
+  for (let i = 0; i < 26; i++) {
+    const a = Math.random()*Math.PI*2, sp = 90 + Math.random()*330;
+    sparks.push({ x: ox, y: oy, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 120,
+      life: .6 + Math.random()*.5, s: 1 + Math.random()*3,
+      c: ['#f5c518','#52d8ef','#fff6d8'][i % 3] });
+  }
+}
+
+/* ---- ui ---- */
+const movesEl = document.getElementById('moves');
+ORDER.forEach((k, i) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.k = k;
+  b.textContent = `${i+1}  ${MOVES[k].label}`;
+  b.setAttribute('aria-pressed', String(k === move));
+  b.onclick = () => play(k);
+  movesEl.appendChild(b);
+});
+function syncButtons() {
+  movesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === move)));
+  document.getElementById('rMove').textContent = move;
+}
+function play(k) { move = k; moveT = 0; history.length = 0; syncButtons(); }
+addEventListener('keydown', e => {
+  const i = parseInt(e.key, 10);
+  if (i >= 1 && i <= ORDER.length) play(ORDER[i-1]);
+});
+
+const bt = document.getElementById('boneTable');
+RIG.parts.slice().sort((a,b)=>a.z-b.z).forEach(p => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${p.name}</td><td>${p.parent ?? 'root'}</td>`;
+  bt.appendChild(tr);
+});
+document.getElementById('boneName').textContent = `${RIG.parts.length} parts`;
+document.getElementById('boneBar').style.width = '100%';
+
+atlas.onload = () => { ready = true; resize(); };
+atlas.src = 'atlas.png';
+resize();
+requestAnimationFrame(loop);
+</script>
