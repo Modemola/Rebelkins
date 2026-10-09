@@ -20,6 +20,15 @@ export class Loop {
     this.running = false;
     this.fps = 60;
     this.generation = 0;
+    /**
+     * Renders, counted separately from simulation ticks. They are not the same
+     * number: when a frame runs long this loop catches up by running several
+     * ticks before the next render, so dividing any per-frame measurement by
+     * `frame` understates the cost of a slow renderer -- the slower it gets,
+     * the more ticks it is divided by. Anything measuring what the renderer
+     * does per frame has to divide by this.
+     */
+    this.renders = 0;
     this._fpsAcc = 0;
     this._fpsCount = 0;
   }
@@ -60,6 +69,7 @@ export class Loop {
         ticks++;
       }
       if (ticks === MAX_CATCHUP) this.acc = 0;
+      this.renders++;
       this.render(this.acc / TICK, dt);
     };
     requestAnimationFrame(step);

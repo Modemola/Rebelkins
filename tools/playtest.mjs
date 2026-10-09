@@ -88,24 +88,40 @@ await page.addInitScript(() => {
   // 6000 by 520. The transform's determinant is the area scale factor, and
   // nothing can rasterise more than the canvas however big the rect is, so
   // each draw is scaled and then capped.
-  const area = function (ctx, w, h) {
+  // The area the compositor can actually touch: transform the destination
+  // rect's corners, take the axis-aligned bounds, intersect with the canvas.
+  // Counting the raw destination arguments instead charges a 2080-wide baked
+  // layer its full width behind a 1280-wide window, and clamping at the canvas
+  // area afterwards flattens exactly the difference a regression shows up in --
+  // between them those two mistakes made a known fill regression measure
+  // LOWER than the healthy build.
+  const area = function (ctx, x, y, w, h) {
     const m = ctx.getTransform();
-    const scale = Math.abs(m.a * m.d - m.b * m.c);
-    const cap = ctx.canvas.width * ctx.canvas.height;
-    return Math.min(cap, Math.abs(w * h) * scale);
+    const px = (X, Y) => [m.a * X + m.c * Y + m.e, m.b * X + m.d * Y + m.f];
+    const pts = [px(x, y), px(x + w, y), px(x, y + h), px(x + w, y + h)];
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const x0 = Math.max(0, Math.min(...xs));
+    const x1 = Math.min(ctx.canvas.width, Math.max(...xs));
+    const y0 = Math.max(0, Math.min(...ys));
+    const y1 = Math.min(ctx.canvas.height, Math.max(...ys));
+    return Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
   };
   const di = P.drawImage;
   P.drawImage = function patchedDraw(...a) {
-    const w = a.length >= 9 ? a[7] : a.length >= 5 ? a[3] : (a[0] && a[0].width) || 0;
-    const h = a.length >= 9 ? a[8] : a.length >= 5 ? a[4] : (a[0] && a[0].height) || 0;
+    const n = a.length;
+    const x = n >= 9 ? a[5] : n >= 5 ? a[1] : a[1];
+    const y = n >= 9 ? a[6] : n >= 5 ? a[2] : a[2];
+    const w = n >= 9 ? a[7] : n >= 5 ? a[3] : (a[0] && a[0].width) || 0;
+    const h = n >= 9 ? a[8] : n >= 5 ? a[4] : (a[0] && a[0].height) || 0;
     window.__DRAW__.calls++;
-    window.__DRAW__.px += area(this, w, h);
+    window.__DRAW__.px += area(this, x, y, w, h);
     return di.apply(this, a);
   };
   const fr = P.fillRect;
   P.fillRect = function patchedFill(x, y, w, h) {
     window.__DRAW__.calls++;
-    window.__DRAW__.px += area(this, w, h);
+    window.__DRAW__.px += area(this, x, y, w, h);
     return fr.call(this, x, y, w, h);
   };
   wrap('createBufferSource', 'buf');
@@ -633,17 +649,20 @@ try {
 
   console.log('\nevery arena holds up');
   // The budget is counted, not timed. Per frame, per arena.
+  // Divided by renders, not by simulation ticks. They diverge exactly when it
+  // matters: a renderer slow enough to need catch-up ticks gets a bigger
+  // denominator, so per-tick fill falls as the real cost rises.
   const fillPerFrame = async () => page.evaluate(async () => {
     const g = window.__REBELKIN__;
     window.__DRAW__.calls = 0;
     window.__DRAW__.px = 0;
-    const f0 = g.loop.frame;
+    const r0 = g.loop.renders;
     await new Promise((r) => setTimeout(r, 900));
-    const frames = Math.max(1, g.loop.frame - f0);
+    const renders = Math.max(1, g.loop.renders - r0);
     const cv = document.getElementById('stage');
     return {
-      px: window.__DRAW__.px / frames / (cv.width * cv.height),
-      calls: window.__DRAW__.calls / frames,
+      px: window.__DRAW__.px / renders / (cv.width * cv.height),
+      calls: window.__DRAW__.calls / renders,
     };
   });
 
@@ -670,25 +689,24 @@ try {
     }));
     r.px = fill.px;
     r.calls = fill.calls;
-    // Reported, not asserted.
+    // Screens of compositing per rendered frame, and now a gate.
     //
-    // Framerate cannot be gated in this container. The browser rasterises on
-    // the CPU and the host's throughput drifts during a run: the same build
-    // measured 100% and 63% of its own idle ceiling on consecutive runs, so
-    // any absolute or even ratio threshold is a coin toss wearing a number.
+    // It was not one for a while, because the first two attempts measured the
+    // wrong thing twice over -- raw destination rects rather than the area
+    // that lands on the canvas, and divided by simulation ticks rather than
+    // renders. Together those made a known fill regression read LOWER than the
+    // healthy build, so the number was printed and left unenforced until it
+    // could be explained. It can be: the on-screen intersection divided by
+    // renders separates them cleanly.
     //
-    // Counting composited pixels instead looked like the answer and is not
-    // one yet -- deliberately breaking the layer cropping, which is a known
-    // fill regression, measured LOWER on this counter than the healthy build.
-    // Until that is understood the number is printed rather than enforced,
-    // because a gate nobody can explain is worse than no gate: it goes red for
-    // reasons that have nothing to do with the change in front of you, and
-    // teaches everyone to ignore it.
-    //
-    // What is enforced is the floor. Catastrophic slowness is unambiguous at
-    // any host load, and the pools below are exact.
+    // 5.5 from both sides. The three arenas sit at 4.2 to 4.4, which is itself
+    // a good sign since they are built from the same parts; uncropping the
+    // baked layers takes all three to 6.5. Unlike a framerate, this number is
+    // the same on a busy host as an idle one.
     console.log(`      ${r.name} fill: ${r.px.toFixed(1)} screens/frame over `
       + `${r.calls.toFixed(0)} draw calls, ${r.fps} fps at this moment`);
+    check(`${r.name} stays inside its fill budget`, r.px < 5.5,
+      `${r.px.toFixed(1)} screens per rendered frame`);
     check(`${r.name} is not catastrophically slow`, r.fps >= 25, `${r.fps} fps`);
     // The cropping invariant, checked directly rather than through its effect
     // on a framerate this container cannot measure. Baked layers are trimmed

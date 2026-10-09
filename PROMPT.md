@@ -123,12 +123,24 @@ A fighter trades pixels for frames, every time.
   cropped to the rows that actually have paint in them. Full-screen gradients
   rebuilt per frame once cost half the frame rate; blitting four full-screen
   layers of mostly-empty pixels cost a third of it.
-- **Framerate cannot be gated in this container and the suite does not try.**
-  The browser rasterises on the CPU and the host drifts during a run -- one
-  build measured 100% and 63% of its own idle ceiling on consecutive runs.
-  Measure performance by hand, in isolation, comparing two builds back to
-  back in the same minute; that is reliable and it is how every optimisation
-  here was found. The suite enforces only a catastrophic-slowness floor.
+- **Framerate cannot be gated in this container; compositing can.** The
+  browser rasterises on the CPU and the host drifts during a run -- one build
+  measured 100% and 63% of its own idle ceiling on consecutive runs. So the
+  gate counts *screens of compositing per rendered frame*, which is identical
+  on a busy host and an idle one. The arenas sit at 4.2-4.4 and the budget is
+  5.5; uncropping the baked layers takes all three to 6.5.
+
+  Two mistakes made that counter useless at first, and both are easy to make
+  again. Count the area that lands **on the canvas** -- the transformed
+  destination rect intersected with the viewport -- not the raw destination
+  arguments, or a 2080-wide baked layer is charged its full width behind a
+  1280-wide window. And divide by **renders, not simulation ticks**: a
+  fixed-timestep loop runs catch-up ticks when a frame runs long, so the
+  slower the renderer gets the bigger the denominator, and per-tick cost falls
+  as real cost rises. Together those two made a known fill regression measure
+  LOWER than the healthy build. Wall-clock framerate is still only a
+  catastrophic-slowness floor, and still worth measuring by hand, in
+  isolation, two builds back to back in the same minute.
 - Profile before cutting. Timing the JavaScript said this renderer cost half a
   millisecond a frame, which was true and useless: canvas 2D defers the
   rasterising. Bisect by turning things off and measuring, and check what the

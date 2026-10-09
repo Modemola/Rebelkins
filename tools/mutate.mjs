@@ -109,6 +109,18 @@ const MUTANTS = [
     expect: 'crops its baked layers',
   },
   {
+    // The same breakage as above, aimed at the other check that should see it.
+    // One mutant can only prove one check, and these two are independent: the
+    // cropping invariant is exact and narrow, the fill budget is approximate
+    // and catches anything that composites more than it should.
+    name: 'baked layers no longer cropped (fill budget)',
+    why: 'the fill gate exists to catch compositing regressions in general',
+    file: 'src/render/arena.js',
+    find: '  if (y1 < 0) return { img: c, y: 0, h: 0 };',
+    with: '  if (y1 < 0) return { img: c, y: 0, h: 0 };\n  return { img: c, y: 0, h };',
+    expect: 'stays inside its fill budget',
+  },
+  {
     name: 'the stage is a gradient again',
     why: 'the whole point of the arenas',
     file: 'src/render/arena.js',
