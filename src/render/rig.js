@@ -113,19 +113,43 @@ export class Rig {
     const m = M[partName];
     const p = this.byName[partName];
     if (!m || !p) return null;
-    const [, , w, h] = p.rect;
-    const [px, py] = p.pivot;
-    let bx = 0; let by = 0; let best = -Infinity;
-    for (const [cx, cy] of [[-px, -py], [w - px, -py], [-px, h - py], [w - px, h - py]]) {
-      const wx = m[0] * cx + m[2] * cy + m[4];
-      const ahead = wx * facing;
-      if (ahead > best) { best = ahead; bx = cx; by = cy; }
-    }
+    const [bx, by] = leadingCorner(p, m, facing);
     return {
       x: m[0] * bx * lead + m[2] * by * lead + m[4],
       y: m[1] * bx * lead + m[3] * by * lead + m[5],
     };
   }
+
+  /**
+   * Where a weapon sits in a part's own coordinates: the same corner the
+   * strike point uses, so the blade is wherever the hitbox is rather than
+   * somewhere that merely looks close.
+   */
+  gripLocal(M, partName, facing = 1) {
+    const m = M[partName];
+    const p = this.byName[partName];
+    if (!m || !p) return null;
+    return leadingCorner(p, m, facing);
+  }
 }
 
 const EMPTY = {};
+
+/**
+ * The corner of a part's artwork that the current pose has carried furthest
+ * toward the opponent -- the fist on an extended arm, the foot on a kick.
+ *
+ * `m` is the part's solved world matrix; when it is omitted the corners are
+ * ranked in the part's own space instead, which is what a rig definition can
+ * answer before anything has been posed.
+ */
+export function leadingCorner(part, m = null, facing = 1) {
+  const [, , w, h] = part.rect;
+  const [px, py] = part.pivot;
+  let bx = 0; let by = 0; let best = -Infinity;
+  for (const [cx, cy] of [[-px, -py], [w - px, -py], [-px, h - py], [w - px, h - py]]) {
+    const score = m ? (m[0] * cx + m[2] * cy + m[4]) * facing : Math.hypot(cx, cy);
+    if (score > best) { best = score; bx = cx; by = cy; }
+  }
+  return [bx, by];
+}

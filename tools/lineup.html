@@ -20,6 +20,7 @@
 <canvas id="c"></canvas>
 <script type="module">
 import { Rig } from '../src/render/rig.js';
+import { byId as weaponById, canHold, drawWeaponOn } from '../src/data/weapons.js';
 import { KIN01 } from '../src/data/kin01.js';
 import { KIN02 } from '../src/data/kin02.js';
 import { KIN03 } from '../src/data/kin03.js';
@@ -34,6 +35,7 @@ import { KIN10 } from '../src/data/kin10.js';
 const ROSTER = [KIN01, KIN02, KIN03, KIN04, KIN05, KIN06, KIN07, KIN08, KIN09, KIN10];
 const q = new URLSearchParams(location.search);
 const POSE = q.get('pose') || 'idle';
+const WEAPON = weaponById(q.get('weapon') || 'bare');
 const FACING = Number(q.get('facing') || 1);
 
 const CELL = 320;
@@ -75,12 +77,14 @@ ROSTER.forEach((def, i) => {
 
   const M = rigs[i].solve(poseFor(def), { x: cx, y: cy, scale: def.scale * 0.52, facing: FACING });
   rigs[i].draw(ctx, M);
+  if (canHold(def, WEAPON)) drawWeaponOn(ctx, rigs[i], M, def, WEAPON, FACING);
 
   ctx.fillStyle = '#cfc6db';
   ctx.font = '13px ui-monospace, monospace';
   ctx.fillText(`${def.name}  ${def.subtitle}`, cx - CELL / 2 + 10, cy + 22);
   ctx.fillStyle = '#7b7190';
-  ctx.fillText(`art ${def.rig.art ?? 1}  scale ${def.scale}`, cx - CELL / 2 + 10, cy + 36);
+  ctx.fillText(canHold(def, WEAPON) ? `${WEAPON.name.toLowerCase()}` : `cannot hold ${WEAPON.name.toLowerCase()}`,
+    cx - CELL / 2 + 10, cy + 36);
 });
 document.title = `lineup ${POSE} facing ${FACING}`;
 window.__READY__ = true;

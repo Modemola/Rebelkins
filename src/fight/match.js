@@ -43,8 +43,9 @@ const ATTACK_GAP = 84;
 export const PHASE = { INTRO: 'intro', FIGHT: 'fight', ROUND_END: 'roundEnd', MATCH_END: 'matchEnd' };
 
 export class Match {
-  constructor(defA, defB, rigs) {
+  constructor(defA, defB, rigs, weapons = [null, null]) {
     this.defs = [defA, defB];
+    this.weapons = weapons;
     this.rigs = rigs;
     this.wins = [0, 0];
     this.round = 1;
@@ -58,8 +59,8 @@ export class Match {
     // side was set against a 1280-wide window, and on a phone it opened the
     // round with the camera pulled right back.
     const apart = Math.min(210, STAGE.right * 0.52);
-    this.a = new Fighter(this.defs[0], { x: -apart, facing: 1, pad: 'p1' });
-    this.b = new Fighter(this.defs[1], { x: apart, facing: -1, pad: 'p2' });
+    this.a = new Fighter(this.defs[0], { x: -apart, facing: 1, pad: 'p1', weapon: this.weapons[0] });
+    this.b = new Fighter(this.defs[1], { x: apart, facing: -1, pad: 'p2', weapon: this.weapons[1] });
     this.fighters = [this.a, this.b];
     this.timer = ROUND_SECONDS;
     this.hitstop = 0;

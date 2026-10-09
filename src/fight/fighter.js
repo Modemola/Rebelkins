@@ -7,6 +7,7 @@
  */
 
 import { TICK } from '../engine/loop.js';
+import { applyWeapon } from '../data/weapons.js';
 import { totalFrames } from '../data/common.js';
 
 export const GRAVITY = 2000;
@@ -18,9 +19,11 @@ export const STATE = {
 };
 
 export class Fighter {
-  constructor(def, { x, facing, pad }) {
+  constructor(def, { x, facing, pad, weapon = null }) {
     this.def = def;
     this.pad = pad;
+    /** What they are carrying. Null is bare hands, which is a valid weapon. */
+    this.weapon = weapon;
     this.x = x;
     this.y = GROUND;
     this.vx = 0;
@@ -55,8 +58,12 @@ export class Fighter {
   }
 
   startMove(key) {
-    const m = this.def.moves[key];
-    if (!m) return false;
+    const base = this.def.moves[key];
+    if (!base) return false;
+    // The weapon rewrites the numbers, not the animation: reach, damage,
+    // knockback and startup, and only on the moves that strike with the limb
+    // it is held in.
+    const m = applyWeapon(this.weapon, base, this.def);
     this.move = m;
     this.moveFrame = 0;
     this.hitConnected = false;

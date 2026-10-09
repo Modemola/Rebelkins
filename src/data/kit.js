@@ -14,6 +14,7 @@
  */
 
 import { phases, seg, easeOut, easeInOut, anticipate } from './common.js';
+import { leadingCorner } from '../render/rig.js';
 
 /**
  * @param armed  true when the rig has armL/armR to swing.
@@ -121,13 +122,7 @@ export function stance({ armed = true, weight = 0.5 } = {}) {
 export function swingOf(rig, partName) {
   const p = rig.parts.find((q) => q.name === partName);
   if (!p) return 0;
-  const [, , w, h] = p.rect;
-  const [px, py] = p.pivot;
-  let fx = 0; let fy = 0; let best = -1;
-  for (const [cx, cy] of [[-px, -py], [w - px, -py], [-px, h - py], [w - px, h - py]]) {
-    const d = cx * cx + cy * cy;
-    if (d > best) { best = d; fx = cx; fy = cy; }
-  }
+  const [fx, fy] = leadingCorner(p);
   // Poses live in the artwork's own space, which the mirror in solve() turns
   // to face the opponent; `art` says which way that space points.
   const forward = (rig.art ?? 1) > 0 ? 0 : Math.PI;

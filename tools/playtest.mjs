@@ -150,6 +150,7 @@ const state = () => page.evaluate(() => {
     hitstop: m.hitstop, a: f(m.a), b: f(m.b), fps: g.loop.fps, sparks: g.fx.sparks.length };
 });
 
+const WEAPON_COUNT = 6;
 const arenaIdsForLook = () => page.evaluate(() => window.__REBELKIN__.ARENAS.map((a) => a.id));
 
 try {
@@ -458,6 +459,114 @@ try {
 
   await page.evaluate(() => window.__REBELKIN__.start('kin08', 'ai', 'kin06'));
   await page.waitForTimeout(1500);
+
+  console.log('\nloadout');
+  const loadout = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    const W = await import('./src/data/weapons.js');
+    const out = { badReach: [], wrongScope: [], offered: [], rank: null, persisted: null };
+
+    // Reach can only go up. The 30-move check that proves every move can
+    // connect runs bare-handed; that is only a lower bound for the armed
+    // cases if no weapon shortens anything.
+    for (const w of W.WEAPONS) {
+      if (w.reach < 0 || w.damage < 1) out.badReach.push(w.id);
+    }
+
+    // A weapon changes the limb it is held in, and nothing else.
+    for (const def of g.ROSTER) {
+      for (const w of W.WEAPONS) {
+        if (!W.canHold(def, w)) continue;
+        const held = W.heldParts(def, w);
+        for (const [slot, move] of Object.entries(def.moves)) {
+          const armed = W.applyWeapon(w, move, def);
+          const shouldChange = held.includes(move.strikePart);
+          const didChange = armed !== move;
+          if (shouldChange !== didChange) {
+            out.wrongScope.push(`${def.id}/${w.id}/${slot}`);
+          }
+        }
+      }
+    }
+
+    // A hand weapon must not be offered to a character with no free arm.
+    for (const def of g.ROSTER) {
+      const parts = new Set(def.rig.parts.map((q) => q.name));
+      const hasArm = parts.has('armL') || parts.has('armR');
+      for (const w of W.WEAPONS) {
+        if (w.grip !== 'hand') continue;
+        if (W.canHold(def, w) !== hasArm) out.offered.push(`${def.id}/${w.id}`);
+      }
+    }
+
+    // Rank is earned and remembered. The ladder has to actually open up:
+    // every weapon available from the start would make rank decoration, and
+    // one still locked at the top would make it a dead end.
+    const openAt = (wins) => {
+      g.progress.setWins(wins);
+      const r = g.progress.current().rank;
+      return W.WEAPONS.filter((w) => w.rank <= r).length;
+    };
+    const atStart = openAt(0);
+    const midway = openAt(3);
+    const atTop = openAt(999);
+    g.progress.setWins(0);
+    const promoted = g.progress.winMatch();
+    out.rank = { atStart, midway, atTop, total: W.WEAPONS.length,
+      promoted: promoted.promoted, wins: promoted.wins };
+    out.persisted = JSON.parse(localStorage.getItem('rebelkin.progress') || 'null');
+    g.progress.setWins(0);
+    return out;
+  });
+  check('no weapon shortens a move', loadout.badReach.length === 0,
+    loadout.badReach.length ? loadout.badReach.join(', ') : `${WEAPON_COUNT} weapons, all reach >= 0`);
+  check('a weapon changes only the limb holding it', loadout.wrongScope.length === 0,
+    loadout.wrongScope.length ? loadout.wrongScope.slice(0, 5).join(', ') : 'every character x weapon x move');
+  check('hand weapons are not offered to folded arms', loadout.offered.length === 0,
+    loadout.offered.length ? loadout.offered.join(', ') : '5 of 10 can hold one');
+  check('the weapon ladder opens up with rank',
+    loadout.rank.atStart === 1
+    && loadout.rank.midway > loadout.rank.atStart
+    && loadout.rank.atTop === loadout.rank.total,
+    `${loadout.rank.atStart} at rank 0, ${loadout.rank.midway} after 3 wins, `
+    + `${loadout.rank.atTop} of ${loadout.rank.total} at the top`);
+  check('a win is earned and remembered', loadout.rank.promoted && loadout.persisted
+    && loadout.persisted.wins === 1,
+    `promoted ${loadout.rank.promoted}, stored ${JSON.stringify(loadout.persisted)}`);
+
+  // and one combination driven through the real simulation, to prove the
+  // wiring and not just the arithmetic
+  const armedHit = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    const swing = async (weaponId) => {
+      g.setWeapon(weaponId);
+      g.start('kin08', 'ai', 'kin06');
+      await new Promise((r) => setTimeout(r, 80));
+      const m = g.match;
+      m.phase = 'fight';
+      g.ai.cfg.aggression = 0;
+      g.ai.cfg.block = 0;
+      const bx = m.b.x;
+      m.a.x = bx - 118;
+      m.b.health = m.b.def.health;
+      m.a.startMove('heavy');
+      for (let i = 0; i < 60; i++) {
+        m.b.x = bx;
+        await new Promise((r) => requestAnimationFrame(r));
+        if (m.b.health < m.b.def.health) break;
+      }
+      return m.b.def.health - m.b.health;
+    };
+    g.progress.setWins(99);
+    const bare = await swing('bare');
+    const bat = await swing('bat');
+    g.setWeapon('bare');
+    g.progress.setWins(0);
+    return { bare, bat };
+  });
+  check('a weapon hits harder in the simulation, not just on paper',
+    armedHit.bare > 0 && armedHit.bat > armedHit.bare * 1.15,
+    `${armedHit.bare} bare vs ${armedHit.bat} with the bat`);
 
   console.log('\nguarding');
   // Two rules with real logic behind them and, until now, no coverage at all:

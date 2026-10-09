@@ -10,6 +10,8 @@ import { Input } from './engine/input.js';
 import { Rig } from './render/rig.js';
 import { Camera, drawStage, drawFloor, drawFore, setArena, arena } from './render/stage.js';
 import { ARENAS } from './render/arena.js';
+import { WEAPONS, byId as weaponById, canHold, drawWeaponOn } from './data/weapons.js';
+import * as progress from './game/progress.js';
 import { FX } from './render/fx.js';
 import { Match, PHASE, STAGE, fitStage } from './fight/match.js';
 import { AI } from './fight/ai.js';
@@ -78,11 +80,16 @@ let mode = 'ai';
 let p1Kin = 'kin08';
 let p2Kin = 'kin06';
 let arenaId = 'towers';
+let awarded = false;   // one rank-up per match, however many times roundEnd fires
+let p1Weapon = 'bare';
+let p2Weapon = 'bare';
 let slowCounter = 0;
 
 function startMatch() {
+  awarded = false;
   setArena(arenaId);
-  match = new Match(DEFS[p1Kin], DEFS[p2Kin], rigs);
+  match = new Match(DEFS[p1Kin], DEFS[p2Kin], rigs,
+    [weaponById(p1Weapon), weaponById(p2Weapon)]);
   match.onEvent = onMatchEvent;
   el('select').hidden = true;
   el('hud').hidden = false;
@@ -114,11 +121,18 @@ function onMatchEvent(kind, data) {
     announce('FIGHT', 700, 'round');
   } else if (kind === 'roundEnd') {
     setTimeout(() => {
-      if (match.over) {
-        const who = match.wins[0] > match.wins[1] ? match.a : match.b;
-        announce(`${who.def.name} WINS`, 2600, 'win');
-        sfx.swell(1, 3);
-      }
+      if (!match || !match.over) return;
+      const playerWon = match.wins[0] > match.wins[1];
+      const who = playerWon ? match.a : match.b;
+      // Rank is the player's, not the match's: only P1 taking it counts, and
+      // only once, which is why it is awarded here and not per round.
+      const earned = playerWon && !awarded ? progress.winMatch() : null;
+      awarded = true;
+      announce(earned && earned.promoted
+        ? `RANK ${earned.rank}`
+        : `${who.def.name} WINS`, 2600, 'win');
+      sfx.swell(1, 3);
+      repaintLoadout();
     }, 900);
   }
 }
@@ -270,6 +284,7 @@ function render(alpha, dt) {
     }
 
     rig.draw(ctx, M);
+    drawWeaponOn(ctx, rig, M, f.def, f.weapon, f.facing);
   }
 
   fx.drawWorld(ctx, cam.zoom);
@@ -342,12 +357,65 @@ function buildRoster() {
       b.addEventListener('click', () => {
         if (side === 'A') p1Kin = d.id; else p2Kin = d.id;
         paint();
+        repaintLoadout();
       });
       host.appendChild(b);
     }
     paint();
   }
 }
+
+/**
+ * The loadout. Weapons a character cannot physically hold are not offered,
+ * and weapons above the player's rank are shown locked rather than hidden --
+ * a ladder you cannot see is not a ladder.
+ */
+function buildWeaponPicker() {
+  const host = el('weaponRow');
+  const read = el('weaponRead');
+  const paint = () => {
+    const p = progress.current();
+    el('rankLabel').textContent = `RANK ${p.rank}`
+      + (p.toNext ? ` - ${p.toNext} win${p.toNext === 1 ? '' : 's'} to go` : ' - top');
+    const def = DEFS[p1Kin];
+    let chosen = weaponById(p1Weapon);
+    if (!canHold(def, chosen) || chosen.rank > p.rank) {
+      chosen = WEAPONS[0];
+      p1Weapon = chosen.id;
+      p2Weapon = chosen.id;
+    }
+    read.textContent = chosen.blurb;
+    for (const b of host.children) {
+      const w = weaponById(b.dataset.weapon);
+      const holdable = canHold(def, w);
+      const unlocked = w.rank <= p.rank;
+      b.hidden = !holdable;
+      b.classList.toggle('locked', !unlocked);
+      b.textContent = unlocked ? w.name : `${w.name} - RANK ${w.rank}`;
+      b.setAttribute('aria-pressed', String(w.id === chosen.id));
+      b.disabled = !unlocked;
+    }
+  };
+  for (const w of WEAPONS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'weapon';
+    b.dataset.weapon = w.id;
+    b.addEventListener('click', () => {
+      if (b.disabled) return;
+      p1Weapon = w.id;
+      p2Weapon = w.id;
+      sfx.unlock();
+      sfx.ui();
+      paint();
+    });
+    host.appendChild(b);
+  }
+  paint();
+  repaintLoadout = paint;
+}
+
+let repaintLoadout = () => {};
 
 /** Where the fight happens. 'any' rolls a different place each match. */
 function buildArenaPicker() {
@@ -383,6 +451,7 @@ function wireMenu() {
     }));
   };
   buildRoster();
+  buildWeaponPicker();
   buildArenaPicker();
   group('.mode', (b) => {
     mode = b.dataset.mode;
@@ -428,7 +497,8 @@ loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
   window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
-    ROSTER, ARENAS, arena, debugDraw, STAGE,
+    ROSTER, ARENAS, arena, debugDraw, STAGE, WEAPONS, progress,
+    setWeapon: (id) => { p1Weapon = id; p2Weapon = id; repaintLoadout(); },
     poses,
     // One frame, on demand. The legibility and gradient checks need two frames
     // of the same instant -- with the loop running, the crowd and the weather

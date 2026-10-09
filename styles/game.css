@@ -94,6 +94,9 @@ h1 { font-size: clamp(38px, 9vw, 70px); margin: 0; letter-spacing: .06em; font-w
 .stageRow { display: flex; flex-direction: column; gap: 6px; }
 .stageRow .who { font-size: 10px; letter-spacing: .18em; color: var(--dim); }
 .stageRow .read { font-size: 10px; color: var(--dim); letter-spacing: .06em; min-height: 1.3em; }
+.stageRow .who i { font-style: normal; color: var(--coat); letter-spacing: .1em; }
+button.locked { opacity: .42; cursor: not-allowed; }
+button.locked:hover { border-color: var(--line); background: #191520; transform: none; }
 
 @media (max-width: 520px) {
   .roster { grid-template-columns: 1fr; }
