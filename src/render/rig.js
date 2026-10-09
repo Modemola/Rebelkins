@@ -129,18 +129,3 @@ export class Rig {
 }
 
 const EMPTY = {};
-
-/** Blend two poses. Used to ease out of a move back into the neutral stance. */
-export function blend(a, b, t) {
-  const out = {};
-  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
-    const pa = a[k] || EMPTY;
-    const pb = b[k] || EMPTY;
-    out[k] = {
-      rot: (pa.rot || 0) + ((pb.rot || 0) - (pa.rot || 0)) * t,
-      x: (pa.x || 0) + ((pb.x || 0) - (pa.x || 0)) * t,
-      y: (pa.y || 0) + ((pb.y || 0) - (pa.y || 0)) * t,
-    };
-  }
-  return out;
-}

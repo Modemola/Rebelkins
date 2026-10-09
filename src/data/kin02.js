@@ -42,7 +42,7 @@ export const KIN02 = {
       name: 'cross', label: 'Cross',
       startup: 4, active: 3, recovery: 8,
       damage: 44, knockback: 210, lift: 0, drive: 160,
-      strikePart: 'armR', reach: 60,
+      strikePart: 'armR', reach: 76,
     }),
     heavy: move(RIG, {
       name: 'overhand', label: 'Overhand',

@@ -97,8 +97,12 @@ export const ARENAS = [
     floor: ['#241433', '#0b0612'],
     glow: 'rgba(192,96,255,.34)',
     weather: 'confetti',
-    beams: { count: 3, colour: '#e0a0ff', rate: 0.34 },
-    crowd: { rows: 5, tint: '#0b0613', lit: '#5a2a7a', density: 1.5 },
+    // Two beams and the same crowd as the others. This room reads as the
+    // fullest of the three from its six-step seating bank, not from carrying
+    // thirty more silhouettes and a third sweeping light -- and it was the
+    // only arena sitting on the frame budget.
+    beams: { count: 2, colour: '#e0a0ff', rate: 0.34 },
+    crowd: { rows: 5, tint: '#0b0613', lit: '#5a2a7a', density: 1.0 },
     far: 'screens',
     mid: 'tiers',
     near: 'rail',
@@ -736,14 +740,18 @@ export class Arena {
         ctx.fill();
       }
     } else {
+      // Flutter without rotation. A save/translate/rotate/restore per piece is
+      // four canvas state operations seventy times a frame, and this arena was
+      // the only one near the frame budget. Squashing the height by the cosine
+      // of the same angle reads as a tumbling square of paper and costs one
+      // fillRect.
       for (const b of this.bits) {
         const hue = b.hue < 0.33 ? '192,96,255' : b.hue < 0.66 ? '245,197,24' : '82,216,239';
         ctx.fillStyle = `rgba(${hue},${0.25 + b.s * 0.3})`;
-        ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.rotate(this.t * 2 + b.p);
-        ctx.fillRect(-2.4 * b.s, -1.2 * b.s, 4.8 * b.s, 2.4 * b.s);
-        ctx.restore();
+        const spin = Math.abs(Math.cos(this.t * 2.6 + b.p));
+        const w = 4.8 * b.s;
+        const h = 4.8 * b.s * (0.18 + spin * 0.82);
+        ctx.fillRect(b.x - w / 2, b.y - h / 2, w, h);
       }
     }
     ctx.restore();

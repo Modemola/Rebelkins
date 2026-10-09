@@ -119,8 +119,21 @@ with the characters, dim the stage.
 
 A fighter trades pixels for frames, every time.
 
-- Anything static is baked to an offscreen canvas on resize and blitted.
-  Full-screen gradients rebuilt per frame once cost half the frame rate.
+- Anything static is baked to an offscreen canvas on resize and blitted, and
+  cropped to the rows that actually have paint in them. Full-screen gradients
+  rebuilt per frame once cost half the frame rate; blitting four full-screen
+  layers of mostly-empty pixels cost a third of it.
+- **Framerate cannot be gated in this container and the suite does not try.**
+  The browser rasterises on the CPU and the host drifts during a run -- one
+  build measured 100% and 63% of its own idle ceiling on consecutive runs.
+  Measure performance by hand, in isolation, comparing two builds back to
+  back in the same minute; that is reliable and it is how every optimisation
+  here was found. The suite enforces only a catastrophic-slowness floor.
+- Profile before cutting. Timing the JavaScript said this renderer cost half a
+  millisecond a frame, which was true and useless: canvas 2D defers the
+  rasterising. Bisect by turning things off and measuring, and check what the
+  cut buys before keeping it -- the rim-light pass cost six frames a second
+  and *lowered* the contrast it existed to raise.
 - Device pixel ratio is capped at 1.5.
 - Particles and crowd are pooled and bounded. Degrade count, never framerate.
 - If a feature cannot hold 60fps, it does not ship. Measure in the harness.

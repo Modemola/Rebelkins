@@ -39,7 +39,7 @@ export const KIN10 = {
       name: 'stomp', label: 'Stomp',
       startup: 6, active: 4, recovery: 11,
       damage: 56, knockback: 250, lift: 0, drive: 130,
-      strikePart: 'legL', reach: 54,
+      strikePart: 'legL', reach: 76,
     }),
     heavy: move(RIG, {
       name: 'flare', label: 'Flare',

@@ -19,15 +19,27 @@ export class Loop {
     this.frame = 0;
     this.running = false;
     this.fps = 60;
+    this.generation = 0;
     this._fpsAcc = 0;
     this._fpsCount = 0;
   }
 
+  /**
+   * Safe to call again. `stop()` only clears a flag -- the frame already
+   * queued with the browser still arrives, and if `start()` has run in the
+   * meantime it finds the flag true again and keeps going, so the old chain
+   * never dies and a second one is now running beside it. Two chains means
+   * the simulation advances twice per frame and every frame is rendered
+   * twice: a pause and resume measured 67 ticks a second instead of 60, and
+   * cost a third of the framerate. A generation token lets only the newest
+   * chain survive.
+   */
   start() {
     this.running = true;
     this.last = performance.now();
+    const gen = ++this.generation;
     const step = (now) => {
-      if (!this.running) return;
+      if (!this.running || gen !== this.generation) return;
       requestAnimationFrame(step);
       const dt = Math.min(0.25, (now - this.last) / 1000);
       this.last = now;

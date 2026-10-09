@@ -41,7 +41,7 @@ export const KIN01 = {
       name: 'rake', label: 'Rake',
       startup: 5, active: 3, recovery: 10,
       damage: 46, knockback: 220, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 82,
+      strikePart: 'armL', reach: 94,
     }),
     heavy: move(RIG, {
       name: 'slam', label: 'Slam',

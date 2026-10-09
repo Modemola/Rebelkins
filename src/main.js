@@ -250,13 +250,13 @@ function render(alpha, dt) {
   for (const f of order) {
     const rig = rigs[f.def.id];
     const M = poses[f.def.id];
-    // rim light picks the character off the backdrop
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.20;
-    ctx.translate(-4, -4);
-    rig.draw(ctx, M);
-    ctx.restore();
+    // No rim light. It was a second full rig draw per fighter per frame under
+    // a 'lighter' composite -- about six frames a second of the budget -- and
+    // measuring it showed it was not even doing its job: character-to-backdrop
+    // contrast went UP when it came out (50.8 to 54.9), because the halo it
+    // laid down is a band of intermediate luminance across the exact edge it
+    // was supposed to sharpen. These illustrations already carry their own
+    // white outline; it was drawing a soft glow over a hard line.
 
     if (f.state === STATE.BLOCK) {
       ctx.save();

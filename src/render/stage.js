@@ -94,5 +94,3 @@ export function drawFloor(ctx, cam) {
 export function drawFore(ctx, view, cam, dpr) {
   active.drawFore(ctx, view, cam, dpr);
 }
-
-export function drawVignette() { /* folded into drawFore, kept for the old call site */ }

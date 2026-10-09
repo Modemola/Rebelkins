@@ -105,7 +105,7 @@ export const KIN06 = {
       startup: 6, active: 4, recovery: 11,
       damage: 54, hitstun: 15, blockstun: 9,
       knockback: 250, lift: 0, drive: 130,
-      strikePart: 'legL', reach: 92,
+      strikePart: 'legL', reach: 108,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
