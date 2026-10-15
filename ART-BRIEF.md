@@ -130,9 +130,25 @@ Same prompt, with `{CHARACTER}` replaced. Descriptions taken from the existing
 art so the identity holds.
 
 **KIN 04 — ghost**
-> a slim youth with a chin-length silvery-white bob, pale green and blue
-> skin, narrow dark eyes, wearing an oversized matte black hooded coat with
-> sharp cyan edge highlights, black tapered trousers and chunky white trainers
+> a slim youth with a chin-length choppy silvery-white bob and a spiky
+> fringe, a bright green face graduating to cyan across one side, narrow
+> angular dark eyes, a small cyan earpiece, wearing an oversized matte black
+> hooded parka falling to mid-thigh with thin white and cyan piping along its
+> seams, black tapered trousers with a pale side stripe, and chunky white
+> trainers, **sleeves hanging free and clear of the coat body, both hands
+> fully visible past the cuffs**
+
+The coat is the reason he has no arms at all today: it is oversized, falls to
+mid-thigh and swallows the hands. A generator told "oversized parka" will
+drape the sleeves back against the body and land exactly where the original
+did, so the sleeve clause is part of his description rather than an
+afterthought, and his negative prompt carries the extra entries below. If it
+still fights, ask for a *fitted* black hooded jacket: a slightly less baggy
+coat that can throw a punch beats a perfect coat that cannot.
+
+> **extra negatives for KIN 04:** sleeves draped against the body, hands
+> hidden inside sleeves, hands inside the coat, oversized sleeves covering the
+> hands, sleeve swallowing the hand, coat sleeves merged with the coat body
 
 **KIN 05 — kickboxer**
 > a dark-skinned young woman with two large braided afro puffs, gold bar
