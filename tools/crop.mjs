@@ -23,6 +23,30 @@ const OUT = sarg('--out', 'crop.png');
 
 const png = readPng(fs.readFileSync(src));
 const rgba = png.toRgba();
+
+// --raw cuts the region out as it is: original pixels, alpha intact, no zoom,
+// no checkerboard, no grid. Used to split a multi-pose sheet into one file per
+// pose, which has to happen before the background is keyed -- a backdrop that
+// is brighter behind one figure than another needs its own tolerance, and a
+// single pass over both loses whichever one it is wrong for. KIN 04's white
+// hair against white was exactly that: it survived on the left and dissolved
+// on the right in the same pass.
+if (process.argv.includes('--raw')) {
+  const cut = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = x0 + x;
+      const sy = y0 + y;
+      if (sx < 0 || sy < 0 || sx >= png.width || sy >= png.height) continue;
+      const s = (sy * png.width + sx) * 4;
+      const d = (y * w + x) * 4;
+      cut[d] = rgba[s]; cut[d + 1] = rgba[s + 1]; cut[d + 2] = rgba[s + 2]; cut[d + 3] = rgba[s + 3];
+    }
+  }
+  fs.writeFileSync(OUT, encodeRgba(w, h, cut));
+  console.log(`${OUT}  ${w}x${h} cut from ${src} at ${x0},${y0}`);
+  process.exit(0);
+}
 const dw = w * Z, dh = h * Z;
 const out = new Uint8Array(dw * dh * 4);
 

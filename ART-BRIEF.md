@@ -51,7 +51,14 @@ One image. If nothing else is produced, produce this.
 > specular highlights, bold saturated colour, clean dark outline, high detail,
 > sharp focus throughout.
 >
-> Background: fully transparent.
+> Background: flat mid-grey, or fully transparent.
+
+**Not white.** KIN 04 has white hair and the first sheet came back on white;
+the key walked straight through the hair, because there is no edge between a
+white strand and a white backdrop for the flood fill to stop at. It dissolved
+entirely on one of the two poses at every tolerance that did not also leave
+backdrop behind. Mid-grey, magenta, or real alpha all avoid it, and the same
+trap waits for anything pale — KIN 06's white trainers, KIN 05's highlights.
 
 **Negative prompt**
 
@@ -78,6 +85,8 @@ One image. If nothing else is produced, produce this.
 | no shadow thrown by one limb across another | the shadow stays put when the limb moves and the fake shows |
 | no motion blur, no depth of field | every pixel is reused in dozens of poses and must stay sharp |
 | transparent background | the cutter keys on alpha |
+| background not white | a white-haired character dissolves into a white backdrop |
+| no cast shadow (again) | a soft floor shadow lands in the gap between arm and body, which is the one region that has to be clean |
 
 ## Worth adding, in order of value
 
@@ -107,11 +116,22 @@ Framing consistency matters across the roster, not just within a character: the
 same zoom, feet near the bottom edge, head near the top. The rigger can rescale
 a character, but a roster rendered at ten different zooms will look it.
 
+**Size.** The existing ten are around 500 pixels tall within a 600 pixel
+cutout. Anything much smaller is visibly softer beside them, and a fist is the
+first thing to turn to mush. Aim for a thousand pixels of figure or better.
+
+**One pose per file** beats a sheet with several figures on it. Each pose needs
+its own key tolerance — a backdrop brighter behind one figure than another
+costs whichever one the single pass is wrong for, which is exactly what
+happened to KIN 04's punch pose. `tools/crop.mjs <src> <x> <y> <w> <h> --raw`
+splits a sheet after the fact, but it is better not to need it.
+
 ## Accepting an output
 
 Before it goes in, check:
 
-- [ ] Background genuinely transparent, not white
+- [ ] Background transparent or mid-grey — never white
+- [ ] No soft shadow on the floor behind the figure
 - [ ] Daylight visible between each arm and the torso for the arm's full length
 - [ ] Daylight visible between the thighs
 - [ ] Hands intact — five fingers, nothing fused, nothing melted

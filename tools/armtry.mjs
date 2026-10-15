@@ -82,10 +82,12 @@ const png = await page.evaluate(async ({ rots, partName, CW, CH, FACING }) => {
   ctx.font = '600 12px ui-sans-serif, system-ui, sans-serif';
   ctx.textAlign = 'center';
 
-  // Fit the whole character in a cell: the rig's own ground line sits at the
-  // bottom, and the scale comes from the source height so every character
-  // lands the same size whatever its drawing was.
-  const scale = (CH - 40) / (manifest.ground[1] * 0.78);
+  // Fit the whole character in a cell. The height is measured off the parts
+  // themselves -- the topmost part's top edge up from the ground line -- rather
+  // than guessed from the ground value, which assumed every cutout carried the
+  // same margin above the head and silently beheaded any that did not.
+  const top = Math.min(...manifest.parts.map((p) => p.origin[1] - p.pivot[1]));
+  const scale = (CH - 40) / Math.max(1, manifest.ground[1] - top);
   rots.forEach((rot, i) => {
     const pose = { [partName]: { rot } };
     const M = rig.solve(pose, {
