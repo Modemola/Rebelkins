@@ -265,8 +265,13 @@ async function fightChecks() {
   // A recovery window is the one moment an opponent cannot answer. The gated
   // version of this branch took 5.7% of the windows it was handed.
   const vsSlow = spar({ AiA: AI, AiB: Slow, DEFS, rigs, rounds: 1, pairs: 90, levelA: 'mean', seed: 11 });
+  // 0.45, not 0.30. Against a fixture this generous the AI still punishes 35%
+  // of its swings with the branch re-gated behind the poke cooldown -- the
+  // regression that cost it 85% of its wins against pressure. A threshold
+  // below that number cannot see the thing the check is named after, and the
+  // measured clean rate is 55.8%, so this sits between them with room.
   const punishRate = vsSlow.stats[0].punishes / Math.max(1, vsSlow.stats[0].swings);
-  check('the AI punishes a recovery', punishRate > 0.3,
+  check('the AI punishes a recovery', punishRate > 0.45,
     `${vsSlow.stats[0].punishes} punishes in ${vsSlow.stats[0].swings} swings (${pct(vsSlow.stats[0].punishes, vsSlow.stats[0].swings)})`);
 
   // The ladder has to be a ladder. `sight` was inverted for a while and the
@@ -853,8 +858,15 @@ try {
     `${afterHold.toFixed(2)} after 1.5s of guard`);
   check('letting go recovers it', afterRest > afterHold + 0.1,
     `${afterHold.toFixed(2)} -> ${afterRest.toFixed(2)}`);
-  check('a leaned-on guard breaks', meter.broke > 0 && meter.brokeSide === 'b',
-    meter.broke ? `broke under blocked heavies, defender ${meter.openState}` : 'never broke');
+  // The meter has to actually be empty, not merely an event saying so. Asking
+  // only for the event, this passed with the break replaced by `guard = 1`:
+  // the guardBreak still fired, the guard never broke, and the check that
+  // names the break said nothing. Three neighbouring checks caught it, which
+  // is why it survived unnoticed -- a check can be wrong and still look green
+  // because its neighbours are right.
+  check('a leaned-on guard breaks',
+    meter.broke > 0 && meter.brokeSide === 'b' && meter.emptied < 0.05,
+    meter.broke ? `broke under blocked heavies at ${meter.emptied.toFixed(2)} guard, defender ${meter.openState}` : 'never broke');
   check('a break leaves them open', meter.openState === 'hurt', meter.openState);
   check('the HUD shows the guard meter', parseFloat(meter.hudWidth) < 25,
     `guard bar at ${meter.hudWidth} on the break`);
