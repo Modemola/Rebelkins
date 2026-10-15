@@ -11,13 +11,25 @@
  * then expected to go red *on the specific line* that covers it. A mutant that
  * survives means the check it was aimed at is not testing what it says.
  *
- *   node tools/mutate.mjs [--only <substring>] [--list]
+ *   node tools/mutate.mjs [--only <substring>] [--list] [--here]
+ *
+ * It breaks real source files, so by default it does that to a detached
+ * worktree of HEAD rather than to the checkout you are working in -- an hour
+ * of mutants used to mean an hour of a dirty tree holding a deliberate bug,
+ * which is both alarming to look at and one slip away from being committed.
+ * `--here` keeps the old in-place behaviour.
+ *
+ * Because the worktree is HEAD, it tests committed code: a dirty tree means
+ * the thing being mutated is not the thing you are about to ship, so it stops
+ * and says so instead of quietly measuring the wrong code.
  *
  * Files are restored in a finally block, including on crash or interrupt.
  */
 
 import fs from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const MUTANTS = [
   {
@@ -293,6 +305,24 @@ if (args.includes('--list')) {
 }
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
 const run = MUTANTS.filter((m) => !only || m.name.includes(only));
+
+if (!args.includes('--here')) {
+  const git = (...a) => execFileSync('git', a, { encoding: 'utf8' }).trim();
+  if (git('status', '--porcelain')) {
+    console.error('working tree is dirty, so a worktree of HEAD would not be the code you are about to ship.');
+    console.error('commit first, or pass --here to mutate this checkout in place.');
+    process.exit(1);
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebelkin-mutate-'));
+  git('worktree', 'add', '--detach', dir, 'HEAD');
+  try {
+    const r = spawnSync('node', ['tools/mutate.mjs', ...args, '--here'], { cwd: dir, stdio: 'inherit' });
+    process.exitCode = r.status ?? 1;
+  } finally {
+    try { git('worktree', 'remove', '--force', dir); } catch { /* leave it rather than fail the run */ }
+  }
+  process.exit(process.exitCode ?? 0);
+}
 
 let survived = 0;
 for (const m of run) {
