@@ -34,41 +34,69 @@ One image. If nothing else is produced, produce this.
 > A-pose, body turned three-quarters toward the viewer's right. Both arms held
 > away from the torso at roughly forty degrees, elbows very slightly bent, with
 > a clear band of empty background visible between each arm and the body along
-> the whole length of the arm. Hands open and relaxed, fingers slightly spread
-> and separated from each other. Legs shoulder-width apart with clear empty
-> background visible between the thighs. Feet flat, parallel, both on the same
-> horizontal ground line. Head upright and level, facing the same direction as
-> the body.
+> the whole length of the arm, from armpit to hand. Sleeves hanging free and
+> clear of the body, both hands fully visible past the cuffs. Hands open and
+> relaxed, fingers slightly spread and separated from each other. Legs
+> shoulder-width apart with a clear band of empty background visible between
+> the thighs. Feet flat, parallel, both resting on the same horizontal line.
+> Head upright and level, facing the same direction as the body.
 >
-> Framing: entire figure from the top of the hair to the soles of the shoes,
-> centred, with a small even margin. Nothing cropped.
+> Framing: the entire figure from the top of the hair to the soles of the
+> shoes, centred, with a small even margin. Nothing cropped or touching the
+> edge.
+>
+> Background: flat, even, neutral mid-grey. The figure floats free -- no floor,
+> no ground plane, no contact shadow, no shadow of any kind beneath or behind
+> the figure.
 >
 > Lighting: strong key light from the upper left, cool cyan-and-lavender rim
-> light down the right-hand edge of the figure, soft ambient fill, no cast
-> shadow on the ground, no shadow thrown by one limb across another.
+> light down the right-hand edge of the figure, soft ambient fill. No shadow
+> thrown by one limb across another.
 >
 > Rendering: polished stylised 3D character render, smooth gradients, crisp
 > specular highlights, bold saturated colour, clean dark outline, high detail,
 > sharp focus throughout.
->
-> Background: flat mid-grey, or fully transparent.
-
-**Not white.** KIN 04 has white hair and the first sheet came back on white;
-the key walked straight through the hair, because there is no edge between a
-white strand and a white backdrop for the flood fill to stop at. It dissolved
-entirely on one of the two poses at every tolerance that did not also leave
-backdrop behind. Mid-grey, magenta, or real alpha all avoid it, and the same
-trap waits for anything pale — KIN 06's white trainers, KIN 05's highlights.
 
 **Negative prompt**
 
-> arms crossed, arms folded, hands in pockets, hands behind back, hands on
-> hips, arms touching the torso, arms overlapping the body, legs together,
+> white background, light background, cast shadow, contact shadow, shadow under
+> feet, ground plane, floor, background scenery, busy background, arms crossed,
+> arms folded, hands in pockets, hands behind back, hands on hips, arms touching
+> the torso, arms overlapping the body, sleeves draped against the body, hands
+> hidden inside sleeves, oversized sleeves covering the hands, legs together,
 > thighs touching, holding a prop across the body, foreshortening, arm pointing
 > toward the camera, motion blur, depth of field, cropped limbs, cut off at the
-> edge, multiple characters, duplicate limbs, extra fingers, text, watermark,
-> signature, logo, cast shadow, ground plane, floor, background scenery,
-> busy background
+> edge, multiple characters, multiple poses, duplicate limbs, extra fingers,
+> text, watermark, signature, logo
+
+## Do
+
+- **Mid-grey background.** White killed KIN 04's hair: white strands against a
+  white backdrop give the flood fill no edge to stop at, and it dissolved
+  entirely on one pose at every tolerance that did not also leave backdrop
+  behind. The same trap waits for KIN 06's white trainers.
+- **One pose per image.** Two figures in one file need two key tolerances,
+  because the backdrop ends up brighter behind one of them. That is what cost
+  KIN 04's punch pose its hair.
+- **A thousand pixels of figure or more.** The existing nine are around 500px
+  tall in a 600px frame. The first sheet came in at 250x390 per figure and the
+  fist turned to mush. Softness shows beside castmates.
+- **Feed the original illustration as a character reference, and hold the
+  seed.** Identity drift is the one thing that cannot be fixed downstream.
+- **Send a file, not an inline paste.** An inline image never lands on disk,
+  and none of the tools here can touch it.
+
+## Don't
+
+- **Do not let the coat win.** Sleeves draped back against the body reproduce
+  the exact problem the sheet exists to solve. A shorter jacket that can punch
+  beats a perfect silhouette that cannot -- that trade is already made for KIN
+  04, whose short zip hoodie is now the house style.
+- **Do not accept a floor shadow.** KIN 04's render had one despite the brief,
+  and it landed in the gap between his arm and his body: the one region that
+  has to be clean to cut an arm at all.
+- **Do not send a transparent PNG if the tool fakes alpha with white.** Grey is
+  safer than a fake.
 
 ## Why those words
 
