@@ -8,7 +8,7 @@
  * already read as one.
  */
 
-import { phases, seg, easeOut, easeInOut, anticipate } from './common.js';
+import { phases, seg, easeOut, easeInOut, anticipate, capStun } from './common.js';
 import { swingOf } from './kit.js';
 
 const RIG = {
@@ -100,12 +100,12 @@ export const KIN06 = {
   },
 
   moves: {
-    light: {
+    light: capStun({
       name: 'kick', label: 'Low Kick',
       startup: 6, active: 4, recovery: 11,
       damage: 54, hitstun: 15, blockstun: 9,
       knockback: 250, lift: 0, drive: 130,
-      strikePart: 'legL', reach: 108,
+      strikePart: 'legL', reach: 108, range: 130,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
@@ -115,13 +115,13 @@ export const KIN06 = {
           legR: { rot: 0.08 * wind - 0.10 * strike },
         };
       },
-    },
-    heavy: {
+    }),
+    heavy: capStun({
       name: 'stomp', label: 'Stomp',
       startup: 12, active: 4, recovery: 20,
       damage: 115, hitstun: 24, blockstun: 14,
       knockback: 300, lift: -260, drive: 40,
-      strikePart: 'legR', reach: 66,
+      strikePart: 'legR', reach: 66, range: 146,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
@@ -130,13 +130,13 @@ export const KIN06 = {
           legR: { rot: -0.60 * anticipate(wind) + 0.78 * strike }, legL: { rot: 0.12 * strike },
         };
       },
-    },
-    special: {
+    }),
+    special: capStun({
       name: 'charge', label: 'Charge',
       startup: 11, active: 8, recovery: 24,
       damage: 102, hitstun: 26, blockstun: 16,
       knockback: 620, lift: -140, drive: 640,
-      strikePart: 'torso', reach: 64,
+      strikePart: 'torso', reach: 64, range: 141,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
@@ -145,6 +145,6 @@ export const KIN06 = {
           legL: { rot: -0.32 * wind + 0.58 * strike }, legR: { rot: 0.28 * wind - 0.42 * strike },
         };
       },
-    },
+    }),
   },
 };

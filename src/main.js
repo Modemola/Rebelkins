@@ -117,6 +117,16 @@ function onMatchEvent(kind, data) {
     fx.block(data.contact);
     sfx.block();
     cam.bump(3);
+  } else if (kind === 'guardBreak') {
+    // Loud on purpose. A break is the one opening in the game you create
+    // rather than catch, and the player needs to know the instant it lands.
+    fx.guardBreak(data.contact);
+    sfx.guardBreak();
+    arena().hit(0.8);
+    cam.bump(16);
+    cam.kick.x = -data.attacker.facing * 10;
+    flashGuard(data.defender === match.a ? 'A' : 'B');
+    announce('GUARD BREAK', 900, 'break');
   } else if (kind === 'fight') {
     announce('FIGHT', 700, 'round');
   } else if (kind === 'roundEnd') {
@@ -135,6 +145,18 @@ function onMatchEvent(kind, data) {
       repaintLoadout();
     }, 900);
   }
+}
+
+const breakTimers = { A: 0, B: 0 };
+function flashGuard(side) {
+  const wrap = el(`gd${side}wrap`);
+  wrap.classList.remove('broke');
+  // Reading offsetWidth restarts the animation; without it a second break
+  // inside half a second would not flash at all.
+  void wrap.offsetWidth;
+  wrap.classList.add('broke');
+  clearTimeout(breakTimers[side]);
+  breakTimers[side] = setTimeout(() => wrap.classList.remove('broke'), 500);
 }
 
 let announceTimer = 0;
@@ -163,6 +185,13 @@ function readIntent(pad) {
 
 /* ------------------------------------------------------------------ step */
 
+/**
+ * Solved poses, keyed by which corner the fighter is in -- not by which
+ * character they are. Keyed by character id, a mirror match had both
+ * fighters writing to one entry: they were drawn, and hit-tested, with each
+ * other's pose. Every move in a KIN 06 mirror read as connecting from any
+ * distance at all.
+ */
 const poses = {};
 
 function update(frame) {
@@ -198,7 +227,7 @@ function update(frame) {
 function solvePoses() {
   for (const f of match.fighters) {
     const rig = rigs[f.def.id];
-    poses[f.def.id] = rig.solve(f.pose(), {
+    poses[f.pad] = rig.solve(f.pose(), {
       x: f.x, y: f.y, scale: f.def.scale, facing: f.facing,
     });
   }
@@ -238,7 +267,7 @@ function render(alpha, dt) {
     ctx.scale(1, -1);
     for (const f of match.fighters) {
       ctx.globalAlpha = 0.22;
-      rigs[f.def.id].draw(ctx, poses[f.def.id]);
+      rigs[f.def.id].draw(ctx, poses[f.pad]);
     }
     ctx.restore();
   }
@@ -263,7 +292,7 @@ function render(alpha, dt) {
   const order = debugDraw.hideFighters ? [] : match.fighters.slice().sort((p, q) => p.x - q.x);
   for (const f of order) {
     const rig = rigs[f.def.id];
-    const M = poses[f.def.id];
+    const M = poses[f.pad];
     // No rim light. It was a second full rig draw per fighter per frame under
     // a 'lighter' composite -- about six frames a second of the budget -- and
     // measuring it showed it was not even doing its job: character-to-backdrop
@@ -314,6 +343,18 @@ function paintNames() {
   }
 }
 
+/**
+ * The guard meter, drawn as its own thin bar under the health bar. It goes hot
+ * under a third because that is the point where one more blocked heavy opens
+ * you; the break flash is added by the event handler, not here, so it fires
+ * once per break instead of every frame the meter reads zero.
+ */
+function paintGuard(side, f) {
+  const wrap = el(`gd${side}wrap`);
+  el(`gd${side}`).style.width = `${Math.max(0, f.guard) * 100}%`;
+  wrap.classList.toggle('low', f.guard < 0.34);
+}
+
 let lastWins = '';
 function paintHud() {
   const pa = Math.max(0, match.a.health / match.a.def.health) * 100;
@@ -322,6 +363,8 @@ function paintHud() {
   el('hpB').style.width = `${pb}%`;
   el('hpAghost').style.width = `${pa}%`;
   el('hpBghost').style.width = `${pb}%`;
+  paintGuard('A', match.a);
+  paintGuard('B', match.b);
   el('timer').textContent = String(Math.ceil(match.timer));
   el('roundLabel').textContent = match.over ? 'MATCH' : `ROUND ${match.round}`;
   const w = match.wins.join('-');

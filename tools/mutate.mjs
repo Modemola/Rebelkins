@@ -192,6 +192,98 @@ const MUTANTS = [
     with: '    if (false) sfx.hit(data.move.damage, data.ko);',
     expect: 'reaches the mixer',
   },
+  {
+    name: 'hitstun uncapped',
+    why: 'a move that stuns for longer than it takes to come round again loops forever',
+    file: 'src/data/common.js',
+    find: '  const hitstun = Math.min(m.hitstun, m.recovery + m.startup - 2);',
+    with: '  const hitstun = m.hitstun;',
+    expect: 'no move stuns for longer than it leaves',
+  },
+  {
+    name: 'blockstun uncapped',
+    why: 'blocking has to leave the fighter who blocked a turn, or defending is never right',
+    file: 'src/data/common.js',
+    find: '  const blockstun = Math.min(m.blockstun, m.active - 1 + m.recovery - FASTEST_STARTUP);',
+    with: '  const blockstun = m.blockstun;',
+    expect: 'blocking a light earns a turn',
+  },
+  {
+    name: 'no swinging out of a block',
+    why: 'the attack intent has to be read while guarding, or a block is a trap',
+    file: 'src/fight/fighter.js',
+    find: '        if (this.blockFrames > 0) { this.blockFrames--; this.physics(0.80); return; }',
+    with: '        if (this.blockFrames > 0) this.blockFrames--;\n        this.physics(0.80);\n        return;',
+    expect: 'swing out of a block',
+  },
+  {
+    name: 'a broken guard never comes back',
+    why: 'the break is the punishment, not the start of a permanent one',
+    file: 'src/fight/fighter.js',
+    find: '          if (this.guardBroken > 0) { this.guard = 1; this.guardBroken = 0; }',
+    with: '          if (false) { this.guard = 1; this.guardBroken = 0; }',
+    expect: 'gives the guard back',
+  },
+  {
+    name: 'the guard meter never drains',
+    why: 'a guard held and nothing else has to run out, or turtling wins',
+    file: 'src/fight/fighter.js',
+    find: '    if (this.state === STATE.BLOCK) this.guard = Math.max(0, this.guard - 0.002);',
+    with: '    if (this.state === STATE.BLOCK) this.guard = Math.max(0, this.guard - 0);',
+    expect: 'drains the meter',
+  },
+  {
+    name: 'a guard never breaks',
+    why: 'an empty meter has to open the guard it belongs to',
+    file: 'src/fight/match.js',
+    find: '          defender.breakGuard();',
+    with: '          defender.guard = 1;',
+    expect: 'leaned-on guard breaks',
+  },
+  {
+    name: 'the guard bar is not painted',
+    why: 'the meter decides fights, so it has to be on screen',
+    file: 'src/main.js',
+    find: '  el(`gd${side}`).style.width = `${Math.max(0, f.guard) * 100}%`;',
+    with: '  el(`gd${side}`).style.width = \'100%\';',
+    expect: 'HUD shows the guard meter',
+  },
+  {
+    name: 'poses keyed by character again',
+    why: 'two of the same character need a pose each, not one between them',
+    file: 'src/main.js',
+    find: '    poses[f.pad] = rig.solve(f.pose(), {',
+    with: '    poses[f.def.id] = rig.solve(f.pose(), {',
+    expect: 'mirror match',
+  },
+  {
+    name: 'punishing gated by the poke cooldown',
+    why: 'a recovery window is exactly when swinging is right',
+    file: 'src/fight/ai.js',
+    find: `      if (pick && Math.random() < this.cfg.punish) {
+        intent.attack = pick.slot;
+        me._aiReason = 'punish';`,
+    with: `      if (pick && this.cool <= 0 && Math.random() < this.cfg.punish) {
+        intent.attack = pick.slot;
+        me._aiReason = 'punish';`,
+    expect: 'punishes a recovery',
+  },
+  {
+    name: 'defence held through the recovery',
+    why: 'once the active frames are over there is nothing left to block',
+    file: 'src/fight/ai.js',
+    find: '      && foe.moveFrame < foe.move.startup + foe.move.active;',
+    with: '      && true;',
+    expect: 'punishes a recovery',
+  },
+  {
+    name: 'the hardest tier sees swings last',
+    why: 'the difficulty dials have to point the same way as the difficulty',
+    file: 'src/fight/ai.js',
+    find: '  mean: { sight: 24, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95 },',
+    with: '  mean: { sight: 2, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95 },',
+    expect: 'difficulty tiers are in order',
+  },
 ];
 
 const args = process.argv.slice(2);

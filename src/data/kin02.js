@@ -42,19 +42,19 @@ export const KIN02 = {
       name: 'cross', label: 'Cross',
       startup: 4, active: 3, recovery: 8,
       damage: 44, knockback: 210, lift: 0, drive: 160,
-      strikePart: 'armR', reach: 76,
+      strikePart: 'armR', reach: 76, range: 126,
     }),
     heavy: move(RIG, {
       name: 'overhand', label: 'Overhand',
       startup: 10, active: 5, recovery: 18,
       damage: 100, knockback: 470, lift: -120, drive: 95,
-      strikePart: 'armR', reach: 68,
+      strikePart: 'armR', reach: 68, range: 125,
     }),
     special: move(RIG, {
       name: 'shoulder', label: 'Shoulder',
       startup: 9, active: 6, recovery: 22,
       damage: 88, knockback: 520, lift: -70, drive: 540,
-      strikePart: 'torso', reach: 56,
+      strikePart: 'torso', reach: 56, range: 131,
     }),
   },
 };

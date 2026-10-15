@@ -130,6 +130,172 @@ await page.addInitScript(() => {
   Patched.prototype = Orig.prototype;
   window.AudioContext = Patched;
 });
+/* ------------------------------------------------- the fight, without a browser
+ *
+ * The rig solves poses and places hitboxes from its definition alone -- it
+ * never touches the artwork -- so the whole simulation runs in Node. That is
+ * what makes these affordable: a claim about the AI needs hundreds of rounds
+ * to mean anything, and hundreds of rounds here cost a couple of seconds.
+ * Everything below is measured against a fixture whose behaviour is fixed, so
+ * a change in the number is a change in the AI.
+ */
+async function fightChecks() {
+  const { spar, loadCast, IDS, pct } = await import('./spar.mjs');
+  const { AI } = await import('../src/fight/ai.js');
+  const { Match, PHASE } = await import('../src/fight/match.js');
+  const { STATE } = await import('../src/fight/fighter.js');
+  const { byId } = await import('../src/data/weapons.js');
+  const { DEFS, rigs } = await loadCast();
+
+  console.log('\nframe advantage');
+  const bare = byId('bare');
+  const free = (f) => f.state === STATE.IDLE || f.state === STATE.WALK || f.state === STATE.CROUCH
+    || (f.state === STATE.BLOCK && f.blockFrames <= 0);
+  /** A swings `slot` from the edge of its range; B guards or eats it. */
+  const exchange = (x, y, slot, guard) => {
+    const m = new Match(DEFS[x], DEFS[y], rigs, [bare, bare]);
+    const solve = () => {
+      const out = {};
+      for (const f of m.fighters) {
+        out[f.pad] = rigs[f.def.id].solve(f.pose(), { x: f.x, y: f.y, scale: f.def.scale, facing: f.facing });
+      }
+      return out;
+    };
+    m.phase = PHASE.FIGHT;
+    m.b.x = m.a.x + DEFS[x].moves[slot].range - 8;
+    let outcome = null, contact = -1, aFree = -1, bFree = -1;
+    m.onEvent = (k) => { if (!outcome && (k === 'hit' || k === 'block' || k === 'guardBreak')) outcome = k; };
+    const still = { move: 0, crouch: false, jump: false, guard: false, attack: null };
+    for (let f = 0; f < 200; f++) {
+      m.step(f, {
+        a: { ...still, attack: f === 0 ? slot : null },
+        b: { ...still, guard },
+      }, solve);
+      if (outcome && contact < 0) contact = f;
+      if (contact >= 0) {
+        if (aFree < 0 && free(m.a)) aFree = f;
+        if (bFree < 0 && free(m.b)) bFree = f;
+        if (aFree >= 0 && bFree >= 0) break;
+      }
+    }
+    return { outcome, adv: aFree >= 0 && bFree >= 0 ? aFree - bFree : null };
+  };
+
+  // Blocking has to earn a turn, or pressing buttons is strictly better than
+  // defending. Advantage is how many frames before the attacker the fighter
+  // who blocked is free to act, and it has to cover the quickest startup in
+  // the cast or there is no answer to a jab at all. Measured on every
+  // character, because it comes out of each move's own frame data.
+  const onBlock = IDS.map((x) => ({ x, ...exchange(x, 'kin08', 'light', true) }));
+  const heavyBlock = IDS.map((x) => ({ x, ...exchange(x, 'kin08', 'heavy', true) }));
+  const onHit = IDS.map((x) => ({ x, ...exchange(x, 'kin08', 'light', false) }));
+  const blockedAll = onBlock.every((r) => r.outcome === 'block');
+  const worst = Math.min(...onBlock.map((r) => r.adv));
+  check('a light is blocked by every character', blockedAll,
+    onBlock.filter((r) => r.outcome !== 'block').map((r) => `${r.x} ${r.outcome}`).join(', ') || '10 of 10');
+  check('blocking a light earns a turn', worst >= 4,
+    `defender free ${worst} to ${Math.max(...onBlock.map((r) => r.adv))} frames first`);
+  // Not per character: a couple of the cast have a heavy whose recovery is
+  // short enough to come out level with their own light, and there is nothing
+  // wrong with that. What has to hold is that committing to a heavy is never
+  // the safer option, and that across the cast it is the more punishable one.
+  const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  check('a heavy is never safer on block than a light',
+    heavyBlock.every((r, i) => r.adv >= onBlock[i].adv),
+    heavyBlock.filter((r, i) => r.adv < onBlock[i].adv).map((r) => r.x).join(', ')
+      || `heavy +${Math.min(...heavyBlock.map((r) => r.adv))} at worst against light +${worst}`);
+  check('and usually a bigger window',
+    mean(heavyBlock.map((r) => r.adv)) > mean(onBlock.map((r) => r.adv)) + 1,
+    `light +${mean(onBlock.map((r) => r.adv)).toFixed(1)} mean, heavy +${mean(heavyBlock.map((r) => r.adv)).toFixed(1)} mean`);
+  // And the other way: landing a hit has to leave the attacker ahead, or
+  // there is no reward for opening someone up.
+  check('landing a hit keeps the initiative',
+    onHit.every((r) => r.outcome === 'hit' && r.adv <= 1),
+    `attacker ahead by ${-Math.max(...onHit.map((r) => r.adv))} to ${-Math.min(...onHit.map((r) => r.adv))}`);
+
+  console.log('\nthe opponent');
+  /** Walks in and throws its quickest move at every opportunity. */
+  class Masher {
+    think(me, foe) {
+      const slot = Object.keys(me.def.moves)
+        .sort((a, b) => me.def.moves[a].startup - me.def.moves[b].startup)[0];
+      return {
+        move: Math.sign(foe.x - me.x) || 1, crouch: false, jump: false, guard: false,
+        attack: me.state === STATE.IDLE ? slot : null,
+      };
+    }
+  }
+  /** Holds guard and nothing else. */
+  class Turtle {
+    think() { return { move: 0, crouch: false, jump: false, guard: true, attack: null }; }
+  }
+  /** Stands still and throws its heaviest move, so every recovery is a gift. */
+  class Slow {
+    think(me) {
+      const slot = Object.keys(me.def.moves)
+        .sort((a, b) => me.def.moves[b].damage - me.def.moves[a].damage)[0];
+      return {
+        move: 0, crouch: false, jump: false, guard: false,
+        attack: me.state === STATE.IDLE ? slot : null,
+      };
+    }
+  }
+
+  // Button mashing is the first thing a real player does, and for a long time
+  // it beat this AI in 89 of 90 rounds -- not because the AI was timid but
+  // because three separate rules made pressure unanswerable. It is the single
+  // most important fixture here.
+  const vsMash = spar({ AiA: AI, AiB: Masher, DEFS, rigs, rounds: 1, pairs: 90, levelA: 'mean', seed: 9 });
+  check('the AI answers button mashing', vsMash.winsA >= 68,
+    `${vsMash.winsA}/90 rounds, ${vsMash.stats[0].dealt} damage dealt to ${vsMash.stats[1].dealt} taken`);
+  // Mashing has to stay viable at the bottom of the ladder, though: a player
+  // who has not learned to block yet should be winning some of these.
+  const vsMashCalm = spar({ AiA: AI, AiB: Masher, DEFS, rigs, rounds: 1, pairs: 90, levelA: 'calm', seed: 9 });
+  check('mashing still works on the easiest tier', vsMashCalm.winsA <= 75,
+    `${vsMashCalm.winsA}/90 for the AI at calm`);
+
+  // Turtling must lose, which is the whole reason the guard meter exists.
+  const vsTurtle = spar({ AiA: AI, AiB: Turtle, DEFS, rigs, rounds: 1, pairs: 90, levelA: 'brisk', seed: 9 });
+  const stun = vsTurtle.stats[0].by.stun || { n: 0, hit: 0 };
+  check('a guard held all round is opened', vsTurtle.stats[0].breaks > 50,
+    `${vsTurtle.stats[0].breaks} breaks over 90 rounds, ${vsTurtle.winsA}/90 to the AI`);
+  check('the AI converts the opening it earns', stun.n > 20 && stun.hit / stun.n > 0.6,
+    `${stun.n} swings into a broken guard, ${pct(stun.hit, stun.n)} land`);
+
+  // A recovery window is the one moment an opponent cannot answer. The gated
+  // version of this branch took 5.7% of the windows it was handed.
+  const vsSlow = spar({ AiA: AI, AiB: Slow, DEFS, rigs, rounds: 1, pairs: 90, levelA: 'mean', seed: 11 });
+  const punishRate = vsSlow.stats[0].punishes / Math.max(1, vsSlow.stats[0].swings);
+  check('the AI punishes a recovery', punishRate > 0.3,
+    `${vsSlow.stats[0].punishes} punishes in ${vsSlow.stats[0].swings} swings (${pct(vsSlow.stats[0].punishes, vsSlow.stats[0].swings)})`);
+
+  // The ladder has to be a ladder. `sight` was inverted for a while and the
+  // hardest tier was the one that spotted heavies last, which no amount of
+  // watching a fight would have shown.
+  const ladder = [['mean', 'calm'], ['brisk', 'calm'], ['mean', 'brisk']]
+    .map(([a, b]) => {
+      const r = spar({ AiA: AI, AiB: AI, DEFS, rigs, rounds: 1, pairs: 90, levelA: a, levelB: b, seed: 3 });
+      return { a, b, rate: r.winsA / r.total };
+    });
+  check('the difficulty tiers are in order', ladder.every((r) => r.rate > 0.52),
+    ladder.map((r) => `${r.a} over ${r.b} ${(r.rate * 100).toFixed(0)}%`).join(', '));
+
+  // Two equal AIs should be an even fight that actually happens: swings that
+  // mostly connect, few that touch nothing, and punishes landed by both. The
+  // first version of this AI guarded 92% of everything thrown at it and
+  // decided rounds on the clock.
+  const mirror = spar({ AiA: AI, AiB: AI, DEFS, rigs, rounds: 2, pairs: 90, seed: 1 });
+  const s0 = mirror.stats[0];
+  const touched = (s0.hits + s0.blocked + s0.breaks) / s0.swings;
+  check('an even matchup is an even fight',
+    Math.abs(mirror.winsA / mirror.total - 0.5) < 0.1,
+    `${pct(mirror.winsA, mirror.total)} over ${mirror.total} rounds`);
+  check('swings mostly arrive somewhere', touched > 0.8,
+    `${pct(s0.hits, s0.swings)} land, ${pct(s0.blocked, s0.swings)} guarded, ${pct(s0.swings - s0.hits - s0.blocked - s0.breaks, s0.swings)} touch nothing`);
+  check('both sides punish', s0.punishes > 100 && mirror.stats[1].punishes > 100,
+    `${s0.punishes} and ${mirror.stats[1].punishes} punishes`);
+}
+
 const problems = [];
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error') problems.push(`console: ${m.text()}`); });
@@ -174,7 +340,8 @@ try {
     g.start('kin08', 'ai', 'kin06');
     return {
       solved: Object.keys(g.poses).length,
-      hasParts: !!(g.poses.kin08 && g.poses.kin08.torso),
+      hasParts: !!(g.poses[g.match.a.pad] && g.poses[g.match.a.pad].torso
+        && g.poses[g.match.b.pad] && g.poses[g.match.b.pad].torso),
     };
   });
   check('a new match has poses before its first frame',
@@ -214,7 +381,7 @@ try {
   console.log('\nattacks connect');
   // Stop the CPU guarding for this check: blocked chip damage is clamped so it
   // can never finish anyone, so a guarded trade proves nothing about hitting.
-  await page.evaluate(() => { window.__REBELKIN__.ai.cfg.block = 0; });
+  await page.evaluate(() => { window.__REBELKIN__.ai.set('still'); });
   const hpBefore = (await state()).b.hp;
   let landed = false;
   for (let i = 0; i < 26 && !landed; i++) {
@@ -241,8 +408,7 @@ try {
   // CPU can reach back -- and a counter-hit cancels the move this check is
   // trying to time. Stand it down for the probes that need one clean swing.
   const quietCpu = () => page.evaluate(() => {
-    window.__REBELKIN__.ai.cfg.aggression = 0;
-    window.__REBELKIN__.ai.cfg.block = 0;
+    window.__REBELKIN__.ai.set('still');   // an opponent that holds still
   });
   await quietCpu();
   const probe = await page.evaluate(async () => {
@@ -331,8 +497,7 @@ try {
       await new Promise((r) => setTimeout(r, 80));
       const m = g.match;
       m.phase = 'fight';
-      g.ai.cfg.aggression = 0;
-      g.ai.cfg.block = 0;
+      g.ai.set('still');          // an opponent that holds still to be measured
       m.a.x = m.b.x - 118;
       m.a.startMove('heavy');
       let landed = false;
@@ -376,8 +541,7 @@ try {
       await new Promise((r) => setTimeout(r, 60));
       const m = g.match;
       m.phase = 'fight';
-      g.ai.cfg.aggression = 0;
-      g.ai.cfg.block = 0;
+      g.ai.set('still');          // an opponent that holds still to be measured
       for (const slot of ['light', 'heavy', 'special']) {
         const mv = m.a.def.moves[slot];
         const shipped = mv.reach;
@@ -544,8 +708,7 @@ try {
       await new Promise((r) => setTimeout(r, 80));
       const m = g.match;
       m.phase = 'fight';
-      g.ai.cfg.aggression = 0;
-      g.ai.cfg.block = 0;
+      g.ai.set('still');          // an opponent that holds still to be measured
       const bx = m.b.x;
       m.a.x = bx - 118;
       m.b.health = m.b.def.health;
@@ -628,13 +791,156 @@ try {
   check('chip damage can never finish a round', guard.survived,
     guard.survived ? 'survives on 1hp behind guard' : 'died through its own guard');
 
+  console.log('\nthe guard meter');
+  // The meter is what stops a perfect turtle being unbeatable, and the frame
+  // numbers around it are what stop pressure being unanswerable. Both were
+  // wrong in ways nothing here could see: a broken guard never came back, and
+  // blocking a jab left the defender a frame behind the fighter who threw it.
+  //
+  // Driven by the real guard key. Forcing the state by hand does not work and
+  // is not worth trying: a fighter put into block without the intent behind it
+  // leaves block again on its own next frame, so the swings land clean and the
+  // measurement quietly becomes one about something else.
+  await page.evaluate(() => { window.__REBELKIN__.start('kin08', '2p', 'kin06'); });
+  await page.waitForTimeout(600);
+  await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    g.match.phase = 'fight';
+    g.match.b.guard = 1;
+    window.__breaks = 0;
+    window.__brokeSide = null;
+    g.match.onEvent = ((prev) => (kind, data) => {
+      if (kind === 'guardBreak') {
+        window.__breaks++;
+        window.__brokeSide = data.defender === g.match.b ? 'b' : 'a';
+      }
+      prev(kind, data);
+    })(g.match.onEvent);
+  });
+
+  await page.keyboard.down('ShiftRight');       // P2 guard, held
+  await page.waitForTimeout(1500);
+  const afterHold = await page.evaluate(() => window.__REBELKIN__.match.b.guard);
+  await page.keyboard.up('ShiftRight');
+  await page.waitForTimeout(1200);
+  const afterRest = await page.evaluate(() => window.__REBELKIN__.match.b.guard);
+
+  await page.keyboard.down('ShiftRight');
+  const meter = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    const m = g.match;
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    const bx = m.b.x;
+    for (let swing = 0; swing < 40 && !window.__breaks; swing++) {
+      m.a.x = bx - 118;
+      if (m.a.state !== 'attack') m.a.startMove('heavy');
+      for (let i = 0; i < 40 && !window.__breaks; i++) { m.b.x = bx; await frame(); }
+    }
+    const openState = m.b.state;
+    const emptied = m.b.guard;
+    const hudWidth = document.getElementById('gdB').style.width;
+    // Just past the end of the break stun, which is 46 frames. Waiting longer
+    // measures the hold drain instead: the guard key is still down, so the
+    // meter comes back to full and then starts bleeding again.
+    for (let i = 0; i < 70; i++) { m.b.x = bx; await frame(); }
+    return {
+      broke: window.__breaks, brokeSide: window.__brokeSide,
+      openState, emptied, hudWidth, restored: m.b.guard,
+    };
+  });
+  await page.keyboard.up('ShiftRight');
+  check('holding a guard drains the meter', afterHold < 0.95 && afterHold > 0.4,
+    `${afterHold.toFixed(2)} after 1.5s of guard`);
+  check('letting go recovers it', afterRest > afterHold + 0.1,
+    `${afterHold.toFixed(2)} -> ${afterRest.toFixed(2)}`);
+  check('a leaned-on guard breaks', meter.broke > 0 && meter.brokeSide === 'b',
+    meter.broke ? `broke under blocked heavies, defender ${meter.openState}` : 'never broke');
+  check('a break leaves them open', meter.openState === 'hurt', meter.openState);
+  check('the HUD shows the guard meter', parseFloat(meter.hudWidth) < 25,
+    `guard bar at ${meter.hudWidth} on the break`);
+  check('surviving a break gives the guard back', meter.restored > 0.9,
+    `${meter.emptied.toFixed(2)} at the break -> ${meter.restored.toFixed(2)}`);
+
+  // A move that stuns for longer than it takes to come round again loops into
+  // itself forever. This is pure frame data, so it is checked on all 30 moves
+  // rather than sampled.
+  const loops = await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    const bad = [];
+    for (const d of g.ROSTER) {
+      for (const [slot, m] of Object.entries(d.moves)) {
+        if (m.hitstun > m.recovery + m.startup - 2) bad.push(`${d.id} ${slot} stun ${m.hitstun} gap ${m.recovery + m.startup}`);
+      }
+    }
+    return bad;
+  });
+  check('no move stuns for longer than it leaves', loops.length === 0,
+    loops.length ? loops.join(', ') : 'all 30 moves leave the other fighter a turn');
+
+  // You could not swing out of a guard at all: the state machine read the
+  // attack intent only when you were not blocking, so a player holding guard
+  // pressed the button and nothing happened.
+  // Driven through the real keys, because the bug was in the state machine's
+  // reading of the intent and a hand-made intent would have hidden it.
+  await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    g.start('kin08', 'ai', 'kin06');
+  });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => {
+    const g = window.__REBELKIN__;
+    g.ai.set('still');
+    g.match.phase = 'fight';
+    window.__saw = { block: false, attack: false };
+    window.__watch = setInterval(() => {
+      const st = g.match && g.match.a.state;
+      if (st === 'block') window.__saw.block = true;
+      if (st === 'attack') window.__saw.attack = true;
+    }, 8);
+  });
+  await page.keyboard.down('Space');            // P1 guard
+  await page.waitForTimeout(200);
+  const guardingNow = await page.evaluate(() => window.__saw.block && window.__REBELKIN__.match.a.state === 'block');
+  await page.keyboard.down('KeyJ');             // P1 light, guard still held
+  await page.waitForTimeout(260);
+  const outOfBlock = await page.evaluate(() => {
+    clearInterval(window.__watch);
+    return { swung: window.__saw.attack };
+  });
+  await page.keyboard.up('KeyJ');
+  await page.keyboard.up('Space');
+  check('a held guard stays up', guardingNow, guardingNow ? 'block held while Space is down' : 'never entered block');
+  check('you can swing out of a block', outOfBlock.swung,
+    outOfBlock.swung ? 'attack started from block' : 'the attack intent was dropped');
+
+  // A mirror match: the two fighters are the same character, so a pose cache
+  // keyed by character collides and both are drawn in one of the two poses.
+  const mirror = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    g.start('kin08', '2p', 'kin08');
+    await new Promise((r) => setTimeout(r, 400));
+    const m = g.match;
+    m.phase = 'fight';
+    m.a.startMove('heavy');
+    for (let i = 0; i < 8; i++) await new Promise((r) => requestAnimationFrame(r));
+    const keys = Object.keys(g.poses);
+    const a = g.poses[m.a.pad], b = g.poses[m.b.pad];
+    return {
+      keys,
+      distinct: !!a && !!b && JSON.stringify(a.armL) !== JSON.stringify(b.armL),
+    };
+  });
+  check('a mirror match solves a pose for each corner', mirror.keys.length === 2,
+    `poses keyed ${mirror.keys.join(', ')}`);
+  check('the two sides of a mirror match pose apart', mirror.distinct,
+    mirror.distinct ? 'one swinging, one not' : 'both drawn in the same pose');
+
   console.log('\nbest of three');
   const rounds = await page.evaluate(async () => {
     const g = window.__REBELKIN__;
     g.start('kin08', 'ai', 'kin06');
     await new Promise((r) => setTimeout(r, 80));
-    g.ai.cfg.aggression = 0;
-    g.ai.cfg.block = 0;
+    g.ai.set('still');            // an opponent that holds still to be measured
     const seen = [];
     // Finish three rounds by emptying the loser each time, then let the match
     // run on its own. Nothing here forces a phase: the round flow has to take
@@ -978,6 +1284,8 @@ try {
   check('a fight runs at phone width', phoneFight.fps >= 40,
     `${phoneFight.fps} fps at ${phoneFight.w}x${phoneFight.h}, arena half-width ${phoneFight.stage.toFixed(0)}`);
   await shot('6-phone-fight');
+
+  await fightChecks();
 } catch (err) {
   console.error(`\nFAILED: ${err.message}`);
   await shot('fail');

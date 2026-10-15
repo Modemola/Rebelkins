@@ -13,7 +13,7 @@
  * what lets one set of curves drive both kinds.
  */
 
-import { phases, seg, easeOut, easeInOut, anticipate } from './common.js';
+import { phases, seg, easeOut, easeInOut, anticipate, capStun } from './common.js';
 import { leadingCorner } from '../render/rig.js';
 
 /**
@@ -192,5 +192,11 @@ export function move(rig, spec) {
   const pose = part === 'armL' || part === 'armR' ? punchPose(part, power, swing)
     : part === 'legL' || part === 'legR' ? kickPose(part, power, swing)
       : chargePose(power);
-  return { hitstun: 14 + Math.round(power * 12), blockstun: 8 + Math.round(power * 7), lift: 0, drive: 120, ...spec, pose };
+  // capStun last, so a hitstun written by hand in a character file is capped
+  // along with the one derived from weight here.
+  return capStun({
+    hitstun: 14 + Math.round(power * 12),
+    blockstun: 8 + Math.round(power * 7),
+    lift: 0, drive: 120, ...spec, pose,
+  });
 }

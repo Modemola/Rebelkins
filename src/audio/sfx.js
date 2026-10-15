@@ -159,6 +159,18 @@ export class Sfx {
     this.burst({ freq: 700, q: 1.2, dur: 0.08, gain: 0.14, type: 'lowpass' });
   }
 
+  /**
+   * Guard break: the block click, snapped. A shattering top end over a body
+   * drop, so it reads as the block sound failing rather than a bigger hit.
+   */
+  guardBreak() {
+    if (!this.on) return;
+    this.burst({ freq: 5200, q: 1.4, dur: 0.26, gain: 0.34, sweepTo: 900, send: 0.6 });
+    this.burst({ freq: 2100, q: 2.2, dur: 0.1, gain: 0.26, send: 0.4 });
+    this.tone({ type: 'sawtooth', from: 300, to: 60, dur: 0.34, gain: 0.3, send: 0.5 });
+    this.tone({ type: 'sine', from: 110, to: 34, dur: 0.45, gain: 0.4, send: 0.4 });
+  }
+
   /** Swing through air. Heavier moves cut lower and longer. */
   whiff(weight = 0.5) {
     if (!this.on) return;
@@ -196,7 +208,7 @@ export class Sfx {
   /** Announcement stinger: a short detuned chord with a filter opening. */
   announce(kind = 'round') {
     if (!this.on) return;
-    const root = kind === 'ko' ? 110 : kind === 'win' ? 196 : 147;
+    const root = kind === 'ko' ? 110 : kind === 'win' ? 196 : kind === 'break' ? 123 : 147;
     const t0 = this.t;
     const f = this.ctx.createBiquadFilter();
     f.type = 'lowpass';

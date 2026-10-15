@@ -41,6 +41,27 @@ body { font-family: var(--mono); color: var(--fg); -webkit-font-smoothing: antia
   transition: width .08s linear;
 }
 .bar.flip u, .bar.flip i { inset: 0 0 0 auto; }
+
+/* The guard meter. Thin and quiet while it is full, because it only becomes
+   the story when it is nearly gone -- then it goes hot, and the break flashes
+   it, so the opening you just earned is legible without reading numbers. */
+.guard {
+  position: relative; height: 4px; width: 58%;
+  background: #16131d; border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+}
+.guard i {
+  position: absolute; inset: 0 auto 0 0; width: 100%;
+  background: linear-gradient(180deg, #bdf1ff, #3aa6c8);
+  transition: width .1s linear;
+}
+.guard.flip i { inset: 0 0 0 auto; }
+.guard.low i { background: linear-gradient(180deg, #ffd0da, var(--hot)); }
+.guard.broke { animation: guardPop .45s ease-out; }
+@keyframes guardPop {
+  0%   { box-shadow: 0 0 0 rgba(255,77,109,0); }
+  18%  { box-shadow: 0 0 18px rgba(255,77,109,.95); }
+  100% { box-shadow: 0 0 0 rgba(255,77,109,0); }
+}
 .pips { display: flex; gap: 5px; }
 .side.right .pips { flex-direction: row-reverse; }
 .pip { width: 11px; height: 11px; border: 1px solid var(--line); border-radius: 50%; }

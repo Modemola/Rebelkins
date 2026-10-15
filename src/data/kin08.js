@@ -6,7 +6,7 @@
  * and a running elbow that crosses space.
  */
 
-import { phases, seg, easeOut, easeInOut, anticipate } from './common.js';
+import { phases, seg, easeOut, easeInOut, anticipate, capStun } from './common.js';
 import { swingOf } from './kit.js';
 
 const RIG = {
@@ -109,12 +109,12 @@ export const KIN08 = {
   },
 
   moves: {
-    light: {
+    light: capStun({
       name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 9,
       damage: 42, hitstun: 14, blockstun: 8,
       knockback: 210, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 50,
+      strikePart: 'armL', reach: 50, range: 169,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
@@ -124,13 +124,13 @@ export const KIN08 = {
           legL: { rot: -0.10 * strike }, legR: { rot: 0.16 * strike },
         };
       },
-    },
-    heavy: {
+    }),
+    heavy: capStun({
       name: 'hook', label: 'Hook',
       startup: 10, active: 4, recovery: 18,
       damage: 98, hitstun: 22, blockstun: 13,
       knockback: 460, lift: -120, drive: 90,
-      strikePart: 'armL', reach: 64,
+      strikePart: 'armL', reach: 64, range: 185,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
@@ -144,13 +144,13 @@ export const KIN08 = {
           legL: { rot: -0.2 * strike }, legR: { rot: 0.26 * strike },
         };
       },
-    },
-    special: {
+    }),
+    special: capStun({
       name: 'runner', label: 'Runner',
       startup: 9, active: 7, recovery: 22,
       damage: 86, hitstun: 24, blockstun: 15,
       knockback: 540, lift: -80, drive: 560,
-      strikePart: 'armL', reach: 60,
+      strikePart: 'armL', reach: 60, range: 178,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
@@ -160,6 +160,6 @@ export const KIN08 = {
           legL: { rot: -0.5 * wind + 0.8 * strike }, legR: { rot: 0.4 * wind - 0.6 * strike },
         };
       },
-    },
+    }),
   },
 };

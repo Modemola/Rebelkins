@@ -38,6 +38,16 @@ export class Fighter {
     this.clock = 0;          // free-running, for idle breathing
     this.walkDir = 0;
     this.comboCount = 0;
+    /**
+     * Guard, 0..1. A block here reduces a hit to chip and chip is clamped so
+     * it can never finish a round -- which, measured over 180 rounds of AI
+     * against AI, made a fighter that simply holds guard almost unbeatable:
+     * it wins on the clock on health it never lost. The meter is what costs
+     * something. It drains while the guard is up and drops hard on each
+     * blocked hit; empty, the guard breaks and they are wide open.
+     */
+    this.guard = 1;
+    this.guardBroken = 0;
     this.lastHitFrame = -999;
     /** Drained by the host each frame. The simulation decides what is audible. */
     this.sounds = [];
@@ -89,10 +99,38 @@ export class Fighter {
     }
   }
 
-  blocked(blockstun, knockback) {
+  blocked(blockstun, knockback, damage = 0) {
     this.vx = -this.facing * knockback * 0.35;
     this.blockFrames = blockstun;
     this.setState(STATE.BLOCK);
+    // A heavy costs far more guard than a jab, so chipping someone open with
+    // light pokes takes a while and one committed swing hurts to hold.
+    //
+    // These numbers were an order of magnitude too harsh. At 0.06 + dmg/620 a
+    // blocked jab cost 0.13 of the meter, so eight of them broke any guard in
+    // under two seconds -- and a break is a free heavy. Measured, that made
+    // sustained pressure unanswerable: an opponent walking forward mashing
+    // its fastest button beat every policy tried against it, including a
+    // hand-written guard-and-punish one, in 78 of 90 rounds. Defence has to
+    // survive a string for the frame advantage a block earns to mean
+    // anything.
+    this.guard = Math.max(0, this.guard - 0.018 - damage / 1500);
+  }
+
+  /**
+   * Empty guard: a long, damage-free opening. Being punished is the cost --
+   * so they are left standing where they are. An early version shoved them
+   * ninety units away on the break, and the opening was unusable: the AI that
+   * earned it swung at the space they had just left, and its whiff rate
+   * tracked its guard breaks almost one for one.
+   */
+  breakGuard() {
+    this.guard = 0;
+    this.guardBroken = 1;
+    this.vx = -this.facing * 12;
+    this.blockFrames = 0;
+    this.setState(STATE.HURT);
+    this.hurtFrames = 46;
   }
 
   /**
@@ -101,6 +139,16 @@ export class Fighter {
   step(intent, opponent) {
     this.clock += TICK;
     this.stateFrame++;
+
+    // Holding guard bleeds it; letting go recovers it, slowly enough that
+    // turtling through a whole round is not a strategy.
+    // The hold drain, not the blocked hits, is what makes turtling a losing
+    // plan: at 0.002 a frame a guard held and nothing else empties in about
+    // eight seconds, so a fighter that only blocks is opened seven times in a
+    // round, while one that blocks a string and answers it keeps its meter.
+    if (this.state === STATE.BLOCK) this.guard = Math.max(0, this.guard - 0.002);
+    else if (this.state !== STATE.HURT) this.guard = Math.min(1, this.guard + 0.005);
+    if (this.guardBroken > 0) this.guardBroken = Math.max(0, this.guardBroken - 0.02);
 
     // face the opponent whenever not committed to something
     if (!this.busy && this.state !== STATE.BLOCK) {
@@ -113,15 +161,31 @@ export class Fighter {
         return;
 
       case STATE.HURT:
-        if (--this.hurtFrames <= 0 && this.grounded) this.setState(STATE.IDLE);
+        if (--this.hurtFrames <= 0 && this.grounded) {
+          this.setState(STATE.IDLE);
+          // Surviving a break gives the guard back. Without this the meter
+          // stayed at zero: regen is skipped while blocking, so a fighter who
+          // kept their guard up was broken again by the very next blocked
+          // hit, and again by the one after that -- measured, twenty breaks
+          // in a single round. The break is the punishment, not the start of
+          // a permanent one.
+          if (this.guardBroken > 0) { this.guard = 1; this.guardBroken = 0; }
+        }
         this.physics(0.86);
         return;
 
       case STATE.BLOCK:
-        if (this.blockFrames > 0) this.blockFrames--;
-        else if (!intent.guard) this.setState(STATE.IDLE);
-        this.physics(0.80);
-        return;
+        // Blockstun locks you in place; once it has run out a block is just a
+        // stance being held, and coming out of it has to be as immediate as
+        // taking it. Returning unconditionally here threw the attack intent
+        // away: you could not swing out of a guard at all. For the AI that
+        // meant the recovery window it had just earned by blocking was
+        // unreachable, and for the player it meant the attack button did
+        // nothing until they let go of guard first.
+        if (this.blockFrames > 0) { this.blockFrames--; this.physics(0.80); return; }
+        if (intent.guard && !intent.attack) { this.physics(0.80); return; }
+        this.setState(STATE.IDLE);
+        break;
 
       case STATE.ATTACK: {
         this.moveFrame++;

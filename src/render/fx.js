@@ -46,6 +46,29 @@ export class FX {
     this.rings.push({ x: contact.x, y: contact.y, r: 6, max: 54, life: 1 });
   }
 
+  /**
+   * A guard break. Shards fly outward and upward from the contact and a wide
+   * ring goes out: the shape says "the shield came apart" rather than "that
+   * connected", which is what separates it from `hit` at a glance.
+   */
+  guardBreak(contact) {
+    for (let i = 0; i < 34; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 3.0;
+      const sp = 220 + Math.random() * 620;
+      this.sparks.push({
+        x: contact.x, y: contact.y,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
+        life: 0.5 + Math.random() * 0.5, max: 1,
+        size: 1.8 + Math.random() * 3.2,
+        c: ['#9fe8ff', '#fff6d8', '#52d8ef'][i % 3],
+      });
+    }
+    this.rings.push({ x: contact.x, y: contact.y, r: 10, max: 150, life: 1 });
+    this.rings.push({ x: contact.x, y: contact.y, r: 6, max: 86, life: 1 });
+    this.flash = Math.min(1, this.flash + 0.5);
+    this.floats.push({ x: contact.x, y: contact.y - 46, text: 'BREAK', life: 1.1, vy: -58 });
+  }
+
   step(dt) {
     this.flash *= 0.80;
     for (let i = this.sparks.length - 1; i >= 0; i--) {

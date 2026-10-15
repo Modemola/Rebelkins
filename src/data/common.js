@@ -20,3 +20,40 @@ export function phases(frame, m) {
 }
 
 export const totalFrames = (m) => m.startup + m.active + m.recovery;
+
+/**
+ * Clamp a move's stun so that it always leaves the other fighter a turn.
+ *
+ * Weight alone cannot set stun values, because what makes a move fair is its
+ * own length, and both of these were set from damage only. Two separate ways
+ * for a move to leave no turn at all, both found by measurement:
+ *
+ * `hitstun` longer than `recovery + startup` is a move that loops into
+ * itself. That sum is how long it is before the same move can be active
+ * again, so a longer stun means the defender leaves hitstun after the next
+ * swing is already out, and never acts again. kin02's cross -- 4/3/8 frames,
+ * 18 frames of hitstun against a 12-frame gap -- was exactly that, and so was
+ * every other light in the cast.
+ *
+ * `blockstun` has to leave the fighter who blocked enough of a head start to
+ * answer with something. Worst case the hitbox connects on the first active
+ * frame, so the attacker sits through `active - 1 + recovery`; subtracting
+ * the blockstun from that is the defender's advantage, and it has to cover
+ * the startup of the quickest move in the cast, which is six frames. The
+ * cross again: 11 frames of blockstun against 10 of recovery put the fighter
+ * who blocked at *-1*, so pressing buttons was strictly better than
+ * defending and a jab had no answer at all.
+ *
+ * Together these are why an opponent that walked forward mashing its fastest
+ * button beat every policy tried against it, the AI included, in 89 of 90
+ * rounds. Both clamps bind only on the fast lights; a heavy already recovers
+ * for far longer than it stuns, and stays punishable on block.
+ */
+/** Startup of the quickest move in the cast, which blockstun has to leave room for. */
+export const FASTEST_STARTUP = 6;
+
+export function capStun(m) {
+  const hitstun = Math.min(m.hitstun, m.recovery + m.startup - 2);
+  const blockstun = Math.min(m.blockstun, m.active - 1 + m.recovery - FASTEST_STARTUP);
+  return hitstun === m.hitstun && blockstun === m.blockstun ? m : { ...m, hitstun, blockstun };
+}

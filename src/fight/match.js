@@ -135,7 +135,7 @@ export class Match {
   resolveHits(poses) {
     for (const [attacker, defender] of [[this.a, this.b], [this.b, this.a]]) {
       const rig = this.rigs[attacker.def.id];
-      const box = attacker.hitbox(poses[attacker.def.id], rig);
+      const box = attacker.hitbox(poses[attacker.pad], rig);
       if (!box) continue;
       const hurt = defender.hurtbox();
       const nx = (box.x - hurt.x) / (hurt.rx + box.r);
@@ -150,16 +150,29 @@ export class Match {
       const contact = { x: (box.x + hurt.x) / 2, y: (box.y + hurt.y) / 2 };
 
       if (guarding) {
-        defender.blocked(m.blockstun, m.knockback);
+        defender.blocked(m.blockstun, m.knockback, m.damage);
         defender.health = Math.max(1, defender.health - m.damage * 0.12);
         this.hitstop = 5;
-        this.onEvent('block', { contact, move: m, attacker, defender });
+        if (defender.guard <= 0) {
+          defender.breakGuard();
+          this.hitstop = 12;
+          this.onEvent('guardBreak', { contact, move: m, attacker, defender });
+        } else {
+          this.onEvent('block', { contact, move: m, attacker, defender });
+        }
       } else {
+        // Read before the hit lands: hurt() clears their move, so anything
+        // asked about what they were doing afterwards gets a null and a
+        // counter-hit looks like an ordinary one.
+        const counter = defender.state === STATE.ATTACK && defender.move
+          ? (defender.moveFrame >= defender.move.startup + defender.move.active
+            ? 'recovery' : 'startup')
+          : null;
         defender.hurt(m.damage, m.hitstun, m.knockback, m.lift);
         attacker.comboCount++;
         this.hitstop = Math.min(16, 6 + Math.round(m.damage / 12));
         if (!defender.alive) this.slowmo = 110;
-        this.onEvent('hit', { contact, move: m, attacker, defender, ko: !defender.alive });
+        this.onEvent('hit', { contact, move: m, attacker, defender, counter, ko: !defender.alive });
       }
     }
   }
