@@ -21,9 +21,27 @@ import { leadingCorner } from '../render/rig.js';
  * @param weight 0 light and quick, 1 heavy and planted. Scales how far the
  *               body travels on every idle breath and every recoil.
  */
-export function stance({ armed = true, weight = 0.5 } = {}) {
+export function stance(rig, { armed = true, weight = 0.5 } = {}) {
   const w = 0.7 + weight * 0.6; // heavier characters move through more distance
   const q = 1.25 - weight * 0.5; // ...and lighter ones move through it faster
+
+  /**
+   * A fighting stance, rather than the pose the character was drawn in.
+   *
+   * The A-pose renders stand with both arms out at forty degrees, which is
+   * what makes a limb cuttable -- but two of them standing a body's width
+   * apart read as scarecrows, and their silhouettes overlap long before their
+   * hurtboxes do, so a jab lands somewhere inside the other fighter and cannot
+   * be seen at all.
+   *
+   * `swingOf` already measures the rotation that points each arm at the
+   * opponent, which is exactly the direction a guard wants to travel. A
+   * fraction of it brings the hands up and in without beginning a punch: more
+   * for the lead arm, which carries the guard, less for the rear one, which
+   * stays cocked. Characters with no arms in their rig get zero from swingOf
+   * and are unaffected.
+   */
+  const GUARD = { armL: swingOf(rig, 'armL') * 0.42, armR: swingOf(rig, 'armR') * 0.26 };
 
   return {
     idle(t) {
@@ -33,7 +51,7 @@ export function stance({ armed = true, weight = 0.5 } = {}) {
         torso: { rot: s * 0.015, y: b * 2.2 * w },
         hips: { rot: -s * 0.012 },
         head: { rot: -s * 0.028 + Math.sin(t * 0.6) * 0.02 },
-        armL: { rot: s * 0.05 + 0.02 }, armR: { rot: -s * 0.055 },
+        armL: { rot: GUARD.armL + s * 0.05 + 0.02 }, armR: { rot: GUARD.armR - s * 0.055 },
         legL: { rot: s * 0.01 }, legR: { rot: -s * 0.01 },
       };
     },
@@ -47,7 +65,8 @@ export function stance({ armed = true, weight = 0.5 } = {}) {
         hips: { rot: Math.sin(p) * 0.05 },
         head: { rot: -lean - Math.sin(p * 2) * 0.03 },
         legL: { rot: Math.sin(p) * 0.42 }, legR: { rot: Math.sin(p + Math.PI) * 0.42 },
-        armL: { rot: Math.sin(p + Math.PI) * swing }, armR: { rot: Math.sin(p) * swing },
+        armL: { rot: GUARD.armL + Math.sin(p + Math.PI) * swing },
+        armR: { rot: GUARD.armR + Math.sin(p) * swing },
       };
     },
 

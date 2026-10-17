@@ -34,7 +34,7 @@ export const KIN05 = {
   bodyHeight: 462,
   hurtRadius: 48,
 
-  stance: stance({ armed: false, weight: 0.45 }),
+  stance: stance(RIG, { armed: true, weight: 0.45 }),
 
   moves: {
     light: move(RIG, {
