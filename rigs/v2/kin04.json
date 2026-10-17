@@ -1,15 +1,29 @@
 {
   "name": "kin04new",
   "root": "torso",
-  "ground": [117, 381],
-  "_source": "A-pose half of the two-pose sheet, split with crop.mjs --raw at 55,0 245x402, keyed --local 8 --global 30",
+  "ground": [165, 473],
+  "_source": "A-pose sheet 327x495, keyed --local 10 --global 40, one island. Subject x57..271 y24..473. Re-traced, not translated: this render is 215x450 against the first sheet's 163x379, and not a uniform scale of it (1.19 vertical against 1.32 horizontal), so his arms sit wider and the old outlines do not fit.",
   "parts": [
-    { "name": "legL", "parent": "hips", "z": 0, "poly": [[80,198],[128,198],[130,384],[50,384]], "pivot": [106,206], "limits": { "rot": [-55,55] } },
-    { "name": "legR", "parent": "hips", "z": 0, "poly": [[128,198],[174,198],[178,384],[130,384]], "pivot": [152,206], "limits": { "rot": [-55,55] } },
-    { "name": "hips", "parent": "torso", "z": 1, "poly": [[84,186],[178,186],[178,222],[84,222]], "pivot": [128,196] },
-    { "name": "torso", "parent": null, "z": 2, "poly": [[80,84],[180,84],[186,150],[178,208],[86,208],[74,150]], "pivot": [128,105], "occludedBy": ["armR","armL"] },
-    { "name": "armR", "parent": "torso", "z": 3, "poly": [[76,86],[106,90],[92,140],[76,196],[66,246],[30,246],[38,194],[56,138]], "pivot": [94,98], "limits": { "rot": [-170,170] } },
-    { "name": "armL", "parent": "torso", "z": 3, "poly": [[150,84],[180,86],[196,140],[206,200],[208,236],[178,238],[168,196],[158,140]], "pivot": [164,96], "limits": { "rot": [-170,170] } },
-    { "name": "head", "parent": "torso", "z": 4, "poly": [[54,0],[170,0],[172,60],[150,90],[86,90],[52,56]], "pivot": [120,86] }
+    { "name": "legL", "parent": "hips", "z": 0,
+      "poly": [[112,250],[170,250],[172,478],[82,478]],
+      "pivot": [142,262], "limits": { "rot": [-55,55] } },
+    { "name": "legR", "parent": "hips", "z": 0,
+      "poly": [[170,250],[232,250],[244,478],[172,478]],
+      "pivot": [196,262], "limits": { "rot": [-55,55] } },
+    { "name": "hips", "parent": "torso", "z": 1,
+      "poly": [[118,242],[236,242],[236,290],[118,290]],
+      "pivot": [172,256] },
+    { "name": "torso", "parent": null, "z": 2,
+      "poly": [[112,126],[242,126],[248,190],[238,266],[116,266],[106,190]],
+      "pivot": [168,150], "occludedBy": ["armR","armL"] },
+    { "name": "armR", "parent": "torso", "z": 3,
+      "poly": [[110,134],[138,148],[120,212],[98,262],[86,302],[42,302],[50,254],[78,198]],
+      "pivot": [122,150], "limits": { "rot": [-170,170] } },
+    { "name": "armL", "parent": "torso", "z": 3,
+      "poly": [[222,148],[248,134],[262,200],[276,250],[286,300],[242,302],[232,252],[220,208]],
+      "pivot": [236,150], "limits": { "rot": [-170,170] } },
+    { "name": "head", "parent": "torso", "z": 4,
+      "poly": [[93,18],[220,18],[222,90],[212,136],[120,136],[91,90]],
+      "pivot": [163,132] }
   ]
 }
