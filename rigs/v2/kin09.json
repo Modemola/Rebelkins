@@ -1,0 +1,29 @@
+{
+  "name": "kin09new",
+  "root": "torso",
+  "ground": [166, 462],
+  "_source": "single A-pose sheet 328x489, keyed --local 10 --global 40, one island. Head is an M like KIN 07, but her hair columns fall INSIDE the sleeves, so they are narrower and the sleeves pass outboard of them.",
+  "parts": [
+    { "name": "legL", "parent": "hips", "z": 0,
+      "poly": [[114,252],[170,252],[172,466],[108,466]],
+      "pivot": [142,264], "limits": { "rot": [-55,55] } },
+    { "name": "legR", "parent": "hips", "z": 0,
+      "poly": [[170,252],[228,252],[232,466],[172,466]],
+      "pivot": [194,264], "limits": { "rot": [-55,55] } },
+    { "name": "hips", "parent": "torso", "z": 1,
+      "poly": [[100,190],[210,190],[210,266],[100,266]],
+      "pivot": [168,202] },
+    { "name": "torso", "parent": null, "z": 2,
+      "poly": [[136,108],[210,108],[214,160],[208,206],[134,206],[130,160]],
+      "pivot": [172,128], "occludedBy": ["armR","armL"] },
+    { "name": "armR", "parent": "torso", "z": 3,
+      "poly": [[116,110],[146,120],[132,168],[108,200],[78,240],[38,240],[46,194],[86,148]],
+      "pivot": [136,124], "limits": { "rot": [-170,170] } },
+    { "name": "armL", "parent": "torso", "z": 3,
+      "poly": [[198,120],[224,110],[250,150],[284,196],[294,240],[252,242],[224,200],[206,168]],
+      "pivot": [204,124], "limits": { "rot": [-170,170] } },
+    { "name": "head", "parent": "torso", "z": 4,
+      "poly": [[114,22],[210,22],[210,114],[207,230],[183,232],[181,114],[159,114],[157,232],[133,230],[131,114],[114,114]],
+      "pivot": [164,112] }
+  ]
+}
