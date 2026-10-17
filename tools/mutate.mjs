@@ -296,6 +296,14 @@ const MUTANTS = [
     with: '  mean: { sight: 2, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95 },',
     expect: 'difficulty tiers are in order',
   },
+  {
+    name: 'punches that do not move the arm',
+    why: 'the hitbox rides the limb, so a frozen limb is a move that only pretends to swing',
+    file: 'src/data/kit.js',
+    find: '      [arm]: { rot: -0.26 * swing * a + swing * (1 + power * 0.08) * strike },',
+    with: '      [arm]: { rot: 0 },',
+    expect: 'swings the limb it strikes with',
+  },
 ];
 
 const args = process.argv.slice(2);
