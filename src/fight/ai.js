@@ -29,7 +29,20 @@ const DIFFICULTY = {
   // block:  chance of guarding a given attack -- per attack now, not per frame.
   // punish: chance of taking a recovery window that has been spotted.
   // poise:  how strictly it holds the spacing its own reach wants.
-  calm: { sight: 6, aggression: 0.42, block: 0.45, punish: 0.25, poise: 0.35 },
+  // calm needed easing once every character gained a jab, because punishing
+  // got much stronger across the board. Against an opponent that walks in
+  // mashing, the old dials won 84% of rounds -- too good for the tier a player
+  // picks before they have learned to block.
+  //
+  // `punish` alone is no way to do it: it sits on a cliff here, 0.25 winning
+  // 84% and 0.12 winning 28% with almost nothing between. Easing `sight` as
+  // well, so it spots swings late, lands at 62% and holds its shape, leaving a
+  // masher winning around two rounds in five.
+  //
+  // Worth recording that the gap to the harder tiers widened to about 97%
+  // whichever dials are used, the old ones included. That is the jab, not the
+  // tuning: a tier that punishes well now beats one that does not, decisively.
+  calm: { sight: 4, aggression: 0.42, block: 0.45, punish: 0.22, poise: 0.35 },
   brisk: { sight: 13, aggression: 0.68, block: 0.76, punish: 0.6, poise: 0.7 },
   mean: { sight: 24, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95 },
   // An opponent that does nothing, for measuring against. Zeroing the dials by
