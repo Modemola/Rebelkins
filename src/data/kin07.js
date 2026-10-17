@@ -8,15 +8,15 @@ import { stance, move } from './kit.js';
 
 const RIG = {
   root: 'torso',
-  // the illustration faces screen-left, so the rig mirrors to face right
-  art: -1,
-  ground: [300, 492],
+  ground: [165, 466],
   parts: [
-    { name: 'legR', parent: 'hips', z: 0, rect: [216, 0, 108, 139], pivot: [21, 14], origin: [324, 370], limits: { rot: [-55, 55] } },
-    { name: 'legL', parent: 'hips', z: 0, rect: [326, 0, 104, 138], pivot: [73, 14], origin: [272, 370], limits: { rot: [-55, 55] } },
-    { name: 'hips', parent: 'torso', z: 1, rect: [558, 0, 124, 60], pivot: [60, 16], origin: [288, 328] },
-    { name: 'torso', parent: null, z: 2, rect: [432, 0, 124, 122], pivot: [54, 48], origin: [286, 250] },
-    { name: 'head', parent: 'torso', z: 4, rect: [0, 0, 214, 290], pivot: [100, 140], origin: [286, 204] },
+    { name: 'legR', parent: 'hips', z: 0, rect: [0, 0, 91, 269], pivot: [26, 12], origin: [194, 210], limits: { rot: [-55, 55] } },
+    { name: 'legL', parent: 'hips', z: 0, rect: [93, 0, 103, 266], pivot: [76, 12], origin: [142, 210], limits: { rot: [-55, 55] } },
+    { name: 'hips', parent: 'torso', z: 1, rect: [608, 0, 98, 44], pivot: [50, 12], origin: [168, 200] },
+    { name: 'torso', parent: null, z: 2, rect: [512, 0, 94, 80], pivot: [48, 22], origin: [166, 152] },
+    { name: 'armL', parent: 'torso', z: 3, rect: [332, 0, 72, 131], pivot: [11, 11], origin: [200, 150], limits: { rot: [-170, 170] } },
+    { name: 'armR', parent: 'torso', z: 3, rect: [406, 0, 104, 101], pivot: [78, 11], origin: [130, 190], limits: { rot: [-170, 170] } },
+    { name: 'head', parent: 'torso', z: 4, rect: [198, 0, 132, 183], pivot: [77, 103], origin: [164, 130] },
   ],
 };
 
@@ -26,34 +26,34 @@ export const KIN07 = {
   subtitle: 'rusher',
   atlas: 'assets/atlas/kin07.png',
   rig: RIG,
-  scale: 0.71,
+  scale: 0.6922,
   health: 1000,
   walkSpeed: 190,
   backSpeed: 148,
   jumpVel: 690,
-  bodyHeight: 428,
-  hurtRadius: 58,
+  bodyHeight: 439,
+  hurtRadius: 59,
 
   stance: stance({ armed: false, weight: 0.3 }),
 
   moves: {
     light: move(RIG, {
-      name: 'scuff', label: 'Scuff',
-      startup: 5, active: 3, recovery: 8,
+      name: 'jab', label: 'Jab',
+      startup: 4, active: 3, recovery: 8,
       damage: 44, knockback: 200, lift: 0, drive: 170,
-      strikePart: 'legL', reach: 50, range: 143,
+      strikePart: 'armL', reach: 62, range: 172,
     }),
     heavy: move(RIG, {
       name: 'hammer', label: 'Hammer',
       startup: 11, active: 4, recovery: 18,
       damage: 100, knockback: 470, lift: -120, drive: 90,
-      strikePart: 'legR', reach: 58, range: 132,
+      strikePart: 'armR', reach: 66, range: 123,
     }),
     special: move(RIG, {
       name: 'dash', label: 'Dash',
       startup: 9, active: 7, recovery: 21,
       damage: 90, knockback: 500, lift: -60, drive: 600,
-      strikePart: 'torso', reach: 56, range: 141,
+      strikePart: 'torso', reach: 57, range: 115,
     }),
   },
 };

@@ -8,16 +8,15 @@ import { stance, move } from './kit.js';
 
 const RIG = {
   root: 'torso',
-  // the illustration faces screen-left, so the rig mirrors to face right
-  art: -1,
-  ground: [300, 576],
+  ground: [168, 466],
   parts: [
-    { name: 'legR', parent: 'hips', z: 0, rect: [145, 0, 82, 190], pivot: [27, 12], origin: [328, 398], limits: { rot: [-55, 55] } },
-    { name: 'legL', parent: 'hips', z: 0, rect: [229, 0, 87, 188], pivot: [54, 12], origin: [268, 398], limits: { rot: [-55, 55] } },
-    { name: 'hips', parent: 'torso', z: 1, rect: [537, 0, 121, 62], pivot: [71, 16], origin: [288, 348] },
-    { name: 'torso', parent: null, z: 2, rect: [0, 0, 143, 216], pivot: [76, 70], origin: [290, 248] },
-    { name: 'armR', parent: 'torso', z: 3, rect: [318, 0, 80, 156], pivot: [15, 13], origin: [336, 198], limits: { rot: [-120, 120] } },
-    { name: 'head', parent: 'torso', z: 4, rect: [400, 0, 135, 141], pivot: [74, 135], origin: [308, 178] },
+    { name: 'legR', parent: 'hips', z: 0, rect: [0, 0, 87, 242], pivot: [28, 12], origin: [196, 240], limits: { rot: [-55, 55] } },
+    { name: 'legL', parent: 'hips', z: 0, rect: [89, 0, 96, 240], pivot: [65, 12], origin: [138, 240], limits: { rot: [-55, 55] } },
+    { name: 'hips', parent: 'torso', z: 1, rect: [564, 0, 89, 44], pivot: [58, 12], origin: [168, 232] },
+    { name: 'torso', parent: null, z: 2, rect: [378, 0, 103, 140], pivot: [55, 24], origin: [164, 126] },
+    { name: 'armL', parent: 'torso', z: 3, rect: [187, 0, 95, 167], pivot: [12, 10], origin: [202, 116], limits: { rot: [-170, 170] } },
+    { name: 'armR', parent: 'torso', z: 3, rect: [284, 0, 92, 157], pivot: [81, 0], origin: [120, 116], limits: { rot: [-170, 170] } },
+    { name: 'head', parent: 'torso', z: 4, rect: [483, 0, 79, 78], pivot: [41, 74], origin: [162, 106] },
   ],
 };
 
@@ -27,34 +26,34 @@ export const KIN02 = {
   subtitle: 'counterpuncher',
   atlas: 'assets/atlas/kin02.png',
   rig: RIG,
-  scale: 0.57,
+  scale: 0.7,
   health: 1040,
   walkSpeed: 176,
   backSpeed: 134,
   jumpVel: 660,
-  bodyHeight: 533,
-  hurtRadius: 58,
+  bodyHeight: 434,
+  hurtRadius: 47,
 
   stance: stance({ armed: true, weight: 0.4 }),
 
   moves: {
     light: move(RIG, {
-      name: 'cross', label: 'Cross',
+      name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 8,
       damage: 44, knockback: 210, lift: 0, drive: 160,
-      strikePart: 'armR', reach: 76, range: 126,
+      strikePart: 'armL', reach: 62, range: 198,
     }),
     heavy: move(RIG, {
       name: 'overhand', label: 'Overhand',
       startup: 10, active: 5, recovery: 18,
       damage: 100, knockback: 470, lift: -120, drive: 95,
-      strikePart: 'armR', reach: 68, range: 125,
+      strikePart: 'armR', reach: 55, range: 134,
     }),
     special: move(RIG, {
       name: 'shoulder', label: 'Shoulder',
       startup: 9, active: 6, recovery: 22,
       damage: 88, knockback: 520, lift: -70, drive: 540,
-      strikePart: 'torso', reach: 56, range: 131,
+      strikePart: 'torso', reach: 46, range: 105,
     }),
   },
 };

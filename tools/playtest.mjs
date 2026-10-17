@@ -213,6 +213,39 @@ async function fightChecks() {
     onHit.every((r) => r.outcome === 'hit' && r.adv <= 1),
     `attacker ahead by ${-Math.max(...onHit.map((r) => r.adv))} to ${-Math.min(...onHit.map((r) => r.adv))}`);
 
+  // A move whose striking limb never moves is not a move.
+  //
+  // The hitbox rides the limb, so when a pose animates a leg while strikePart
+  // names an arm, the box sits at rest for the whole swing. It still connects
+  // at close range, which is how such a move passes a range measurement while
+  // being visibly broken -- KIN 06's jab measured 156 units of reach while his
+  // arm did not move at all, because his pose was still the leg pose he had
+  // before he was given arms.
+  //
+  // Comparing against the torso rather than against zero is what makes this
+  // honest: a frozen limb is still carried along by the body, so it travels
+  // some distance either way. What separates a strike from a passenger is
+  // moving further than the body does. Measured, the least a real move leads
+  // by is 26 (KIN 07's charge, where the striking part IS the torso) and the
+  // median is 56; a frozen limb leads by nothing.
+  const frozen = [];
+  for (const id of IDS) {
+    const def = DEFS[id];
+    const rig = rigs[id];
+    for (const [slot, m] of Object.entries(def.moves)) {
+      const solve = (f) => rig.solve(m.pose(f, m), { x: 0, y: 0, scale: def.scale, facing: 1 });
+      const A = solve(0);
+      const B = solve(m.startup + Math.max(0, m.active - 1));
+      const pa = rig.strikePoint(A, m.strikePart, 1);
+      const pb = rig.strikePoint(B, m.strikePart, 1);
+      const limb = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+      const body = Math.hypot(B.torso[4] - A.torso[4], B.torso[5] - A.torso[5]);
+      if (limb - body < 15) frozen.push(`${id} ${slot} (${m.strikePart}) leads by ${(limb - body).toFixed(0)}`);
+    }
+  }
+  check('every move swings the limb it strikes with', frozen.length === 0,
+    frozen.length ? frozen.join(', ') : 'all 30 moves lead the body by 26 or more');
+
   console.log('\nthe opponent');
   /** Walks in and throws its quickest move at every opportunity. */
   class Masher {

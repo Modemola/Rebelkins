@@ -1,25 +1,27 @@
 /**
  * KIN 06 — navy jacket, cyan spikes.
  *
- * His arms are folded across his chest in the source illustration and stay
- * welded to the torso, because separating them meant inventing two thirds of
- * his jacket and that came back a smear. So he fights with legs and body: a
- * kick, a stomp, and a shoulder charge. His guard is free -- those folded arms
- * already read as one.
+ * His arms were folded across his chest in the original illustration and
+ * stayed welded to the torso, so he fought with legs and body: a kick, a
+ * stomp and a shoulder charge. A new A-pose render gave him two arms that
+ * separate, and he now leads with a jab and commits with a haymaker. The
+ * charge is kept -- it was always the best thing he did.
  */
 
 import { phases, seg, easeOut, easeInOut, anticipate, capStun } from './common.js';
-import { swingOf } from './kit.js';
+import { swingOf, move } from './kit.js';
 
 const RIG = {
   root: 'torso',
-  ground: [300, 545],
+  ground: [159, 463],
   parts: [
-    { name: 'legL', parent: 'hips', z: 0, rect: [389, 0, 105, 122], pivot: [71, 10], origin: [268, 434] },
-    { name: 'legR', parent: 'hips', z: 0, rect: [496, 0, 96, 122], pivot: [22, 10], origin: [320, 434] },
-    { name: 'hips', parent: 'torso', z: 1, rect: [594, 0, 104, 76], pivot: [50, 16], origin: [296, 386] },
-    { name: 'torso', parent: null, z: 2, rect: [217, 0, 170, 182], pivot: [84, 62], origin: [304, 300] },
-    { name: 'head', parent: 'torso', z: 4, rect: [0, 0, 215, 190], pivot: [127, 182], origin: [300, 240] },
+    { name: 'legR', parent: 'hips', z: 0, rect: [0, 0, 83, 205], pivot: [19, 10], origin: [185, 269], limits: { rot: [-55, 55] } },
+    { name: 'legL', parent: 'hips', z: 0, rect: [85, 0, 92, 204], pivot: [66, 10], origin: [141, 269], limits: { rot: [-55, 55] } },
+    { name: 'hips', parent: 'torso', z: 1, rect: [593, 0, 93, 44], pivot: [37, 12], origin: [163, 257] },
+    { name: 'torso', parent: null, z: 2, rect: [179, 0, 141, 122], pivot: [56, 30], origin: [159, 181] },
+    { name: 'armR', parent: 'torso', z: 3, rect: [322, 0, 80, 119], pivot: [66, 11], origin: [117, 185], limits: { rot: [-170, 170] } },
+    { name: 'armL', parent: 'torso', z: 3, rect: [534, 0, 57, 109], pivot: [22, -4], origin: [233, 185], limits: { rot: [-170, 170] } },
+    { name: 'head', parent: 'torso', z: 4, rect: [404, 0, 128, 115], pivot: [66, 109], origin: [151, 151] },
   ],
 };
 
@@ -32,13 +34,13 @@ export const KIN06 = {
   subtitle: 'bruiser',
   atlas: 'assets/atlas/kin06.png',
   rig: RIG,
-  scale: 0.60,
+  scale: 0.6941,
   health: 1120,
   walkSpeed: 142,
   backSpeed: 108,
   jumpVel: 600,
-  bodyHeight: 487,
-  hurtRadius: 58,
+  bodyHeight: 421,
+  hurtRadius: 50,
 
   stance: {
     idle(t) {
@@ -100,43 +102,26 @@ export const KIN06 = {
   },
 
   moves: {
-    light: capStun({
-      name: 'kick', label: 'Low Kick',
-      startup: 6, active: 4, recovery: 11,
-      damage: 54, hitstun: 15, blockstun: 9,
+    light: move(RIG, {
+      name: 'jab', label: 'Jab',
+      startup: 5, active: 3, recovery: 10,
+      damage: 50, hitstun: 15, blockstun: 9,
       knockback: 250, lift: 0, drive: 130,
-      strikePart: 'legL', reach: 108, range: 130,
-      pose(f, m) {
-        const { wind, strike } = phases(f, m);
-        return {
-          torso: { rot: -0.08 * wind + 0.16 * strike, x: -8 * strike },
-          hips: { rot: 0.06 * wind - 0.22 * strike }, head: { rot: -0.10 * strike },
-          legL: { rot: -0.22 * SWING.legL * wind + SWING.legL * strike },
-          legR: { rot: 0.08 * wind - 0.10 * strike },
-        };
-      },
+      strikePart: 'armL', reach: 60, range: 190,
     }),
-    heavy: capStun({
-      name: 'stomp', label: 'Stomp',
+    heavy: move(RIG, {
+      name: 'haymaker', label: 'Haymaker',
       startup: 12, active: 4, recovery: 20,
       damage: 115, hitstun: 24, blockstun: 14,
-      knockback: 300, lift: -260, drive: 40,
-      strikePart: 'legR', reach: 66, range: 146,
-      pose(f, m) {
-        const { wind, strike } = phases(f, m);
-        return {
-          torso: { rot: -0.06 * anticipate(wind) + 0.12 * strike, y: -16 * anticipate(wind) + 28 * strike },
-          hips: { rot: 0.05 * strike }, head: { rot: -0.10 * wind + 0.18 * strike },
-          legR: { rot: -0.60 * anticipate(wind) + 0.78 * strike }, legL: { rot: 0.12 * strike },
-        };
-      },
+      knockback: 480, lift: -130, drive: 90,
+      strikePart: 'armR', reach: 66, range: 121,
     }),
     special: capStun({
       name: 'charge', label: 'Charge',
       startup: 11, active: 8, recovery: 24,
       damage: 102, hitstun: 26, blockstun: 16,
       knockback: 620, lift: -140, drive: 640,
-      strikePart: 'torso', reach: 64, range: 141,
+      strikePart: 'torso', reach: 55, range: 141,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {

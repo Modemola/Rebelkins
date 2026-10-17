@@ -130,7 +130,7 @@ export const KIN08 = {
       startup: 10, active: 4, recovery: 18,
       damage: 98, hitstun: 22, blockstun: 13,
       knockback: 460, lift: -120, drive: 90,
-      strikePart: 'armL', reach: 64, range: 185,
+      strikePart: 'armL', reach: 64, range: 184,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
