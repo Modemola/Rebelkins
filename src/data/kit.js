@@ -50,6 +50,27 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
    * as scarecrows rather than boxers.
    */
   const GUARD = guardOf(rig);
+  /**
+   * Where an articulated rig's elbows and knees sit in each stance.
+   *
+   * A guard is mostly elbow. With the arms as single planks the best the
+   * stance could do was rotate them inward a little, which is why these two
+   * stood there like scarecrows between exchanges -- and the stance is what
+   * you are looking at for most of a round. Returns nothing on a rig that has
+   * no elbows, so the un-articulated characters are unaffected.
+   */
+  const joints = (armFold, kneeBend) => {
+    const out = {};
+    for (const [upper, f] of [['armL', armFold[0]], ['armR', armFold[1]]]) {
+      const lower = lowerOf(rig, upper);
+      if (lower) out[lower] = { rot: FOLD * f };
+    }
+    for (const [upper, b] of [['legL', kneeBend[0]], ['legR', kneeBend[1]]]) {
+      const lower = lowerOf(rig, upper);
+      if (lower) out[lower] = { rot: KNEE_FOLD * b };
+    }
+    return out;
+  };
 
   return {
     idle(t) {
@@ -61,6 +82,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
         head: { rot: -s * 0.028 + Math.sin(t * 0.6) * 0.02 },
         armL: { rot: GUARD.armL + s * 0.05 + 0.02 }, armR: { rot: GUARD.armR - s * 0.055 },
         legL: { rot: s * 0.01 }, legR: { rot: -s * 0.01 },
+        ...joints([0.74 + s * 0.03, 0.80 - s * 0.03], [0.17 + b * 0.02, 0.15 - b * 0.02]),
       };
     },
 
@@ -75,6 +97,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
         legL: { rot: Math.sin(p) * 0.42 }, legR: { rot: Math.sin(p + Math.PI) * 0.42 },
         armL: { rot: GUARD.armL + Math.sin(p + Math.PI) * swing },
         armR: { rot: GUARD.armR + Math.sin(p) * swing },
+        ...joints([0.70, 0.76], [0.26 + Math.sin(p) * 0.22, 0.26 + Math.sin(p + Math.PI) * 0.22]),
       };
     },
 
@@ -83,6 +106,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
         torso: { rot: 0.12, y: 30 * w }, hips: { rot: -0.08, y: 4 }, head: { rot: 0.16 },
         armL: { rot: -0.35 }, armR: { rot: 0.30 },
         legL: { rot: 0.46 }, legR: { rot: -0.50 },
+        ...joints([0.86, 0.90], [0.62, 0.66]),
       };
     },
 
@@ -92,6 +116,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
         torso: { rot: -0.06 * rise }, hips: { rot: 0.10 * rise }, head: { rot: -0.10 * rise },
         armL: { rot: -0.55 * rise - 0.2 }, armR: { rot: 0.45 * rise + 0.2 },
         legL: { rot: -0.34 - 0.3 * rise }, legR: { rot: 0.42 + 0.2 * rise },
+        ...joints([0.42, 0.46], [0.30 + 0.34 * rise, 0.22 + 0.20 * rise]),
       };
     },
 
@@ -104,6 +129,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
           torso: { rot: 0.14 + j, y: 6 }, hips: { rot: -0.06 }, head: { rot: 0.15 },
           armL: { rot: -1.05 + j * 2 }, armR: { rot: 0.95 - j * 2 },
           legL: { rot: 0.14 }, legR: { rot: -0.16 },
+          ...joints([1.06 + j, 1.02 - j], [0.34, 0.30]),
         }
         : {
           torso: { rot: 0.24 + j, y: 14 }, hips: { rot: -0.14, y: 4 }, head: { rot: 0.22 },
@@ -119,6 +145,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
         hips: { rot: -0.14 * k }, head: { rot: 0.48 * k + shiver * 2 },
         armL: { rot: 0.55 * k }, armR: { rot: -0.70 * k },
         legL: { rot: 0.26 * k }, legR: { rot: -0.20 * k },
+        ...joints([0.74 - 0.40 * k, 0.80 - 0.46 * k], [0.17 + 0.30 * k, 0.15 + 0.22 * k]),
       };
     },
 
@@ -129,6 +156,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
         hips: { rot: -0.30 * k }, head: { rot: 0.70 * k },
         armL: { rot: 1.0 * k }, armR: { rot: -0.9 * k },
         legL: { rot: -0.6 * k }, legR: { rot: 0.5 * k },
+        ...joints([0.74 - 0.62 * k, 0.80 - 0.68 * k], [0.17 + 0.52 * k, 0.15 + 0.44 * k]),
       };
     },
   };
@@ -149,7 +177,16 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
 export function swingOf(rig, partName) {
   const p = rig.parts.find((q) => q.name === partName);
   if (!p) return 0;
-  const [fx, fy] = leadingCorner(p);
+  // On an articulated rig the far point of an arm is the hand, which hangs off
+  // the forearm, which hangs off this. Measuring to this part's own corner
+  // instead points the upper arm at the opponent and leaves the hand pointing
+  // somewhere above it -- which is exactly what the first articulated build
+  // did, and it read as the arm aiming over the other fighter's head.
+  const lower = lowerOf(rig, partName);
+  const tip = lower ? rig.parts.find((q) => q.name === lower) : null;
+  const [cx, cy] = leadingCorner(tip || p);
+  const fx = tip ? tip.origin[0] + cx - p.origin[0] : cx;
+  const fy = tip ? tip.origin[1] + cy - p.origin[1] : cy;
   // Poses live in the artwork's own space, which the mirror in solve() turns
   // to face the opponent; `art` says which way that space points.
   const forward = (rig.art ?? 1) > 0 ? 0 : Math.PI;
@@ -188,15 +225,78 @@ export function leadLeg(rig) {
   return (u.origin[0] - gx) * dir >= (v.origin[0] - gx) * dir ? u.name : v.name;
 }
 
+/**
+ * The lower half of a limb, where a rig has been cut at the elbow or the knee.
+ *
+ * Returns null for the seven-part rigs that have not been articulated yet, and
+ * every pose below falls back to swinging the whole limb from one joint when
+ * it does -- which is what those characters have always done.
+ *
+ * A rotation of zero on the lower half leaves the limb in the shape it was
+ * drawn in, which is near enough straight on an A-pose render. That is the
+ * reference every bend below works from, so there is no separate "straighten"
+ * angle to carry around.
+ */
+export function lowerOf(rig, part) {
+  const name = { armL: 'foreL', armR: 'foreR', legL: 'shinL', legR: 'shinR' }[part];
+  return name && rig.parts.some((q) => q.name === name) ? name : null;
+}
+
+/**
+ * The limb a strike part belongs to.
+ *
+ * A punch lands with the hand and a kick with the shin, so `strikePart` names
+ * those -- but the pose is a property of the limb, not of the end of it. Until
+ * this existed, `move` branched on `strikePart` directly, and the first
+ * articulated character, whose moves strike with `foreL` and `foreR`, matched
+ * neither the arm branch nor the leg branch and fell through to the body
+ * charge. All three of his attacks played a shoulder barge with the arms
+ * tucked, which is why nothing he did looked remotely like a punch.
+ */
+export function limbOf(part) {
+  return { foreL: 'armL', foreR: 'armR', shinL: 'legL', shinR: 'legR' }[part] || part;
+}
+
+/**
+ * How far an elbow folds, and which way a knee does.
+ *
+ * Signs here are the one thing not measured off the drawing, because what is
+ * being chosen is not an angle but a direction: an elbow folds the hand toward
+ * the shoulder and a knee folds the heel toward the seat, and in a mirrored
+ * rig those are opposite turns. Both were settled by rendering the pose sheet
+ * and looking at it, which is also how they stay honest.
+ */
+const FOLD = -1.75;       // elbow: hand up to the chin
+const KNEE_FOLD = 0.95;   // knee: heel back under the body
+
+/**
+ * Bend both knees by the given amounts, where the rig has knees.
+ *
+ * A step with locked legs reads as a mannequin sliding. The front knee takes
+ * the landing and the back one stays nearer straight to drive.
+ */
+function kneesFor(rig, front, rear, frontBend, rearBend) {
+  const out = {};
+  const f = lowerOf(rig, front);
+  const r = lowerOf(rig, rear);
+  if (f) out[f] = { rot: KNEE_FOLD * frontBend };
+  if (r) out[r] = { rot: KNEE_FOLD * rearBend };
+  return out;
+}
+
 /** A punch: the named arm cocks back, then whips through to full extension. */
 function punchPose(rig, arm, power, swing) {
   const other = arm === 'armL' ? 'armR' : 'armL';
   const guard = guardOf(rig)[other];
-  const lead = leadLeg(rig);
-  const rear = lead === 'legL' ? 'legR' : 'legL';
+  const elbow = lowerOf(rig, arm);
+  const otherElbow = lowerOf(rig, other);
+  const front = leadLeg(rig);
+  const rear = front === 'legL' ? 'legR' : 'legL';
   return (f, m) => {
     const { wind, strike } = phases(f, m);
     const a = anticipate(wind);
+    const lead = Math.pow(strike, 0.55);
+    const snap = Math.pow(strike, 1.9);
     return {
       // Pose x is measured toward the opponent -- the same direction `facing`
       // points -- so a punch that travels has to be positive here. All three
@@ -217,15 +317,27 @@ function punchPose(rig, arm, power, swing) {
       torso: { rot: 0.14 * a - 0.40 * power * strike, x: -7 * a + (15 + 13 * power) * strike, y: (13 + 9 * power) * strike },
       hips: { rot: 0.09 * a - 0.28 * strike },
       head: { rot: 0.09 * wind - 0.14 * strike },
-      [arm]: { rot: -0.30 * swing * a + swing * (1 + power * 0.08) * strike },
+      // A punch is a chain, not a rotation. The shoulder goes first and the
+      // elbow finishes the shot: `lead` is ahead of `strike` early, `snap` is
+      // behind it and then catches up, so the upper arm is already round when
+      // the forearm whips out. That ordering is the whole difference between a
+      // punch and a limb sweeping an arc, and it needs an elbow to exist --
+      // the fallback below is what every un-articulated rig still does.
+      [arm]: { rot: -0.30 * swing * a + swing * (1 + power * 0.08) * (elbow ? lead : strike) },
+      // Folded at the chin through the wind-up, straight at full extension.
+      ...(elbow ? { [elbow]: { rot: FOLD * (1 - snap) * (1 + 0.3 * a) } } : {}),
       // Back to the chin, not back to the A-pose: the off arm stays at its
       // guard through the wind-up and tucks a little further as the shoulder
-      // comes round.
+      // comes round, and its own elbow stays folded throughout -- that is what
+      // a guard is.
       [other]: { rot: guard * (1 + 0.34 * a + 0.52 * strike) },
+      ...(otherElbow ? { [otherElbow]: { rot: FOLD * 0.78 } } : {}),
       // Off the back foot, over the front one. Negative swings a hanging limb
       // toward the opponent, so the lead leg steps in and the rear one drives.
-      [lead]: { rot: 0.20 * a - (0.26 + 0.10 * power) * strike },
+      [front]: { rot: 0.20 * a - (0.26 + 0.10 * power) * strike },
       [rear]: { rot: -0.15 * a + (0.30 + 0.12 * power) * strike },
+      // Knees take the step rather than staying locked straight.
+      ...kneesFor(rig, front, rear, 0.30 * strike, 0.16 * a + 0.10 * strike),
     };
   };
 }
@@ -286,10 +398,10 @@ function chargePose(rig, power) {
  */
 export function move(rig, spec) {
   const power = Math.min(1, spec.damage / 120);
-  const part = spec.strikePart;
-  const swing = swingOf(rig, part);
-  const pose = part === 'armL' || part === 'armR' ? punchPose(rig, part, power, swing)
-    : part === 'legL' || part === 'legR' ? kickPose(rig, part, power, swing)
+  const limb = limbOf(spec.strikePart);
+  const swing = swingOf(rig, limb);
+  const pose = limb === 'armL' || limb === 'armR' ? punchPose(rig, limb, power, swing)
+    : limb === 'legL' || limb === 'legR' ? kickPose(rig, limb, power, swing)
       : chargePose(rig, power);
   // capStun last, so a hitstun written by hand in a character file is capped
   // along with the one derived from weight here.

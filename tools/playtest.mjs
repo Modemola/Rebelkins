@@ -276,6 +276,50 @@ async function fightChecks() {
     const b = mirrored[part.name];
     return Math.abs(a[4] + b[4]) < 1e-6 && Math.abs(a[5] - b[5]) < 1e-6;
   });
+  // A move has to drive the part it hits with.
+  //
+  // `move` picks the pose from the limb, and anything it does not recognise
+  // falls through to the body charge. KIN 01's hitboxes moved onto his hands
+  // when he was given elbows, and every one of his three attacks silently
+  // became a shoulder barge with the arms tucked in -- it ran, it connected,
+  // it passed every check here, and it looked nothing like a punch. A pose
+  // that never names the part carrying the hitbox is that bug.
+  const undriven = [];
+  for (const id of IDS) {
+    for (const [slot, m] of Object.entries(DEFS[id].moves)) {
+      const named = new Set();
+      for (let f = 0; f < totalFrames(m); f++) for (const k of Object.keys(m.pose(f, m) || {})) named.add(k);
+      if (!named.has(m.strikePart)) undriven.push(`${id} ${slot} hits with ${m.strikePart}, pose drives ${[...named].join('/')}`);
+    }
+  }
+  check('every move drives the part it strikes with', undriven.length === 0,
+    undriven.length ? undriven.slice(0, 3).join('; ') : 'all 30 poses name their own strike part');
+
+  // And where a limb has a joint, the move has to use it.
+  //
+  // This is the difference the whole rebuild is about: an arm cut at the elbow
+  // still reads as a plank if the pose only ever rotates it from the shoulder.
+  // Measured as how far the lower half turns against the upper across the
+  // move -- a real punch chambers and extends, which is better than a radian.
+  const stiff = [];
+  for (const id of IDS) {
+    const def = DEFS[id];
+    for (const [slot, m] of Object.entries(def.moves)) {
+      const lower = { foreL: 'foreL', foreR: 'foreR', shinL: 'shinL', shinR: 'shinR' }[m.strikePart];
+      if (!lower) continue;                       // charges and un-articulated rigs
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let f = 0; f < totalFrames(m); f++) {
+        const r = (m.pose(f, m)[lower] || {}).rot || 0;
+        lo = Math.min(lo, r); hi = Math.max(hi, r);
+      }
+      if (hi - lo < 1.0) stiff.push(`${id} ${slot} ${lower} turns ${(hi - lo).toFixed(2)}`);
+    }
+  }
+  check('an articulated limb bends when it strikes', stiff.length === 0,
+    stiff.length ? stiff.join(', ')
+      : `${IDS.filter((id) => DEFS[id].rig.parts.some((p) => p.name === 'foreL')).length} of 10 rigs have elbows, and every move on them uses one`);
+
   // A pose translating a part that hangs off another part does not move the
   // fighter -- it pulls that part away from its parent, and the art only
   // covers the join while the two polygons still overlap. Measured on these
