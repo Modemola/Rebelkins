@@ -146,8 +146,22 @@ button[aria-pressed="true"] span { color: rgba(26,21,5,.72); }
 #startBtn:hover { background: #ff6b85; border-color: #ff6b85; }
 .mute { font-size: 11px; letter-spacing: .16em; padding: 9px; color: var(--dim); }
 .mute[aria-pressed="true"] { background: #191520; border-color: var(--line); color: var(--hot); }
-.keys { color: var(--dim); font-size: 10.5px; line-height: 1.9; margin-top: 2px; }
-.keys b { color: var(--fg); }
+/* The controls sit above the roster, not under the FIGHT button, because the
+   select screen is taller than a laptop window and anything at the bottom of
+   it is below the fold -- which is how the one thing a new player has to read
+   ended up being the one thing they could not see. */
+.keys { display: flex; flex-direction: column; gap: 6px; }
+.krow {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 4px 5px; color: var(--dim); font-size: 10.5px;
+}
+.krow b { color: var(--coat); letter-spacing: .14em; margin-right: 3px; }
+.krow span { margin-right: 7px; }
+.krow kbd {
+  font: inherit; color: var(--fg); background: #1b1725; border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 4px; min-width: 17px; padding: 2px 4px; text-align: center;
+}
+.krow kbd.wide { letter-spacing: .08em; }
 
 #debug {
   position: absolute; left: 14px; bottom: 14px; color: var(--dim);

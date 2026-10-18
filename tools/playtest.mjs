@@ -559,6 +559,14 @@ try {
   await shot('1-start');
 
   console.log('\nmovement');
+  // Quiet the CPU first. These checks are about what the player's own inputs
+  // do, and a live opponent lands hits during them: a jump pressed in hitstun
+  // is refused and the buffered press is spent, so the fighter never leaves
+  // the floor. That went red about one run in four, and twice I took it for
+  // something else -- once for a mutant being caught, once for a flake I
+  // "fixed" by sampling the jump's peak instead of one frame, which measured
+  // the same nothing more carefully.
+  await page.evaluate(() => { window.__REBELKIN__.ai.set('still'); });
   const x0 = (await state()).a.x;
   await page.keyboard.down('KeyD');
   await page.waitForTimeout(500);
@@ -567,11 +575,9 @@ try {
   s = await state();
   check('walking moves the fighter', Math.abs(s.a.x - x0) > 30, `${x0} -> ${s.a.x}`);
 
-  // Sampled at the peak rather than at one arbitrary moment after the key.
-  // Reading it 140ms later measured whatever the browser happened to be doing
-  // then: healthy runs came back anywhere from -61 to 0, so the check went red
-  // on working code twice, once in the middle of a mutation run where it was
-  // mistaken for a mutant being caught.
+  // Sampled at the peak rather than at one arbitrary moment after the key,
+  // which is a better measurement but was not what made this flake: the
+  // opponent was. With the CPU quiet, three consecutive runs all read -103.
   await page.keyboard.press('KeyW');
   let apex = 0;
   for (let i = 0; i < 24; i++) {
@@ -585,9 +591,9 @@ try {
   check('jump lands', s.a.y === 0, `y ${s.a.y}`);
 
   console.log('\nattacks connect');
-  // Stop the CPU guarding for this check: blocked chip damage is clamped so it
-  // can never finish anyone, so a guarded trade proves nothing about hitting.
-  await page.evaluate(() => { window.__REBELKIN__.ai.set('still'); });
+  // The CPU is already standing still from the movement checks above, which is
+  // what this needs too: blocked chip damage is clamped so it can never finish
+  // anyone, so a guarded trade proves nothing about hitting.
   const hpBefore = (await state()).b.hp;
   let landed = false;
   for (let i = 0; i < 26 && !landed; i++) {

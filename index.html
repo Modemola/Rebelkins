@@ -37,6 +37,18 @@
       <h1>REBELKIN</h1>
       <p class="tag">Ten characters, each rigged from a single illustration.</p>
 
+      <div class="keys">
+        <div class="krow"><b>P1</b>
+          <kbd>A</kbd><kbd>D</kbd><span>move</span><kbd>W</kbd><span>jump</span><kbd>S</kbd><span>crouch</span>
+          <kbd>J</kbd><span>light</span><kbd>K</kbd><span>heavy</span><kbd>L</kbd><span>special</span>
+          <kbd class="wide">SPACE</kbd><span>guard</span>
+        </div>
+        <div class="krow" id="p2keys" hidden><b>P2</b>
+          <kbd>&larr;</kbd><kbd>&rarr;</kbd><span>move</span><kbd>&uarr;</kbd><span>jump</span><kbd>&darr;</kbd><span>crouch</span>
+          <kbd>,</kbd><span>light</span><kbd>.</kbd><span>heavy</span><kbd>/</kbd><span>special</span>
+          <kbd class="wide">RSHIFT</kbd><span>guard</span>
+        </div>
+      </div>
       <div class="roster" role="group" aria-label="Fighters">
         <div class="side">
           <span class="who" id="whoA">PLAYER 1</span>
@@ -74,10 +86,6 @@
       </div>
       <button id="startBtn">FIGHT</button>
       <button id="muteBtn" class="mute" aria-pressed="false">SOUND ON</button>
-      <div class="keys">
-        <div><b>P1</b> A/D move &middot; W jump &middot; S crouch &middot; J light &middot; K heavy &middot; L special &middot; SPACE guard</div>
-        <div id="p2keys" hidden><b>P2</b> &larr;/&rarr; move &middot; &uarr; jump &middot; &darr; crouch &middot; , light &middot; . heavy &middot; / special &middot; RSHIFT guard</div>
-      </div>
     </div>
   </div>
 
