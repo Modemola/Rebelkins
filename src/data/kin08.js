@@ -24,7 +24,7 @@
  * is anyway -- a charge driven by the body rather than a limb.
  */
 
-import { phases, seg, easeOut, easeInOut } from './common.js';
+import { seg, easeOut, easeInOut } from './common.js';
 import { move } from './kit.js';
 
 const RIG = {
@@ -129,21 +129,21 @@ export const KIN08 = {
       startup: 4, active: 3, recovery: 9,
       damage: 42, hitstun: 14, blockstun: 8,
       knockback: 210, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 46, range: 170,
+      strikePart: 'armL', reach: 46, range: 184,
     }),
     heavy: move(RIG, {
       name: 'teep', label: 'Teep',
       startup: 10, active: 4, recovery: 18,
       damage: 98, hitstun: 22, blockstun: 13,
       knockback: 460, lift: -120, drive: 90,
-      strikePart: 'legR', reach: 55, range: 186,
+      strikePart: 'legR', reach: 55, range: 201,
     }),
     special: move(RIG, {
       name: 'runner', label: 'Runner',
       startup: 9, active: 7, recovery: 22,
       damage: 86, hitstun: 24, blockstun: 15,
       knockback: 540, lift: -80, drive: 560,
-      strikePart: 'torso', reach: 56, range: 135,
+      strikePart: 'torso', reach: 56, range: 177,
     }),
   },
 };

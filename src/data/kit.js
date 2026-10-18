@@ -40,8 +40,16 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
    * for the lead arm, which carries the guard, less for the rear one, which
    * stays cocked. Characters with no arms in their rig get zero from swingOf
    * and are unaffected.
+   *
+   * `guardOf` is shared with the move poses below, and it has to be: a pose is
+   * absolute, not a delta, so a move that names an arm overwrites whatever the
+   * stance had it doing. Every move used to set its off arm from a small fixed
+   * number, which on these illustrations means the forty-degree A-pose they
+   * were drawn in -- so both fighters' spare arms sprang back out to the sides
+   * the instant anybody threw anything, which is most of why the fights read
+   * as scarecrows rather than boxers.
    */
-  const GUARD = { armL: swingOf(rig, 'armL') * 0.42, armR: swingOf(rig, 'armR') * 0.26 };
+  const GUARD = guardOf(rig);
 
   return {
     idle(t) {
@@ -151,50 +159,114 @@ export function swingOf(rig, partName) {
   return turn;
 }
 
+/**
+ * The guard both the stance and every move pose hold the spare arm in.
+ *
+ * A fraction of the swing that would point the arm at the opponent, which is
+ * the direction a guard travels in. Shared so that starting a move cannot
+ * undo it.
+ */
+export function guardOf(rig) {
+  return { armL: swingOf(rig, 'armL') * 0.42, armR: swingOf(rig, 'armR') * 0.26 };
+}
+
+/**
+ * Which leg is the near one.
+ *
+ * A punch is thrown off the back foot and landed over the front one, so the
+ * poses need to know which is which. The A-pose renders put one foot nearer
+ * the camera-right edge than the other and the cast does not agree on which,
+ * so it is read off the rig: the leg whose hip sits further toward the side
+ * the character faces is the lead.
+ */
+export function leadLeg(rig) {
+  const gx = rig.ground[0];
+  const dir = (rig.art ?? 1) > 0 ? 1 : -1;
+  const legs = ['legL', 'legR'].map((n) => rig.parts.find((q) => q.name === n)).filter(Boolean);
+  if (legs.length < 2) return legs.length ? legs[0].name : 'legL';
+  const [u, v] = legs;
+  return (u.origin[0] - gx) * dir >= (v.origin[0] - gx) * dir ? u.name : v.name;
+}
+
 /** A punch: the named arm cocks back, then whips through to full extension. */
-function punchPose(arm, power, swing) {
+function punchPose(rig, arm, power, swing) {
   const other = arm === 'armL' ? 'armR' : 'armL';
+  const guard = guardOf(rig)[other];
+  const lead = leadLeg(rig);
+  const rear = lead === 'legL' ? 'legR' : 'legL';
   return (f, m) => {
     const { wind, strike } = phases(f, m);
     const a = anticipate(wind);
     return {
-      torso: { rot: 0.10 * a - 0.34 * power * strike, x: -10 * strike, y: 2 * strike },
-      hips: { rot: -0.08 * strike },
-      head: { rot: 0.07 * wind - 0.11 * strike },
-      [arm]: { rot: -0.26 * swing * a + swing * (1 + power * 0.08) * strike },
-      [other]: { rot: 0.3 * swing * wind - 0.4 * swing * strike },
-      legL: { rot: -0.16 * strike }, legR: { rot: 0.20 * strike },
+      // Pose x is measured toward the opponent -- the same direction `facing`
+      // points -- so a punch that travels has to be positive here. All three
+      // of these generators were negative, which is a lean away from the
+      // person being hit, on the frame the hit lands.
+      torso: { rot: 0.14 * a - 0.40 * power * strike, x: -7 * a + (15 + 13 * power) * strike, y: 2 * strike },
+      // A rigid cut-out leg swings its foot up in an arc, so a lunge this wide
+      // takes the back foot off the floor unless the hips come down with it:
+      // L*(1-cos t) at these angles is 14 to 20 source pixels, which is what
+      // this is. A real lunge sits down into the stance anyway.
+      hips: { rot: 0.09 * a - 0.28 * strike, x: (5 + 7 * power) * strike, y: (11 + 9 * power) * strike },
+      head: { rot: 0.09 * wind - 0.14 * strike },
+      [arm]: { rot: -0.30 * swing * a + swing * (1 + power * 0.08) * strike },
+      // Back to the chin, not back to the A-pose: the off arm stays at its
+      // guard through the wind-up and tucks a little further as the shoulder
+      // comes round.
+      [other]: { rot: guard * (1 + 0.34 * a + 0.52 * strike) },
+      // Off the back foot, over the front one. Negative swings a hanging limb
+      // toward the opponent, so the lead leg steps in and the rear one drives.
+      [lead]: { rot: 0.20 * a - (0.26 + 0.10 * power) * strike },
+      [rear]: { rot: -0.15 * a + (0.30 + 0.12 * power) * strike },
     };
   };
 }
 
 /** A kick: the named leg loads under the body, then extends. */
-function kickPose(leg, power, swing) {
+function kickPose(rig, leg, power, swing) {
   const other = leg === 'legL' ? 'legR' : 'legL';
+  const guard = guardOf(rig);
   return (f, m) => {
     const { wind, strike } = phases(f, m);
     const a = anticipate(wind);
     return {
-      torso: { rot: -0.14 * a + 0.24 * power * strike, x: -8 * strike, y: -6 * strike },
-      hips: { rot: 0.14 * a - 0.30 * strike, y: 6 * strike },
-      head: { rot: -0.08 * wind + 0.13 * strike },
+      torso: { rot: -0.16 * a + 0.30 * power * strike, x: -6 * a + (12 + 10 * power) * strike, y: -6 * strike },
+      hips: { rot: 0.18 * a - 0.34 * strike, x: (6 + 6 * power) * strike, y: 12 * strike },
+      head: { rot: -0.09 * wind + 0.15 * strike },
       [leg]: { rot: -0.22 * swing * a + swing * (0.92 + power * 0.08) * strike },
-      [other]: { rot: 0.16 * swing * strike },
-      armL: { rot: 0.35 * strike }, armR: { rot: -0.45 * strike },
+      // The standing leg takes the weight. It used to be driven off the kicking
+      // leg's own swing, which turned it the same way the kick was going and
+      // lifted both feet clear of the floor -- every roundhouse read as a
+      // flying kick. It braces back instead, by a fixed small amount.
+      [other]: { rot: 0.12 * strike },
+      // Both hands stay in the guard a kicker would actually keep them in, the
+      // lead one dropping a touch as the hip turns over.
+      armL: { rot: guard.armL * (1 + 0.20 * a - 0.30 * strike) },
+      armR: { rot: guard.armR * (1 + 0.25 * a + 0.55 * strike) },
     };
   };
 }
 
 /** A body charge: the whole character folds back, then drives forward. */
-function chargePose(power) {
+function chargePose(rig, power) {
+  const guard = guardOf(rig);
+  const lead = leadLeg(rig);
+  const rear = lead === 'legL' ? 'legR' : 'legL';
   return (f, m) => {
     const { wind, strike } = phases(f, m);
     return {
-      torso: { rot: 0.34 * wind - (0.48 + power * 0.2) * strike, x: 12 * wind - 38 * strike, y: 6 * strike },
-      hips: { rot: 0.12 * strike },
-      head: { rot: 0.16 * wind - 0.24 * strike },
-      armL: { rot: 0.6 * wind - 1.4 * strike }, armR: { rot: -0.5 * wind + 0.9 * strike },
-      legL: { rot: -0.5 * wind + 0.8 * strike }, legR: { rot: 0.4 * wind - 0.6 * strike },
+      // The strike part of a charge IS the torso, so this translation is the
+      // hitbox as well as the drawing. It used to coil forward 12 and then
+      // withdraw 38 on contact: a shoulder barge delivered by backing away.
+      torso: { rot: 0.34 * wind - (0.52 + power * 0.22) * strike, x: -12 * wind + (34 + 18 * power) * strike, y: 6 * strike },
+      hips: { rot: 0.14 * wind - 0.22 * strike, x: -5 * wind + (14 + 8 * power) * strike, y: 16 * strike },
+      head: { rot: 0.18 * wind - 0.28 * strike },
+      // Tucked in behind the shoulder, from the guard rather than from nothing.
+      armL: { rot: guard.armL * (1 + 0.5 * wind + 1.1 * strike) },
+      armR: { rot: guard.armR * (1 + 0.4 * wind + 0.8 * strike) },
+      // Coil onto the back foot, then run through it.
+      [lead]: { rot: 0.42 * wind - 0.54 * strike },
+      [rear]: { rot: -0.34 * wind + 0.60 * strike },
     };
   };
 }
@@ -208,9 +280,9 @@ export function move(rig, spec) {
   const power = Math.min(1, spec.damage / 120);
   const part = spec.strikePart;
   const swing = swingOf(rig, part);
-  const pose = part === 'armL' || part === 'armR' ? punchPose(part, power, swing)
-    : part === 'legL' || part === 'legR' ? kickPose(part, power, swing)
-      : chargePose(power);
+  const pose = part === 'armL' || part === 'armR' ? punchPose(rig, part, power, swing)
+    : part === 'legL' || part === 'legR' ? kickPose(rig, part, power, swing)
+      : chargePose(rig, power);
   // capStun last, so a hitstun written by hand in a character file is capped
   // along with the one derived from weight here.
   return capStun({

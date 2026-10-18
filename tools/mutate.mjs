@@ -50,11 +50,16 @@ const MUTANTS = [
   },
   {
     name: 'artwork facing ignored',
-    why: 'six of the ten illustrations face screen-left and must be mirrored',
+    why: 'a left-facing illustration has to be mirrored to face the opponent',
     file: 'src/render/rig.js',
     find: '    const flip = place.facing * (this.def.art ?? 1) < 0 ? -1 : 1;',
     with: '    const flip = place.facing < 0 ? -1 : 1;',
-    expect: 'all 30 moves connect',
+    // This used to be caught by the reach check, because six of the cast were
+    // drawn facing screen-left and stopped connecting the moment the flag was
+    // ignored. All ten have been redrawn facing the same way, so that check
+    // cannot see this any more and the mutant would have survived on a healthy
+    // game. The synthetic mirror check in the playtest is what catches it now.
+    expect: 'a left-facing illustration is mirrored',
   },
   {
     name: 'attacker cannot crowd in',

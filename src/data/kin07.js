@@ -41,19 +41,19 @@ export const KIN07 = {
       name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 8,
       damage: 44, knockback: 200, lift: 0, drive: 170,
-      strikePart: 'armL', reach: 62, range: 174,
+      strikePart: 'armL', reach: 62, range: 188,
     }),
     heavy: move(RIG, {
       name: 'hammer', label: 'Hammer',
       startup: 11, active: 4, recovery: 18,
       damage: 100, knockback: 470, lift: -120, drive: 90,
-      strikePart: 'armR', reach: 66, range: 125,
+      strikePart: 'armR', reach: 66, range: 143,
     }),
     special: move(RIG, {
       name: 'dash', label: 'Dash',
       startup: 9, active: 7, recovery: 21,
       damage: 90, knockback: 500, lift: -60, drive: 600,
-      strikePart: 'torso', reach: 57, range: 117,
+      strikePart: 'torso', reach: 57, range: 145,
     }),
   },
 };

@@ -41,19 +41,19 @@ export const KIN01 = {
       name: 'rake', label: 'Rake',
       startup: 5, active: 3, recovery: 10,
       damage: 46, knockback: 220, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 116, range: 228,
+      strikePart: 'armL', reach: 116, range: 242,
     }),
     heavy: move(RIG, {
       name: 'slam', label: 'Slam',
       startup: 11, active: 4, recovery: 19,
       damage: 104, knockback: 480, lift: -130, drive: 90,
-      strikePart: 'armR', reach: 74, range: 120,
+      strikePart: 'armR', reach: 74, range: 139,
     }),
     special: move(RIG, {
       name: 'pounce', label: 'Pounce',
       startup: 10, active: 7, recovery: 23,
       damage: 92, knockback: 540, lift: -90, drive: 520,
-      strikePart: 'armL', reach: 89, range: 216,
+      strikePart: 'armL', reach: 89, range: 234,
     }),
   },
 };

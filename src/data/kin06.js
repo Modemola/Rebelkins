@@ -8,8 +8,8 @@
  * charge is kept -- it was always the best thing he did.
  */
 
-import { phases, seg, easeOut, easeInOut, anticipate, capStun } from './common.js';
-import { swingOf, move } from './kit.js';
+import { seg, easeOut, easeInOut } from './common.js';
+import { move } from './kit.js';
 
 const RIG = {
   root: 'torso',
@@ -26,8 +26,6 @@ const RIG = {
 };
 
 /** Measured, not guessed: how far each limb must turn to point at the opponent. */
-const SWING = { legL: swingOf(RIG, 'legL'), legR: swingOf(RIG, 'legR') };
-
 export const KIN06 = {
   id: 'kin06',
   name: 'KIN 06',
@@ -107,29 +105,26 @@ export const KIN06 = {
       startup: 5, active: 3, recovery: 10,
       damage: 50, hitstun: 15, blockstun: 9,
       knockback: 250, lift: 0, drive: 130,
-      strikePart: 'armL', reach: 60, range: 198,
+      strikePart: 'armL', reach: 60, range: 213,
     }),
     heavy: move(RIG, {
       name: 'haymaker', label: 'Haymaker',
       startup: 12, active: 4, recovery: 20,
       damage: 115, hitstun: 24, blockstun: 14,
       knockback: 480, lift: -130, drive: 90,
-      strikePart: 'armR', reach: 66, range: 127,
+      strikePart: 'armR', reach: 66, range: 148,
     }),
-    special: capStun({
+    // The one move in the cast that still carried its own hand-written pose,
+    // and it had both of the faults the generated ones have just lost: it
+    // withdrew the torso 40 units on the frame of contact, and it named no
+    // arms at all, so he charged with both of them hanging out to the sides.
+    // The generator does this move better than the hand did.
+    special: move(RIG, {
       name: 'charge', label: 'Charge',
       startup: 11, active: 8, recovery: 24,
       damage: 102, hitstun: 26, blockstun: 16,
       knockback: 620, lift: -140, drive: 640,
-      strikePart: 'torso', reach: 55, range: 146,
-      pose(f, m) {
-        const { wind, strike } = phases(f, m);
-        return {
-          torso: { rot: 0.16 * wind - 0.36 * strike, x: 14 * wind - 40 * strike, y: 5 * strike },
-          hips: { rot: 0.10 * strike }, head: { rot: 0.24 * wind - 0.32 * strike },
-          legL: { rot: -0.32 * wind + 0.58 * strike }, legR: { rot: 0.28 * wind - 0.42 * strike },
-        };
-      },
+      strikePart: 'torso', reach: 55, range: 184,
     }),
   },
 };

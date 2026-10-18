@@ -76,16 +76,25 @@ for (const [a, b] of PAIRS) {
     const out = [];
     let grab = 0;
     let label = '';
+    // Taking the first N contacts gets N jabs: a fight opens with pokes, and
+    // the committal moves only come out once somebody has a reason to throw
+    // one. So each kind of contact is taken once before any is taken twice,
+    // which is what makes the sheet show the moveset rather than the opener.
+    // `patience` is how long to hold out for something new before settling.
+    const seen = new Set();
+    let patience = 0;
 
     g.match.onEvent = ((prev) => (kind, data) => {
       prev(kind, data);
       if (out.length + (grab > 0 ? 1 : 0) >= shots) return;
-      if (kind === 'hit' || kind === 'guardBreak') {
-        // two frames after contact: past the hitstop freeze, with the sparks out
-        grab = 2;
-        label = kind === 'guardBreak' ? 'guard break'
-          : `${data.move.label} — ${data.move.damage}${data.counter === 'recovery' ? ' (punish)' : ''}`;
-      }
+      if (kind !== 'hit' && kind !== 'guardBreak') return;
+      const key = kind === 'guardBreak' ? 'guardBreak' : `${data.move.name}:${data.attacker.pad}`;
+      if (seen.has(key) && patience > 0) return;
+      seen.add(key);
+      // two frames after contact: past the hitstop freeze, with the sparks out
+      grab = 2;
+      label = kind === 'guardBreak' ? 'guard break'
+        : `${data.move.label} — ${data.move.damage}${data.counter === 'recovery' ? ' (punish)' : ''}`;
     })(g.match.onEvent);
 
     // P1 is normally the keyboard, and readIntent is module-local, so rather
@@ -105,7 +114,8 @@ for (const [a, b] of PAIRS) {
       setTimeout(() => dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })), 34);
     };
 
-    for (let i = 0; i < 2600 && out.length < shots; i++) {
+    for (let i = 0; i < 3600 && out.length < shots; i++) {
+      patience = i < 2600 ? 1 : 0;   // past this, any contact will do
       const m = g.match;
       if (m && m.phase === 'fight') {
         const it = p1.think(m.a, m.b, i);

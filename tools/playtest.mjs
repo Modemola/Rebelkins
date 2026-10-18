@@ -145,6 +145,7 @@ async function fightChecks() {
   const { Match, PHASE } = await import('../src/fight/match.js');
   const { STATE } = await import('../src/fight/fighter.js');
   const { byId } = await import('../src/data/weapons.js');
+  const { Rig } = await import('../src/render/rig.js');
   const { DEFS, rigs } = await loadCast();
 
   console.log('\nframe advantage');
@@ -254,6 +255,29 @@ async function fightChecks() {
   }
   check('every move swings the limb it strikes with', frozen.length === 0,
     frozen.length ? frozen.join(', ') : 'all 30 moves lead the body by 26 or more');
+
+  // `art` records which way an illustration was drawn facing, so that `facing`
+  // can stay a plain "which way is the opponent" everywhere else. Six of the
+  // original ten faced screen-left and the flag earned its keep every frame.
+  // All ten have since been redrawn facing the same way, so nothing in the
+  // cast sets it any more -- which means the one check that covered it, "all
+  // 30 moves connect", now passes whether the flag is honoured or not.
+  //
+  // Rather than keep a mutant that can no longer fail, or delete a code path
+  // the next left-facing drawing will need, the case is made up: a rig built
+  // from a real one with art flipped must solve to the mirror of it. That is
+  // the whole contract, and it holds with nobody in the cast relying on it.
+  const mirrorRig = new Rig({ ...DEFS.kin01.rig, art: -1 }, null);
+  const plain = rigs.kin01.solve({}, { x: 0, y: 0, scale: 1, facing: 1 });
+  const mirrored = mirrorRig.solve({}, { x: 0, y: 0, scale: 1, facing: 1 });
+  const flipped = DEFS.kin01.rig.parts.every((part) => {
+    const a = plain[part.name];
+    const b = mirrored[part.name];
+    return Math.abs(a[4] + b[4]) < 1e-6 && Math.abs(a[5] - b[5]) < 1e-6;
+  });
+  check('a left-facing illustration is mirrored to face the opponent', flipped,
+    flipped ? `all ${DEFS.kin01.rig.parts.length} parts mirror about the root`
+      : 'art: -1 solved to the same transforms as art: 1');
 
   console.log('\nthe opponent');
   /** Walks in and throws its quickest move at every opportunity. */
