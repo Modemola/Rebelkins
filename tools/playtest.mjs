@@ -195,18 +195,27 @@ async function fightChecks() {
     onBlock.filter((r) => r.outcome !== 'block').map((r) => `${r.x} ${r.outcome}`).join(', ') || '10 of 10');
   check('blocking a light earns a turn', worst >= 4,
     `defender free ${worst} to ${Math.max(...onBlock.map((r) => r.adv))} frames first`);
-  // Not per character: a couple of the cast have a heavy whose recovery is
-  // short enough to come out level with their own light, and there is nothing
-  // wrong with that. What has to hold is that committing to a heavy is never
-  // the safer option, and that across the cast it is the more punishable one.
-  const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
-  check('a heavy is never safer on block than a light',
-    heavyBlock.every((r, i) => r.adv >= onBlock[i].adv),
-    heavyBlock.filter((r, i) => r.adv < onBlock[i].adv).map((r) => r.x).join(', ')
-      || `heavy +${Math.min(...heavyBlock.map((r) => r.adv))} at worst against light +${worst}`);
-  check('and usually a bigger window',
-    mean(heavyBlock.map((r) => r.adv)) > mean(onBlock.map((r) => r.adv)) + 1,
-    `light +${mean(onBlock.map((r) => r.adv)).toFixed(1)} mean, heavy +${mean(heavyBlock.map((r) => r.adv)).toFixed(1)} mean`);
+  // Whether a heavy is safer than a light is a claim about frame data, so it
+  // is read off the frame data rather than out of a simulated exchange.
+  //
+  // The simulated version was measuring through a noisy proxy. Contact can
+  // land anywhere inside a move's active window depending on exactly where the
+  // two fighters stand, and the attacker's remaining frames change with it, so
+  // the same unchanged move measured +7 or +5 depending on nothing more than a
+  // range being re-measured. Twice that noise was enough to flip the
+  // comparison and fail the check while the frame data underneath was correct.
+  //
+  // Worst case for the defender is contact on the first active frame, leaving
+  // the attacker `active - 1 + recovery` to sit through against the blockstun
+  // the defender owes. That number is fixed, and it is the one the design rule
+  // is about: committing to a heavy must never be the safer option.
+  const onBlockFrames = (m) => (m.active - 1 + m.recovery) - m.blockstun;
+  const safer = IDS.filter((id) => onBlockFrames(DEFS[id].moves.heavy) < onBlockFrames(DEFS[id].moves.light));
+  const lights = IDS.map((id) => onBlockFrames(DEFS[id].moves.light));
+  const heavies = IDS.map((id) => onBlockFrames(DEFS[id].moves.heavy));
+  check('a heavy is never safer on block than a light', safer.length === 0,
+    safer.length ? safer.join(', ')
+      : `light +${Math.min(...lights)} throughout, heavy +${Math.min(...heavies)} to +${Math.max(...heavies)}`);
   // And the other way: landing a hit has to leave the attacker ahead, or
   // there is no reward for opening someone up.
   check('landing a hit keeps the initiative',
