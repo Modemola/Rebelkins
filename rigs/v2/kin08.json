@@ -1,0 +1,29 @@
+{
+  "name": "kin08new",
+  "root": "torso",
+  "ground": [232, 479],
+  "_source": "A-pose sheet 490x487 (wider frame than the rest of the set), keyed --local 10 --global 40, one island. Subject x84..380 y9..478. Her coat falls to mid-thigh, so its skirt is cut with the hips and the legs emerge from under it rather than the torso owning the whole garment.",
+  "parts": [
+    { "name": "legL", "parent": "hips", "z": 0,
+      "poly": [[160,296],[232,296],[232,484],[142,484]],
+      "pivot": [190,310], "limits": { "rot": [-55,55] } },
+    { "name": "legR", "parent": "hips", "z": 0,
+      "poly": [[232,296],[308,296],[318,484],[232,484]],
+      "pivot": [274,310], "limits": { "rot": [-55,55] } },
+    { "name": "hips", "parent": "torso", "z": 1,
+      "poly": [[158,232],[316,232],[312,326],[162,326]],
+      "pivot": [236,248] },
+    { "name": "torso", "parent": null, "z": 2,
+      "poly": [[150,80],[320,80],[326,150],[316,252],[156,252],[144,150]],
+      "pivot": [234,120], "occludedBy": ["armR","armL"] },
+    { "name": "armR", "parent": "torso", "z": 3,
+      "poly": [[148,110],[188,130],[162,174],[140,194],[116,210],[78,234],[72,194],[104,170],[126,138]],
+      "pivot": [168,126], "limits": { "rot": [-170,170] } },
+    { "name": "armL", "parent": "torso", "z": 3,
+      "poly": [[286,130],[322,110],[344,138],[366,170],[396,194],[390,234],[350,210],[328,194],[306,174]],
+      "pivot": [300,126], "limits": { "rot": [-170,170] } },
+    { "name": "head", "parent": "torso", "z": 4,
+      "poly": [[190,4],[292,4],[294,56],[286,92],[196,92],[188,56]],
+      "pivot": [238,88] }
+  ]
+}

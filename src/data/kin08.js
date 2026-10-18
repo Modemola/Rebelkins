@@ -1,32 +1,47 @@
 /**
  * KIN 08 — yellow coat, white bob.
  *
- * Her sleeves sat clear of her body in the source illustration, so both arms
- * came away as separate parts. She is the striker: fast jab, committal hook,
- * and a running elbow that crosses space.
+ * Her sleeves sit clear of her body in the A-pose render, so both arms come
+ * away as separate parts. She is the striker: fast jab, committal hook off the
+ * rear arm, and a running elbow that crosses space.
+ *
+ * Her moves were hand-posed against an earlier illustration whose arms sat
+ * quite differently. Those poses did not survive the new art: tuned against
+ * the old geometry they barely moved the limb at all. They are generated from
+ * the frame data now, which reads the swing off whichever drawing is actually
+ * in the atlas.
+ *
+ * Nothing of hers strikes with the rear arm, and that is the drawing's doing.
+ * She stands the widest-shouldered in the cast with the joint-shortest arms:
+ * her rear shoulder sits 64 source pixels behind her centre line against 30 to
+ * 60 for everyone else, and the arm hung on it is 141 long against 120 to 182.
+ * Rotated to point at the opponent, her rear hand therefore arrives 77 source
+ * pixels past her centre -- last in the cast, where the next worst is 85 and
+ * the best 134. A hook thrown with it measured a range of 96 against a closing
+ * distance of 84: it could only land inside a twelve-pixel window, which in
+ * practice meant never. So the hook moved to the lead arm, which is one of the
+ * longest leads in the cast, and the running elbow became what a running elbow
+ * is anyway -- a charge driven by the body rather than a limb.
  */
 
-import { phases, seg, easeOut, easeInOut, anticipate, capStun } from './common.js';
-import { swingOf } from './kit.js';
+import { phases, seg, easeOut, easeInOut } from './common.js';
+import { move } from './kit.js';
 
 const RIG = {
   root: 'torso',
-  // the illustration faces screen-left, so the rig mirrors to face right
-  art: -1,
-  ground: [300, 542],
+  ground: [232, 479],
   parts: [
-    { name: 'legL', parent: 'hips', z: 0, rect: [384, 0, 77, 132], pivot: [59, 12], origin: [252, 418] },
-    { name: 'legR', parent: 'hips', z: 0, rect: [463, 0, 69, 129], pivot: [24, 12], origin: [314, 418] },
-    { name: 'hips', parent: 'torso', z: 1, rect: [796, 0, 105, 76], pivot: [52, 14], origin: [306, 380] },
-    { name: 'torso', parent: null, z: 2, rect: [0, 0, 220, 282], pivot: [114, 110], origin: [300, 250] },
-    { name: 'armL', parent: 'torso', z: 3, rect: [534, 0, 175, 99], pivot: [157, 3], origin: [282, 206] },
-    { name: 'armR', parent: 'torso', z: 3, rect: [711, 0, 83, 87], pivot: [-1, -3], origin: [344, 204] },
-    { name: 'head', parent: 'torso', z: 4, rect: [222, 0, 160, 160], pivot: [76, 144], origin: [306, 178] },
+    { name: 'legL', parent: 'hips', z: 0, rect: [0, 0, 67, 183], pivot: [43, 14], origin: [190, 310], limits: { rot: [-55, 55] } },
+    { name: 'legR', parent: 'hips', z: 0, rect: [69, 0, 73, 181], pivot: [29, 14], origin: [274, 310], limits: { rot: [-55, 55] } },
+    { name: 'hips', parent: 'torso', z: 1, rect: [530, 0, 150, 94], pivot: [76, 16], origin: [236, 248] },
+    { name: 'torso', parent: null, z: 2, rect: [144, 0, 181, 172], pivot: [89, 40], origin: [234, 120] },
+    { name: 'armR', parent: 'torso', z: 3, rect: [327, 0, 104, 102], pivot: [84, 1], origin: [168, 126], limits: { rot: [-170, 170] } },
+    { name: 'armL', parent: 'torso', z: 3, rect: [433, 0, 95, 95], pivot: [14, -3], origin: [300, 126], limits: { rot: [-170, 170] } },
+    { name: 'head', parent: 'torso', z: 4, rect: [682, 0, 91, 83], pivot: [43, 79], origin: [238, 88] },
   ],
 };
 
 /** Measured, not guessed: how far each limb must turn to point at the opponent. */
-const SWING = { armL: swingOf(RIG, 'armL'), armR: swingOf(RIG, 'armR') };
 
 export const KIN08 = {
   id: 'kin08',
@@ -34,13 +49,13 @@ export const KIN08 = {
   subtitle: 'striker',
   atlas: 'assets/atlas/kin08.png',
   rig: RIG,
-  scale: 0.60,
+  scale: 0.6485,
   health: 1000,
   walkSpeed: 170,
   backSpeed: 128,
   jumpVel: 660,
-  bodyHeight: 508,
-  hurtRadius: 54,
+  bodyHeight: 470,
+  hurtRadius: 50,
 
   stance: {
     idle(t) {
@@ -109,57 +124,26 @@ export const KIN08 = {
   },
 
   moves: {
-    light: capStun({
+    light: move(RIG, {
       name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 9,
       damage: 42, hitstun: 14, blockstun: 8,
       knockback: 210, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 50, range: 172,
-      pose(f, m) {
-        const { wind, strike } = phases(f, m);
-        return {
-          torso: { rot: 0.05 * wind - 0.10 * strike, x: -12 * strike },
-          hips: { rot: 0.04 * strike }, head: { rot: 0.06 * wind - 0.05 * strike },
-          armL: { rot: 0.45 * wind - 1.25 * strike }, armR: { rot: -0.25 * wind + 0.35 * strike },
-          legL: { rot: -0.10 * strike }, legR: { rot: 0.16 * strike },
-        };
-      },
+      strikePart: 'armL', reach: 46, range: 170,
     }),
-    heavy: capStun({
-      name: 'hook', label: 'Hook',
+    heavy: move(RIG, {
+      name: 'teep', label: 'Teep',
       startup: 10, active: 4, recovery: 18,
       damage: 98, hitstun: 22, blockstun: 13,
       knockback: 460, lift: -120, drive: 90,
-      strikePart: 'armL', reach: 64, range: 186,
-      pose(f, m) {
-        const { wind, strike } = phases(f, m);
-        return {
-          torso: { rot: 0.22 * anticipate(wind) - 0.52 * strike, x: -6 * strike, y: 3 * strike },
-          hips: { rot: -0.10 * strike }, head: { rot: 0.12 * wind - 0.22 * strike },
-          // Thrown with the lead arm. Her back arm is short, folded, and its
-          // joint sits 26px behind her centre -- swung flat out it still falls
-          // short of an opponent at the stage's own spacing.
-          armL: { rot: -0.26 * SWING.armL * anticipate(wind) + SWING.armL * 1.05 * strike },
-          armR: { rot: 0.3 * SWING.armR * wind - 0.4 * SWING.armR * strike },
-          legL: { rot: -0.2 * strike }, legR: { rot: 0.26 * strike },
-        };
-      },
+      strikePart: 'legR', reach: 55, range: 186,
     }),
-    special: capStun({
+    special: move(RIG, {
       name: 'runner', label: 'Runner',
       startup: 9, active: 7, recovery: 22,
       damage: 86, hitstun: 24, blockstun: 15,
       knockback: 540, lift: -80, drive: 560,
-      strikePart: 'armL', reach: 60, range: 179,
-      pose(f, m) {
-        const { wind, strike } = phases(f, m);
-        return {
-          torso: { rot: 0.30 * wind - 0.46 * strike, x: 10 * wind - 34 * strike, y: 6 * strike },
-          hips: { rot: 0.12 * strike }, head: { rot: 0.24 * wind - 0.34 * strike },
-          armL: { rot: 0.6 * wind - 1.5 * strike }, armR: { rot: -0.5 * wind + 0.9 * strike },
-          legL: { rot: -0.5 * wind + 0.8 * strike }, legR: { rot: 0.4 * wind - 0.6 * strike },
-        };
-      },
+      strikePart: 'torso', reach: 56, range: 135,
     }),
   },
 };

@@ -759,7 +759,16 @@ try {
       const bx = m.b.x;
       m.a.x = bx - 118;
       m.b.health = m.b.def.health;
-      m.a.startMove('heavy');
+      // A hand weapon only modifies the moves thrown by the hand holding it,
+      // so the swing has to be one of those. Naming 'heavy' outright worked
+      // until KIN 08's hook moved onto her lead leg, at which point the bat
+      // was still in her hand, the check still swung the kick, and the bat
+      // correctly added nothing -- a real failure report for a healthy game.
+      const slot = ['heavy', 'light', 'special'].find((s) => {
+        const part = m.a.def.moves[s] && m.a.def.moves[s].strikePart;
+        return part === 'armL' || part === 'armR';
+      });
+      m.a.startMove(slot);
       for (let i = 0; i < 60; i++) {
         m.b.x = bx;
         await new Promise((r) => requestAnimationFrame(r));
