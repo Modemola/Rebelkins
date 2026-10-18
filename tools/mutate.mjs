@@ -11,7 +11,7 @@
  * then expected to go red *on the specific line* that covers it. A mutant that
  * survives means the check it was aimed at is not testing what it says.
  *
- *   node tools/mutate.mjs [--only <substring>] [--list] [--here]
+ *   node tools/mutate.mjs [--only <substring>] [--list] [--check] [--here]
  *
  * It breaks real source files, so by default it does that to a detached
  * worktree of HEAD rather than to the checkout you are working in -- an hour
@@ -305,7 +305,7 @@ const MUTANTS = [
     name: 'punches that do not move the arm',
     why: 'the hitbox rides the limb, so a frozen limb is a move that only pretends to swing',
     file: 'src/data/kit.js',
-    find: '      [arm]: { rot: -0.26 * swing * a + swing * (1 + power * 0.08) * strike },',
+    find: '      [arm]: { rot: -0.30 * swing * a + swing * (1 + power * 0.08) * strike },',
     with: '      [arm]: { rot: 0 },',
     expect: 'swings the limb it strikes with',
   },
@@ -315,6 +315,22 @@ const args = process.argv.slice(2);
 if (args.includes('--list')) {
   for (const m of MUTANTS) console.log(`${m.name.padEnd(42)} -> ${m.expect}`);
   process.exit(0);
+}
+// A mutant anchored on a line that has since been edited is skipped, and a
+// skip is counted against the score so it cannot pass quietly -- but the whole
+// suite is an hour of playtest runs, so finding out that way is an hour spent
+// to learn that a string moved. This reads every anchor and nothing else.
+if (args.includes('--check')) {
+  let broken = 0;
+  for (const m of MUTANTS) {
+    const n = fs.readFileSync(m.file, 'utf8').split(m.find).length - 1;
+    if (n === 1) continue;
+    broken++;
+    console.log(`${n === 0 ? 'MISSING ' : `${n} MATCHES`}  ${m.name}`);
+    console.log(`          ${m.file}: ${m.find.trim()}`);
+  }
+  console.log(`\n${MUTANTS.length - broken}/${MUTANTS.length} anchors land exactly once.`);
+  process.exit(broken ? 1 : 0);
 }
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
 const run = MUTANTS.filter((m) => !only || m.name.includes(only));
