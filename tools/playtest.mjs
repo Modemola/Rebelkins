@@ -245,12 +245,26 @@ async function fightChecks() {
     const rig = rigs[id];
     for (const [slot, m] of Object.entries(def.moves)) {
       const solve = (f) => rig.solve(m.pose(f, m), { x: 0, y: 0, scale: def.scale, facing: 1 });
-      const A = solve(0);
-      const B = solve(m.startup + Math.max(0, m.active - 1));
-      const pa = rig.strikePoint(A, m.strikePart, 1);
-      const pb = rig.strikePoint(B, m.strikePart, 1);
-      const limb = Math.hypot(pb.x - pa.x, pb.y - pa.y);
-      const body = Math.hypot(B.torso[4] - A.torso[4], B.torso[5] - A.torso[5]);
+      // The limb's whole excursion across the move, against the body's.
+      //
+      // This used to compare frame 0 with the strike frame, which worked only
+      // while frame 0 was a neutral. Moves start from the fighter's guard now,
+      // so a limb that is already half raised at frame 0 measured as barely
+      // travelling even though it chambers and throws properly in between. The
+      // spread catches a frozen limb exactly as well -- a limb that never
+      // moves has no spread at all -- and does not care where the move starts.
+      let lox = Infinity; let loy = Infinity; let hix = -Infinity; let hiy = -Infinity;
+      let tlox = Infinity; let tloy = Infinity; let thix = -Infinity; let thiy = -Infinity;
+      for (let f = 0; f < totalFrames(m); f++) {
+        const M = solve(f);
+        const p = rig.strikePoint(M, m.strikePart, 1);
+        lox = Math.min(lox, p.x); hix = Math.max(hix, p.x);
+        loy = Math.min(loy, p.y); hiy = Math.max(hiy, p.y);
+        tlox = Math.min(tlox, M.torso[4]); thix = Math.max(thix, M.torso[4]);
+        tloy = Math.min(tloy, M.torso[5]); thiy = Math.max(thiy, M.torso[5]);
+      }
+      const limb = Math.hypot(hix - lox, hiy - loy);
+      const body = Math.hypot(thix - tlox, thiy - tloy);
       if (limb - body < 15) frozen.push(`${id} ${slot} (${m.strikePart}) leads by ${(limb - body).toFixed(0)}`);
     }
   }

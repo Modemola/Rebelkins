@@ -73,16 +73,29 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
   };
 
   return {
+    /**
+     * A fighter is never still, and this one was: measured, the largest any
+     * part of him moved between two frames of the idle was 0.08 pixels, and
+     * the average was 0.05. Sub-pixel. He was a statue for the nine tenths of
+     * a round nobody is mid-attack, which is most of what "stiff" means.
+     *
+     * Three frequencies rather than one, so the loop does not read as a loop:
+     * a bounce on the balls of the feet, a slower weight shift side to side,
+     * and a slow drift that the other two beat against.
+     */
     idle(t) {
-      const b = Math.sin(t * 2.0 * q);
-      const s = Math.sin(t * 0.9 * q);
+      const bob = Math.sin(t * 5.1 * q);
+      const sway = Math.sin(t * 2.2 * q);
+      const drift = Math.sin(t * 1.05 * q + 0.7);
       return {
-        torso: { rot: s * 0.015, y: b * 2.2 * w },
-        hips: { rot: -s * 0.012 },
-        head: { rot: -s * 0.028 + Math.sin(t * 0.6) * 0.02 },
-        armL: { rot: GUARD.armL + s * 0.05 + 0.02 }, armR: { rot: GUARD.armR - s * 0.055 },
-        legL: { rot: s * 0.01 }, legR: { rot: -s * 0.01 },
-        ...joints([0.74 + s * 0.03, 0.80 - s * 0.03], [0.17 + b * 0.02, 0.15 - b * 0.02]),
+        torso: { rot: sway * 0.05 + drift * 0.022, y: bob * 8.5 * w },
+        hips: { rot: -sway * 0.075 - bob * 0.028 },
+        head: { rot: -sway * 0.08 + drift * 0.05 - bob * 0.032 },
+        armL: { rot: GUARD.armL + bob * 0.105 + sway * 0.05 + 0.02 },
+        armR: { rot: GUARD.armR - bob * 0.095 - sway * 0.055 },
+        legL: { rot: sway * 0.055 }, legR: { rot: -sway * 0.055 },
+        ...joints([REST.elbowL + bob * 0.13 + sway * 0.04, REST.elbowR - bob * 0.12],
+          [REST.kneeL + bob * 0.10, REST.kneeR - bob * 0.09]),
       };
     },
 
@@ -121,7 +134,7 @@ export function stance(rig, { armed = true, weight = 0.5 } = {}) {
     },
 
     block(t) {
-      const j = Math.sin(t * 3.1) * 0.012;
+      const j = Math.sin(t * 6.4) * 0.05 + Math.sin(t * 2.7) * 0.022;
       // With no arms to raise, the guard has to read off the whole body: a
       // deeper turn away from the opponent and a harder crouch.
       return armed
@@ -216,6 +229,16 @@ export function guardOf(rig) {
  * so it is read off the rig: the leg whose hip sits further toward the side
  * the character faces is the lead.
  */
+/** The arm nearer the opponent, read off the rig the same way as the leg. */
+export function leadArm(rig) {
+  const gx = rig.ground[0];
+  const dir = (rig.art ?? 1) > 0 ? 1 : -1;
+  const arms = ['armL', 'armR'].map((n) => rig.parts.find((q) => q.name === n)).filter(Boolean);
+  if (arms.length < 2) return arms.length ? arms[0].name : 'armL';
+  const [u, v] = arms;
+  return (u.origin[0] - gx) * dir >= (v.origin[0] - gx) * dir ? u.name : v.name;
+}
+
 export function leadLeg(rig) {
   const gx = rig.ground[0];
   const dir = (rig.art ?? 1) > 0 ? 1 : -1;
@@ -270,6 +293,19 @@ const FOLD = -1.75;       // elbow: hand up to the chin
 const KNEE_FOLD = 0.95;   // knee: heel back under the body
 
 /**
+ * Where the joints sit when a character is just standing there.
+ *
+ * Shared between the stance and the move generators, because a move has to
+ * start from the pose the fighter is already in. They did not: a move's frame
+ * zero put the striking arm at 0 and its elbow at a full fold, while the idle
+ * held them at the guard, so every attack in the game opened by snapping the
+ * arm to a different neutral before it began. That pop was the first 33 pixels
+ * of travel on KIN 01's jab, before the wind-up had done anything.
+ */
+const REST = { elbowL: 0.74, elbowR: 0.80, kneeL: 0.17, kneeR: 0.15 };
+const mix = (from, to, t) => from + (to - from) * t;
+
+/**
  * Bend both knees by the given amounts, where the rig has knees.
  *
  * A step with locked legs reads as a mannequin sliding. The front knee takes
@@ -288,15 +324,31 @@ function kneesFor(rig, front, rear, frontBend, rearBend) {
 function punchPose(rig, arm, power, swing) {
   const other = arm === 'armL' ? 'armR' : 'armL';
   const guard = guardOf(rig)[other];
+  const self = guardOf(rig)[arm];
   const elbow = lowerOf(rig, arm);
   const otherElbow = lowerOf(rig, other);
+  const restElbow = FOLD * (arm === 'armL' ? REST.elbowL : REST.elbowR);
+  const restOther = FOLD * (other === 'armL' ? REST.elbowL : REST.elbowR);
   const front = leadLeg(rig);
   const rear = front === 'legL' ? 'legR' : 'legL';
+  // A jab reaches with the arm; a cross reaches with the body. The rear hand
+  // starts a shoulder-width further from the opponent, and what closes that is
+  // the torso turning over the front foot -- so the shoulder rotation and the
+  // weight transfer are larger when the punch is thrown from the back. Without
+  // it KIN 01's rear hook needed every pixel of its hitbox to touch anybody.
+  const backHand = arm !== leadArm(rig);
+  const turn = 0.40 + (backHand ? 0.26 : 0);
+  const drive = 15 + 13 * power + (backHand ? 10 : 0);
   return (f, m) => {
-    const { wind, strike } = phases(f, m);
-    const a = anticipate(wind);
-    const lead = Math.pow(strike, 0.55);
-    const snap = Math.pow(strike, 1.9);
+    const { wind, strike, thrown, coil, settle } = phases(f, m);
+    const a = coil;
+    // The limb runs on `thrown`, which overshoots and then pulls back over the
+    // first third of the recovery; the body runs on `strike`, which takes the
+    // whole recovery. That difference is the overlap: the fist is already on
+    // its way home while the shoulder is still coming round, instead of every
+    // joint in the character arriving and leaving on the same frame.
+    const reach = Math.pow(Math.max(0, thrown), 0.6);
+    const snap = Math.min(1.06, Math.pow(Math.max(0, thrown), 1.7));
     return {
       // Pose x is measured toward the opponent -- the same direction `facing`
       // points -- so a punch that travels has to be positive here. All three
@@ -314,30 +366,32 @@ function punchPose(rig, arm, power, swing) {
       // was pulling it 16 to 23, so on every punch, kick and charge in the
       // game the body came apart at the waist -- completely, on the character
       // whose overlap is smallest.
-      torso: { rot: 0.14 * a - 0.40 * power * strike, x: -7 * a + (15 + 13 * power) * strike, y: (13 + 9 * power) * strike },
-      hips: { rot: 0.09 * a - 0.28 * strike },
-      head: { rot: 0.09 * wind - 0.14 * strike },
+      torso: { rot: 0.14 * a - turn * power * strike + settle * 0.055, x: -7 * a + drive * strike, y: (13 + 9 * power) * strike },
+      hips: { rot: 0.09 * a - 0.28 * strike + settle * 0.04 },
+      // The head lags everything, which is what sells a body stopping.
+      head: { rot: 0.09 * wind - 0.14 * strike + settle * 0.1 },
       // A punch is a chain, not a rotation. The shoulder goes first and the
       // elbow finishes the shot: `lead` is ahead of `strike` early, `snap` is
       // behind it and then catches up, so the upper arm is already round when
       // the forearm whips out. That ordering is the whole difference between a
       // punch and a limb sweeping an arc, and it needs an elbow to exist --
       // the fallback below is what every un-articulated rig still does.
-      [arm]: { rot: -0.30 * swing * a + swing * (1 + power * 0.08) * (elbow ? lead : strike) },
+      [arm]: { rot: mix(self, -0.30 * swing, a) + swing * (1 + power * 0.08) * (elbow ? reach : strike) + settle * 0.07 },
       // Folded at the chin through the wind-up, straight at full extension.
-      ...(elbow ? { [elbow]: { rot: FOLD * (1 - snap) * (1 + 0.3 * a) } } : {}),
+      ...(elbow ? { [elbow]: { rot: mix(restElbow, FOLD * 1.3, a) * (1 - snap) } } : {}),
       // Back to the chin, not back to the A-pose: the off arm stays at its
       // guard through the wind-up and tucks a little further as the shoulder
       // comes round, and its own elbow stays folded throughout -- that is what
       // a guard is.
       [other]: { rot: guard * (1 + 0.34 * a + 0.52 * strike) },
-      ...(otherElbow ? { [otherElbow]: { rot: FOLD * 0.78 } } : {}),
+      ...(otherElbow ? { [otherElbow]: { rot: mix(restOther, FOLD * 0.92, a) } } : {}),
       // Off the back foot, over the front one. Negative swings a hanging limb
       // toward the opponent, so the lead leg steps in and the rear one drives.
       [front]: { rot: 0.20 * a - (0.26 + 0.10 * power) * strike },
       [rear]: { rot: -0.15 * a + (0.30 + 0.12 * power) * strike },
       // Knees take the step rather than staying locked straight.
-      ...kneesFor(rig, front, rear, 0.30 * strike, 0.16 * a + 0.10 * strike),
+      ...kneesFor(rig, front, rear,
+        mix(REST.kneeL, 0.44, strike), mix(REST.kneeR, 0.22, a * 0.6 + strike * 0.4)),
     };
   };
 }
@@ -347,10 +401,10 @@ function kickPose(rig, leg, power, swing) {
   const other = leg === 'legL' ? 'legR' : 'legL';
   const guard = guardOf(rig);
   return (f, m) => {
-    const { wind, strike } = phases(f, m);
-    const a = anticipate(wind);
+    const { wind, strike, coil, settle } = phases(f, m);
+    const a = coil;
     return {
-      torso: { rot: -0.16 * a + 0.30 * power * strike, x: -6 * a + (12 + 10 * power) * strike, y: 5 * strike },
+      torso: { rot: -0.16 * a + 0.30 * power * strike + settle * 0.05, x: -6 * a + (12 + 10 * power) * strike, y: 5 * strike },
       hips: { rot: 0.18 * a - 0.34 * strike },
       head: { rot: -0.09 * wind + 0.15 * strike },
       [leg]: { rot: -0.22 * swing * a + swing * (0.92 + power * 0.08) * strike },
@@ -373,20 +427,20 @@ function chargePose(rig, power) {
   const lead = leadLeg(rig);
   const rear = lead === 'legL' ? 'legR' : 'legL';
   return (f, m) => {
-    const { wind, strike } = phases(f, m);
+    const { wind, strike, coil, settle } = phases(f, m);
     return {
       // The strike part of a charge IS the torso, so this translation is the
       // hitbox as well as the drawing. It used to coil forward 12 and then
       // withdraw 38 on contact: a shoulder barge delivered by backing away.
-      torso: { rot: 0.34 * wind - (0.52 + power * 0.22) * strike, x: -12 * wind + (34 + 18 * power) * strike, y: 24 * strike },
-      hips: { rot: 0.14 * wind - 0.22 * strike },
-      head: { rot: 0.18 * wind - 0.28 * strike },
+      torso: { rot: 0.34 * coil - (0.52 + power * 0.22) * strike + settle * 0.06, x: -12 * coil + (34 + 18 * power) * strike, y: 24 * strike },
+      hips: { rot: 0.14 * coil - 0.22 * strike },
+      head: { rot: 0.18 * coil - 0.28 * strike + settle * 0.1 },
       // Tucked in behind the shoulder, from the guard rather than from nothing.
-      armL: { rot: guard.armL * (1 + 0.5 * wind + 1.1 * strike) },
-      armR: { rot: guard.armR * (1 + 0.4 * wind + 0.8 * strike) },
+      armL: { rot: guard.armL * (1 + 0.5 * coil + 1.1 * strike) },
+      armR: { rot: guard.armR * (1 + 0.4 * coil + 0.8 * strike) },
       // Coil onto the back foot, then run through it.
-      [lead]: { rot: 0.42 * wind - 0.54 * strike },
-      [rear]: { rot: -0.34 * wind + 0.60 * strike },
+      [lead]: { rot: 0.42 * coil - 0.54 * strike },
+      [rear]: { rot: -0.34 * coil + 0.60 * strike },
     };
   };
 }

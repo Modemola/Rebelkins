@@ -41,19 +41,19 @@ export const KIN03 = {
       name: 'sleeve', label: 'Sleeve',
       startup: 5, active: 4, recovery: 9,
       damage: 40, knockback: 200, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 53, range: 199,
+      strikePart: 'armL', reach: 53, range: 197,
     }),
     heavy: move(RIG, {
       name: 'crescent', label: 'Crescent',
       startup: 11, active: 4, recovery: 18,
       damage: 96, knockback: 460, lift: -120, drive: 85,
-      strikePart: 'armR', reach: 68, range: 153,
+      strikePart: 'armR', reach: 68, range: 146,
     }),
     special: move(RIG, {
       name: 'whirl', label: 'Whirl',
       startup: 10, active: 8, recovery: 24,
       damage: 90, knockback: 500, lift: -60, drive: 480,
-      strikePart: 'armL', reach: 61, range: 215,
+      strikePart: 'armL', reach: 61, range: 210,
     }),
   },
 };

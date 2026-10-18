@@ -57,19 +57,24 @@ export const KIN01 = {
       name: 'rake', label: 'Rake',
       startup: 5, active: 3, recovery: 10,
       damage: 46, knockback: 220, lift: 0, drive: 150,
-      strikePart: 'foreL', reach: 34, range: 195,
+      strikePart: 'foreL', reach: 34, range: 181,
     }),
     heavy: move(RIG, {
+      // The Slam lunges. His rear fist reaches 105 units measured, against a
+      // standing separation of 118 -- which is simply what a rear hand on a
+      // two-bone arm does once the hitbox is a fist rather than the whole
+      // limb. A power shot off the back hand has to close that gap itself, so
+      // this one steps in rather than reaching from where it stands.
       name: 'slam', label: 'Slam',
       startup: 11, active: 4, recovery: 19,
-      damage: 104, knockback: 480, lift: -130, drive: 90,
-      strikePart: 'foreR', reach: 34, range: 119,
+      damage: 104, knockback: 480, lift: -130, drive: 230,
+      strikePart: 'foreR', reach: 48, range: 107,
     }),
     special: move(RIG, {
       name: 'pounce', label: 'Pounce',
       startup: 10, active: 7, recovery: 23,
       damage: 92, knockback: 540, lift: -90, drive: 520,
-      strikePart: 'foreL', reach: 34, range: 204,
+      strikePart: 'foreL', reach: 34, range: 195,
     }),
   },
 };

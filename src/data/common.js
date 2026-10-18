@@ -16,7 +16,38 @@ export function phases(frame, m) {
   const wind = seg(frame, 0, m.startup);
   const hit = seg(frame, m.startup, m.startup + m.active);
   const rec = seg(frame, m.startup + m.active, total);
-  return { wind, hit, rec, strike: easeOut(hit) - easeInOut(rec), total };
+  /**
+   * `strike` runs 0..1 and back, and is what every pose was written against.
+   * It has two faults that read as stiffness, and both are about time rather
+   * than about any pose.
+   *
+   * It stops dead. A limb arrives at full extension and holds there for a
+   * frame -- measured on KIN 01's jab, per-frame travel went 51, 18, 3, 0 --
+   * where a real one whips slightly past and settles back. `thrown` overshoots
+   * through `anticipate` and then rings down.
+   *
+   * And it comes back the way it went. Recovery is twice the length of the
+   * active window, so a symmetric curve rewinds the punch in slow motion.
+   * `thrown` pulls the limb back over the first third of the recovery, which
+   * also puts the limb ahead of the body on the way home -- the overlap that
+   * stops every part of a character arriving on the same frame.
+   */
+  const thrown = anticipate(hit) * (1 - easeOut(Math.min(1, rec / 0.34)));
+  /**
+   * The wind-up, which has to come back out again.
+   *
+   * Poses used `anticipate(wind)` for this, and `wind` saturates at 1 the
+   * moment the startup ends -- so the coil stayed fully applied for the whole
+   * active window and the whole recovery, and the move's last frame sat 40
+   * pixels away from the idle it returned to. Every attack ended with a snap.
+   * `(1 - easeOut(hit))` takes it back out as the strike goes, and the pow
+   * spreads the coil over the startup frames instead of jumping 77% of the way
+   * into it on the first one.
+   */
+  const coil = Math.pow(wind, 1.7) * (1 - easeOut(hit));
+  /** A decaying wobble through the recovery, so nothing arrives at a dead stop. */
+  const settle = Math.sin(rec * Math.PI * 3.4) * Math.max(0, 1 - rec / 0.8) ** 2;
+  return { wind, hit, rec, strike: easeOut(hit) - easeInOut(rec), thrown, coil, settle, total };
 }
 
 export const totalFrames = (m) => m.startup + m.active + m.recovery;

@@ -191,8 +191,19 @@ export class Fighter {
         this.moveFrame++;
         const m = this.move;
         const total = totalFrames(m);
-        // drive carries the character forward through the active window
-        if (m.drive && this.moveFrame >= m.startup && this.moveFrame < m.startup + m.active) {
+        /**
+         * Drive carries the character forward, starting in the last third of
+         * the wind-up rather than on the frame the hitbox appears.
+         *
+         * A move that only travels once it is already active arrives too late
+         * to help itself: KIN 01's rear hook put its fist out 34 to 53 units
+         * short, then closed the gap over the recovery, by which point there
+         * was no hitbox left. A lunge is a step and then a punch, so the step
+         * has to start first. It also reads better -- a committed move that
+         * visibly crosses ground before it lands.
+         */
+        const driveFrom = m.startup - Math.ceil(m.startup / 3);
+        if (m.drive && this.moveFrame >= driveFrom && this.moveFrame < m.startup + m.active) {
           this.vx = this.facing * m.drive;
         }
         this.physics(this.grounded ? 0.82 : 0.995);
