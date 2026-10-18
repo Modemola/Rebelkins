@@ -7,8 +7,11 @@
  * canvas on the frames where something actually connects, so every tile in the
  * strip is an impact, a guard or a break rather than a pose.
  *
- *   node tools/fightshots.mjs [--a kin05] [--b kin10] [--arena nine]
- *                             [--shots 6] [--out fight.png]
+ *   node tools/fightshots.mjs [--a kin05] [--b kin10] [--shots 6] [--out f.png]
+ *   node tools/fightshots.mjs --pairs kin01:kin02,kin03:kin04 [--shots 2]
+ *
+ * `--pairs` runs several matchups in one browser and tiles them together,
+ * which is how the whole roster gets looked at in one picture rather than ten.
  */
 
 import http from 'node:http';
@@ -57,68 +60,76 @@ await page.waitForFunction(() => window.__REBELKIN__ && Object.keys(window.__REB
 // Both corners driven by the AI, so it is the game playing itself rather than
 // a scripted set-piece: P2 by the opponent AI the game ships with, P1 by a
 // second instance of it wired into the same intent the keyboard would produce.
-await page.evaluate(({ a, b }) => { window.__REBELKIN__.start(a, 'ai', b); }, { a: A, b: B });
-await page.waitForTimeout(1800);
+const PAIRS = process.argv.includes('--pairs')
+  ? arg('--pairs', '').split(',').map((p) => p.split(':'))
+  : [[A, B]];
 
-const frames = await page.evaluate(async ({ shots }) => {
-  const g = window.__REBELKIN__;
-  const { AI } = await import('/src/fight/ai.js');
-  const p1 = new AI('mean');
-  const cv = document.getElementById('stage');
-  const out = [];
-  let grab = 0;
-  let label = '';
+const frames = [];
+for (const [a, b] of PAIRS) {
+  await page.evaluate(({ a: x, b: y }) => { window.__REBELKIN__.start(x, 'ai', y); }, { a, b });
+  await page.waitForTimeout(1800);
+  const got = await page.evaluate(async ({ shots }) => {
+    const g = window.__REBELKIN__;
+    const { AI } = await import('/src/fight/ai.js');
+    const p1 = new AI('mean');
+    const cv = document.getElementById('stage');
+    const out = [];
+    let grab = 0;
+    let label = '';
 
-  g.match.onEvent = ((prev) => (kind, data) => {
-    prev(kind, data);
-    if (out.length + (grab > 0 ? 1 : 0) >= shots) return;
-    if (kind === 'hit' || kind === 'guardBreak') {
-      // two frames after contact: past the hitstop freeze, with the sparks out
-      grab = 2;
-      label = kind === 'guardBreak' ? 'guard break'
-        : `${data.move.label} — ${data.move.damage}${data.counter === 'recovery' ? ' (punish)' : ''}`;
+    g.match.onEvent = ((prev) => (kind, data) => {
+      prev(kind, data);
+      if (out.length + (grab > 0 ? 1 : 0) >= shots) return;
+      if (kind === 'hit' || kind === 'guardBreak') {
+        // two frames after contact: past the hitstop freeze, with the sparks out
+        grab = 2;
+        label = kind === 'guardBreak' ? 'guard break'
+          : `${data.move.label} — ${data.move.damage}${data.counter === 'recovery' ? ' (punish)' : ''}`;
+      }
+    })(g.match.onEvent);
+
+    // P1 is normally the keyboard, and readIntent is module-local, so rather
+    // than reach past it the AI's intent is turned back into real key events.
+    // That drives the fight through the same input layer a player uses --
+    // buffer, held state and all -- instead of around it.
+    const KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS',
+      light: 'KeyJ', heavy: 'KeyK', special: 'KeyL', guard: 'Space' };
+    const held = new Set();
+    const set = (code, want) => {
+      if (want === held.has(code)) return;
+      if (want) held.add(code); else held.delete(code);
+      dispatchEvent(new KeyboardEvent(want ? 'keydown' : 'keyup', { code, bubbles: true }));
+    };
+    const tap = (code) => {
+      dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
+      setTimeout(() => dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })), 34);
+    };
+
+    for (let i = 0; i < 2600 && out.length < shots; i++) {
+      const m = g.match;
+      if (m && m.phase === 'fight') {
+        const it = p1.think(m.a, m.b, i);
+        set(KEYS.left, it.move < 0);
+        set(KEYS.right, it.move > 0);
+        set(KEYS.guard, !!it.guard);
+        set(KEYS.down, !!it.crouch);
+        if (it.jump) tap(KEYS.up);
+        if (it.attack) tap(KEYS[it.attack]);
+      }
+      await new Promise((r) => requestAnimationFrame(r));
+      if (grab > 0 && --grab === 0) out.push({ png: cv.toDataURL('image/png'), label });
     }
-  })(g.match.onEvent);
-
-  // P1 is normally the keyboard, and readIntent is module-local, so rather
-  // than reach past it the AI's intent is turned back into real key events.
-  // That drives the fight through the same input layer a player uses --
-  // buffer, held state and all -- instead of around it.
-  const KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS',
-    light: 'KeyJ', heavy: 'KeyK', special: 'KeyL', guard: 'Space' };
-  const held = new Set();
-  const set = (code, want) => {
-    if (want === held.has(code)) return;
-    if (want) held.add(code); else held.delete(code);
-    dispatchEvent(new KeyboardEvent(want ? 'keydown' : 'keyup', { code, bubbles: true }));
-  };
-  const tap = (code) => {
-    dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
-    setTimeout(() => dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })), 34);
-  };
-
-  for (let i = 0; i < 2600 && out.length < shots; i++) {
-    const m = g.match;
-    if (m && m.phase === 'fight') {
-      const it = p1.think(m.a, m.b, i);
-      set(KEYS.left, it.move < 0);
-      set(KEYS.right, it.move > 0);
-      set(KEYS.guard, !!it.guard);
-      set(KEYS.down, !!it.crouch);
-      if (it.jump) tap(KEYS.up);
-      if (it.attack) tap(KEYS[it.attack]);
-    }
-    await new Promise((r) => requestAnimationFrame(r));
-    if (grab > 0 && --grab === 0) out.push({ png: cv.toDataURL('image/png'), label });
-  }
-  for (const c of held) dispatchEvent(new KeyboardEvent('keyup', { code: c, bubbles: true }));
-  return out;
-}, { shots: SHOTS });
+    for (const c of held) dispatchEvent(new KeyboardEvent('keyup', { code: c, bubbles: true }));
+    return out;
+  }, { shots: SHOTS });
+  for (const f of got) frames.push({ ...f, pair: `${a.toUpperCase()} vs ${b.toUpperCase()}` });
+  console.log(`  ${a} vs ${b}: ${got.length} frames`);
+}
 
 console.log(`captured ${frames.length} impact frames`);
 if (!frames.length) { await browser.close(); server.close(); process.exit(1); }
 
-const sheet = await page.evaluate(async ({ frames, A, B }) => {
+const sheet = await page.evaluate(async ({ frames }) => {
   const imgs = await Promise.all(frames.map(async (f) => {
     const im = new Image(); im.src = f.png; await im.decode(); return im;
   }));
@@ -133,17 +144,19 @@ const sheet = await page.evaluate(async ({ frames, A, B }) => {
   ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.font = '700 15px ui-sans-serif, system-ui, sans-serif';
   ctx.fillStyle = '#efeaf7';
-  ctx.fillText(`${A.toUpperCase()}  vs  ${B.toUpperCase()}`, 16, 24);
+  ctx.fillText('REBELKIN', 16, 24);
   imgs.forEach((im, i) => {
     const x = (i % cols) * W;
     const y = 34 + Math.floor(i / cols) * (H + pad);
     ctx.drawImage(im, x, y, W, H);
     ctx.font = '600 13px ui-sans-serif, system-ui, sans-serif';
+    ctx.fillStyle = '#8d87a0';
+    ctx.fillText(frames[i].pair || '', x + 12, y + H + 17);
     ctx.fillStyle = '#f5c518';
-    ctx.fillText(frames[i].label, x + 12, y + H + 17);
+    ctx.fillText(frames[i].label, x + 150, y + H + 17);
   });
   return cv.toDataURL('image/png');
-}, { frames, A, B });
+}, { frames });
 
 fs.writeFileSync(path.resolve(ROOT, OUT), Buffer.from(sheet.split(',')[1], 'base64'));
 console.log(`wrote ${OUT}`);
