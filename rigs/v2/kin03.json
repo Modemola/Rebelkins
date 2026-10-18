@@ -1,0 +1,29 @@
+{
+  "name": "kin03new",
+  "root": "torso",
+  "ground": [157, 476],
+  "_source": "A-pose sheet 324x490, keyed --local 10 --global 40, one island. Subject x56..258 y15..475. Her sleeves flare into a wide cone rather than hugging the arm, so the polygons follow the flare and the pivot sits at the shoulder seam outboard of the jacket body.",
+  "parts": [
+    { "name": "legL", "parent": "hips", "z": 0,
+      "poly": [[108,194],[158,194],[158,480],[70,480]],
+      "pivot": [136,208], "limits": { "rot": [-55,55] } },
+    { "name": "legR", "parent": "hips", "z": 0,
+      "poly": [[158,194],[210,194],[226,480],[158,480]],
+      "pivot": [180,208], "limits": { "rot": [-55,55] } },
+    { "name": "hips", "parent": "torso", "z": 1,
+      "poly": [[116,186],[202,186],[202,238],[116,238]],
+      "pivot": [158,200] },
+    { "name": "torso", "parent": null, "z": 2,
+      "poly": [[104,110],[206,110],[212,150],[204,204],[108,204],[98,150]],
+      "pivot": [154,132], "occludedBy": ["armR","armL"] },
+    { "name": "armR", "parent": "torso", "z": 3,
+      "poly": [[96,114],[132,130],[112,190],[94,224],[82,252],[46,288],[40,244],[62,196],[78,150]],
+      "pivot": [112,126], "limits": { "rot": [-170,170] } },
+    { "name": "armL", "parent": "torso", "z": 3,
+      "poly": [[178,130],[212,114],[230,150],[250,196],[270,244],[264,288],[228,252],[214,224],[196,190]],
+      "pivot": [198,126], "limits": { "rot": [-170,170] } },
+    { "name": "head", "parent": "torso", "z": 4,
+      "poly": [[96,8],[188,8],[190,70],[182,120],[112,120],[94,70]],
+      "pivot": [150,116] }
+  ]
+}

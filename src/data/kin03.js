@@ -8,17 +8,15 @@ import { stance, move } from './kit.js';
 
 const RIG = {
   root: 'torso',
-  // the illustration faces screen-left, so the rig mirrors to face right
-  art: -1,
-  ground: [292, 560],
+  ground: [157, 476],
   parts: [
-    { name: 'legL', parent: 'hips', z: 0, rect: [259, 0, 97, 165], pivot: [80, 10], origin: [280, 404], limits: { rot: [-55, 55] } },
-    { name: 'legR', parent: 'hips', z: 0, rect: [358, 0, 65, 162], pivot: [15, 10], origin: [336, 404], limits: { rot: [-55, 55] } },
-    { name: 'hips', parent: 'torso', z: 1, rect: [659, 0, 100, 56], pivot: [52, 18], origin: [300, 364] },
-    { name: 'torso', parent: null, z: 2, rect: [149, 0, 108, 168], pivot: [52, 80], origin: [290, 278] },
-    { name: 'armL', parent: 'torso', z: 3, rect: [425, 0, 121, 158], pivot: [81, 18], origin: [258, 228], limits: { rot: [-130, 130] } },
-    { name: 'armR', parent: 'torso', z: 3, rect: [548, 0, 109, 143], pivot: [18, 15], origin: [330, 246], limits: { rot: [-130, 130] } },
-    { name: 'head', parent: 'torso', z: 4, rect: [0, 0, 147, 169], pivot: [72, 161], origin: [290, 204] },
+    { name: 'legL', parent: 'hips', z: 0, rect: [0, 0, 87, 282], pivot: [65, 14], origin: [136, 208], limits: { rot: [-55, 55] } },
+    { name: 'legR', parent: 'hips', z: 0, rect: [89, 0, 68, 278], pivot: [22, 14], origin: [180, 208], limits: { rot: [-55, 55] } },
+    { name: 'hips', parent: 'torso', z: 1, rect: [520, 0, 86, 52], pivot: [42, 14], origin: [158, 200] },
+    { name: 'torso', parent: null, z: 2, rect: [410, 0, 108, 94], pivot: [53, 22], origin: [154, 132] },
+    { name: 'armL', parent: 'torso', z: 3, rect: [159, 0, 81, 154], pivot: [20, -1], origin: [198, 126], limits: { rot: [-170, 170] } },
+    { name: 'armR', parent: 'torso', z: 3, rect: [242, 0, 76, 151], pivot: [56, 1], origin: [112, 126], limits: { rot: [-170, 170] } },
+    { name: 'head', parent: 'torso', z: 4, rect: [320, 0, 88, 105], pivot: [48, 101], origin: [150, 116] },
   ],
 };
 
@@ -28,13 +26,13 @@ export const KIN03 = {
   subtitle: 'duelist',
   atlas: 'assets/atlas/kin03.png',
   rig: RIG,
-  scale: 0.59,
+  scale: 0.6617,
   health: 980,
   walkSpeed: 182,
   backSpeed: 140,
   jumpVel: 680,
-  bodyHeight: 517,
-  hurtRadius: 62,
+  bodyHeight: 461,
+  hurtRadius: 55,
 
   stance: stance(RIG, { armed: true, weight: 0.35 }),
 
@@ -43,19 +41,19 @@ export const KIN03 = {
       name: 'sleeve', label: 'Sleeve',
       startup: 5, active: 4, recovery: 9,
       damage: 40, knockback: 200, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 60, range: 178,
+      strikePart: 'armL', reach: 53, range: 185,
     }),
     heavy: move(RIG, {
       name: 'crescent', label: 'Crescent',
       startup: 11, active: 4, recovery: 18,
       damage: 96, knockback: 460, lift: -120, drive: 85,
-      strikePart: 'armR', reach: 76, range: 131,
+      strikePart: 'armR', reach: 68, range: 134,
     }),
     special: move(RIG, {
       name: 'whirl', label: 'Whirl',
       startup: 10, active: 8, recovery: 24,
       damage: 90, knockback: 500, lift: -60, drive: 480,
-      strikePart: 'armL', reach: 68, range: 191,
+      strikePart: 'armL', reach: 61, range: 196,
     }),
   },
 };
