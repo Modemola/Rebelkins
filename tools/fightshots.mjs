@@ -78,18 +78,19 @@ for (const [a, b] of PAIRS) {
     let label = '';
     // Taking the first N contacts gets N jabs: a fight opens with pokes, and
     // the committal moves only come out once somebody has a reason to throw
-    // one. So each kind of contact is taken once before any is taken twice,
-    // which is what makes the sheet show the moveset rather than the opener.
-    // `patience` is how long to hold out for something new before settling.
+    // one. So every tile is a kind of contact nothing else in this matchup
+    // has shown, which is what makes the sheet the moveset rather than the
+    // opener. A pair that spends a whole minute trading jabs contributes two
+    // tiles and not four -- padding the row with the same jab twice says
+    // nothing that the first one did not.
     const seen = new Set();
-    let patience = 0;
 
     g.match.onEvent = ((prev) => (kind, data) => {
       prev(kind, data);
       if (out.length + (grab > 0 ? 1 : 0) >= shots) return;
       if (kind !== 'hit' && kind !== 'guardBreak') return;
       const key = kind === 'guardBreak' ? 'guardBreak' : `${data.move.name}:${data.attacker.pad}`;
-      if (seen.has(key) && patience > 0) return;
+      if (seen.has(key)) return;
       seen.add(key);
       // two frames after contact: past the hitstop freeze, with the sparks out
       grab = 2;
@@ -115,7 +116,6 @@ for (const [a, b] of PAIRS) {
     };
 
     for (let i = 0; i < 3600 && out.length < shots; i++) {
-      patience = i < 2600 ? 1 : 0;   // past this, any contact will do
       const m = g.match;
       if (m && m.phase === 'fight') {
         const it = p1.think(m.a, m.b, i);
