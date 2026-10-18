@@ -67,7 +67,11 @@ const MUTANTS = [
     file: 'src/fight/match.js',
     find: 'const ATTACK_GAP = 84;',
     with: 'const ATTACK_GAP = 118;',
-    expect: 'all 30 moves connect',
+    // Was 'all 30 moves connect', which covered this only while half the cast
+    // could not reach from the walking distance. Since the poses were given
+    // bodies they all can, so that check went green with the attacking floor
+    // raised to the walking one and the mutant survived.
+    expect: 'crowd inside the walking separation',
   },
   {
     name: 'hurtbox back to a circle at the ankles',
@@ -151,7 +155,7 @@ const MUTANTS = [
   },
   {
     name: 'the loop can be started twice',
-    why: 'two rAF chains run the simulation at double rate and render every frame twice',
+    why: 'two rAF chains render every frame twice, for a third of the framerate',
     file: 'src/engine/loop.js',
     find: '      if (!this.running || gen !== this.generation) return;',
     with: '      if (!this.running) return;',

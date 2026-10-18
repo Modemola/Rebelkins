@@ -275,6 +275,43 @@ async function fightChecks() {
     const b = mirrored[part.name];
     return Math.abs(a[4] + b[4]) < 1e-6 && Math.abs(a[5] - b[5]) < 1e-6;
   });
+  // Two fighters are held apart so the gap between them stays readable, but a
+  // swing has to be allowed to crowd inside that spacing or the separation is
+  // a wall. Until the poses were rewritten this was covered by the reach
+  // check: half the cast's moves could not touch anybody from the walking
+  // distance, so raising the attacking floor to the walking one turned the
+  // reach check red. The bodies go with the punches now and every move
+  // reaches from the walking distance too, so that check no longer sees this
+  // at all. It is measured directly instead: how close the two actually get
+  // while somebody is mid-swing, against how close they get while neither is.
+  const closing = (() => {
+    const m = new Match(DEFS.kin01, DEFS.kin06, rigs, [bare, bare]);
+    const solve = () => {
+      const out = {};
+      for (const f of m.fighters) {
+        out[f.pad] = rigs[f.def.id].solve(f.pose(), { x: f.x, y: f.y, scale: f.def.scale, facing: f.facing });
+      }
+      return out;
+    };
+    m.phase = PHASE.FIGHT;
+    const still = { move: 0, crouch: false, jump: false, guard: false, attack: null };
+    let walking = Infinity;
+    let swinging = Infinity;
+    for (let f = 0; f < 240; f++) {
+      // Both walk into each other throughout; A also throws its quickest move
+      // on a cycle, so the run covers both states at the same closing speed.
+      const attack = f % 40 === 0 ? 'light' : null;
+      m.step(f, { a: { ...still, move: 1, attack }, b: { ...still, move: -1 } }, solve);
+      const gap = Math.abs(m.b.x - m.a.x);
+      if (m.a.state === STATE.ATTACK || m.b.state === STATE.ATTACK) swinging = Math.min(swinging, gap);
+      else walking = Math.min(walking, gap);
+    }
+    return { walking: Math.round(walking), swinging: Math.round(swinging) };
+  })();
+  check('a swing can crowd inside the walking separation',
+    closing.swinging < closing.walking - 15,
+    `${closing.swinging} apart mid-swing against ${closing.walking} while walking`);
+
   check('a left-facing illustration is mirrored to face the opponent', flipped,
     flipped ? `all ${DEFS.kin01.rig.parts.length} parts mirror about the root`
       : 'art: -1 solved to the same transforms as art: 1');
@@ -725,13 +762,32 @@ try {
     }
 
     // A hand weapon must not be offered to a character with no free arm.
-    for (const def of g.ROSTER) {
+    //
+    // This compared canHold against hasArm, both read off the same rig, and
+    // five of the original ten had their arms folded into the torso so the
+    // comparison had something to disagree about. Every illustration has been
+    // redrawn with arms since, so both sides are now true for all ten and the
+    // loop cannot fail however canHold behaves -- a mutant that made it
+    // always say yes survived against it. Each real character is still
+    // checked, and an armless copy of one is checked beside them, so the
+    // rule has a case to answer whether or not the cast supplies one.
+    const armless = (def) => ({
+      ...def, id: `${def.id}-armless`,
+      rig: { ...def.rig, parts: def.rig.parts.filter((q) => !q.name.startsWith('arm')) },
+    });
+    out.canHold = 0;
+    const subjects = [...g.ROSTER, armless(g.ROSTER[0])];
+    out.subjects = subjects.length;
+    for (const def of subjects) {
       const parts = new Set(def.rig.parts.map((q) => q.name));
       const hasArm = parts.has('armL') || parts.has('armR');
+      let held = false;
       for (const w of W.WEAPONS) {
         if (w.grip !== 'hand') continue;
         if (W.canHold(def, w) !== hasArm) out.offered.push(`${def.id}/${w.id}`);
+        held = held || W.canHold(def, w);
       }
+      if (held) out.canHold++;
     }
 
     // Rank is earned and remembered. The ladder has to actually open up:
@@ -758,7 +814,8 @@ try {
   check('a weapon changes only the limb holding it', loadout.wrongScope.length === 0,
     loadout.wrongScope.length ? loadout.wrongScope.slice(0, 5).join(', ') : 'every character x weapon x move');
   check('hand weapons are not offered to folded arms', loadout.offered.length === 0,
-    loadout.offered.length ? loadout.offered.join(', ') : '5 of 10 can hold one');
+    loadout.offered.length ? loadout.offered.join(', ')
+      : `${loadout.canHold} of ${loadout.subjects} can hold one, the odd one out being an armless copy`);
   check('the weapon ladder opens up with rank',
     loadout.rank.atStart === 1
     && loadout.rank.midway > loadout.rank.atStart
@@ -1248,9 +1305,14 @@ try {
     const g = window.__REBELKIN__;
     const take = async () => {
       const f0 = g.loop.frame;
+      const r0 = g.loop.renders;
       const t0 = performance.now();
       await new Promise((r) => setTimeout(r, 1000));
-      return Math.round((g.loop.frame - f0) / ((performance.now() - t0) / 1000));
+      const secs = (performance.now() - t0) / 1000;
+      return {
+        ticks: Math.round((g.loop.frame - f0) / secs),
+        renders: Math.round((g.loop.renders - r0) / secs),
+      };
     };
     const before = await take();
     g.loop.stop();
@@ -1260,10 +1322,17 @@ try {
     const after = await take();
     return { before, after };
   });
-  check('the simulation holds 60 ticks a second', Math.abs(clock.before - 60) <= 3,
-    `${clock.before} ticks/sec`);
-  check('a pause and resume does not double the loop', Math.abs(clock.after - 60) <= 3,
-    `${clock.after} ticks/sec after restarting`);
+  check('the simulation holds 60 ticks a second', Math.abs(clock.before.ticks - 60) <= 3,
+    `${clock.before.ticks} ticks/sec`);
+  // Counting ticks alone does not see this. The two chains share `last`, so
+  // the second one each frame computes a dt of zero, accumulates nothing and
+  // runs no ticks -- the simulation rate stays at 60 while every frame is
+  // rendered twice, which is where the lost framerate actually goes. Renders
+  // are counted separately by the loop for exactly this sort of reason, so
+  // both numbers are held to 60 across the restart.
+  check('a pause and resume does not double the loop',
+    Math.abs(clock.after.ticks - 60) <= 3 && Math.abs(clock.after.renders - 60) <= 4,
+    `${clock.after.ticks} ticks/sec and ${clock.after.renders} renders/sec after restarting`);
 
   console.log('\nthe shot is composed');
   // Measured on the main target, not just on a phone. The height constraint in
