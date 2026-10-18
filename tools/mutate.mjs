@@ -309,7 +309,7 @@ const MUTANTS = [
     name: 'punches that do not move the arm',
     why: 'the hitbox rides the limb, so a frozen limb is a move that only pretends to swing',
     file: 'src/data/kit.js',
-    find: '      [arm]: { rot: -0.30 * swing * a + swing * (1 + power * 0.08) * (elbow ? reach : strike) + settle * 0.07 },',
+    find: '      [arm]: { rot: mix(self, -0.30 * swing, a) + swing * (1 + power * 0.08) * (elbow ? reach : strike) + settle * 0.07 },',
     with: '      [arm]: { rot: 0 },',
     expect: 'swings the limb it strikes with',
   },
