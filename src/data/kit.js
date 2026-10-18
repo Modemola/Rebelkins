@@ -202,12 +202,20 @@ function punchPose(rig, arm, power, swing) {
       // points -- so a punch that travels has to be positive here. All three
       // of these generators were negative, which is a lean away from the
       // person being hit, on the frame the hit lands.
-      torso: { rot: 0.14 * a - 0.40 * power * strike, x: -7 * a + (15 + 13 * power) * strike, y: 2 * strike },
       // A rigid cut-out leg swings its foot up in an arc, so a lunge this wide
-      // takes the back foot off the floor unless the hips come down with it:
-      // L*(1-cos t) at these angles is 14 to 20 source pixels, which is what
-      // this is. A real lunge sits down into the stance anyway.
-      hips: { rot: 0.09 * a - 0.28 * strike, x: (5 + 7 * power) * strike, y: (11 + 9 * power) * strike },
+      // takes the back foot off the floor unless the body comes down with it:
+      // L*(1-cos t) at these angles is 14 to 20 source pixels, which is the
+      // drop in `y`. A real lunge sits down into the stance anyway.
+      //
+      // It belongs on the torso, which is the root and carries everything with
+      // it. It was on the hips, and the hips hang off the torso: translating
+      // them does not lower the fighter, it slides the pelvis out from under
+      // the ribcage. The art overlaps by 16 to 28 pixels at the waist and this
+      // was pulling it 16 to 23, so on every punch, kick and charge in the
+      // game the body came apart at the waist -- completely, on the character
+      // whose overlap is smallest.
+      torso: { rot: 0.14 * a - 0.40 * power * strike, x: -7 * a + (15 + 13 * power) * strike, y: (13 + 9 * power) * strike },
+      hips: { rot: 0.09 * a - 0.28 * strike },
       head: { rot: 0.09 * wind - 0.14 * strike },
       [arm]: { rot: -0.30 * swing * a + swing * (1 + power * 0.08) * strike },
       // Back to the chin, not back to the A-pose: the off arm stays at its
@@ -230,8 +238,8 @@ function kickPose(rig, leg, power, swing) {
     const { wind, strike } = phases(f, m);
     const a = anticipate(wind);
     return {
-      torso: { rot: -0.16 * a + 0.30 * power * strike, x: -6 * a + (12 + 10 * power) * strike, y: -6 * strike },
-      hips: { rot: 0.18 * a - 0.34 * strike, x: (6 + 6 * power) * strike, y: 12 * strike },
+      torso: { rot: -0.16 * a + 0.30 * power * strike, x: -6 * a + (12 + 10 * power) * strike, y: 5 * strike },
+      hips: { rot: 0.18 * a - 0.34 * strike },
       head: { rot: -0.09 * wind + 0.15 * strike },
       [leg]: { rot: -0.22 * swing * a + swing * (0.92 + power * 0.08) * strike },
       // The standing leg takes the weight. It used to be driven off the kicking
@@ -258,8 +266,8 @@ function chargePose(rig, power) {
       // The strike part of a charge IS the torso, so this translation is the
       // hitbox as well as the drawing. It used to coil forward 12 and then
       // withdraw 38 on contact: a shoulder barge delivered by backing away.
-      torso: { rot: 0.34 * wind - (0.52 + power * 0.22) * strike, x: -12 * wind + (34 + 18 * power) * strike, y: 6 * strike },
-      hips: { rot: 0.14 * wind - 0.22 * strike, x: -5 * wind + (14 + 8 * power) * strike, y: 16 * strike },
+      torso: { rot: 0.34 * wind - (0.52 + power * 0.22) * strike, x: -12 * wind + (34 + 18 * power) * strike, y: 24 * strike },
+      hips: { rot: 0.14 * wind - 0.22 * strike },
       head: { rot: 0.18 * wind - 0.28 * strike },
       // Tucked in behind the shoulder, from the guard rather than from nothing.
       armL: { rot: guard.armL * (1 + 0.5 * wind + 1.1 * strike) },

@@ -41,19 +41,19 @@ export const KIN09 = {
       name: 'point', label: 'Point',
       startup: 4, active: 3, recovery: 8,
       damage: 40, knockback: 190, lift: 0, drive: 160,
-      strikePart: 'armL', reach: 47, range: 186,
+      strikePart: 'armL', reach: 47, range: 187,
     }),
     heavy: move(RIG, {
       name: 'lash', label: 'Lash',
       startup: 10, active: 4, recovery: 17,
       damage: 94, knockback: 450, lift: -110, drive: 90,
-      strikePart: 'armR', reach: 52, range: 144,
+      strikePart: 'armR', reach: 52, range: 145,
     }),
     special: move(RIG, {
       name: 'lunge', label: 'Lunge',
       startup: 9, active: 7, recovery: 22,
       damage: 88, knockback: 500, lift: -50, drive: 560,
-      strikePart: 'armR', reach: 56, range: 154,
+      strikePart: 'armR', reach: 56, range: 155,
     }),
   },
 };

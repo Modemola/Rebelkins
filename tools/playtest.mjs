@@ -146,6 +146,7 @@ async function fightChecks() {
   const { STATE } = await import('../src/fight/fighter.js');
   const { byId } = await import('../src/data/weapons.js');
   const { Rig } = await import('../src/render/rig.js');
+  const { totalFrames } = await import('../src/data/common.js');
   const { DEFS, rigs } = await loadCast();
 
   console.log('\nframe advantage');
@@ -275,6 +276,51 @@ async function fightChecks() {
     const b = mirrored[part.name];
     return Math.abs(a[4] + b[4]) < 1e-6 && Math.abs(a[5] - b[5]) < 1e-6;
   });
+  // A pose translating a part that hangs off another part does not move the
+  // fighter -- it pulls that part away from its parent, and the art only
+  // covers the join while the two polygons still overlap. Measured on these
+  // rigs that overlap is 16 to 28 source pixels at the waist, 16 to 40 at the
+  // shoulder, 14 to 42 at the hip, and rotation has to live inside it too.
+  //
+  // This shipped: the lunge drop was written on the hips, which hang off the
+  // torso, so every punch, kick and charge pulled the pelvis 16 to 23 pixels
+  // out from under the ribcage. It was playable and it looked like the
+  // character was falling apart, and nothing here said a word, because every
+  // check watched where the hitbox went and none watched whether the body
+  // held together. A whole-body move goes on the root, which carries its
+  // children with it; a child part may only be nudged, well inside the
+  // smallest overlap in the cast.
+  const BUDGET = 6;
+  const pulled = [];
+  for (const id of IDS) {
+    const def = DEFS[id];
+    const root = def.rig.root;
+    const poses = [
+      ...Object.entries(def.moves).map(([slot, m]) => [slot, (f) => m.pose(f, m), totalFrames(m)]),
+      ['idle', (f) => def.stance.idle(f / 60), 240],
+      ['walk', (f) => def.stance.walk(f / 60, 1), 240],
+      ['crouch', () => def.stance.crouch(), 1],
+      ['block', (f) => def.stance.block(f / 60), 120],
+      ['air', (f) => def.stance.air(600 - f * 20), 60],
+      ['hurt', (f) => def.stance.hurt(f), 30],
+      ['ko', (f) => def.stance.ko(f), 40],
+    ];
+    for (const [name, at, frames] of poses) {
+      let worst = 0;
+      for (let f = 0; f < frames; f++) {
+        const pose = at(f) || {};
+        for (const [part, v] of Object.entries(pose)) {
+          if (part === root || !v) continue;
+          worst = Math.max(worst, Math.hypot(v.x || 0, v.y || 0));
+        }
+      }
+      if (worst > BUDGET) pulled.push(`${id} ${name} ${worst.toFixed(0)}px`);
+    }
+  }
+  check('no pose pulls a part off the one it hangs from', pulled.length === 0,
+    pulled.length ? pulled.slice(0, 6).join(', ') + (pulled.length > 6 ? ` (+${pulled.length - 6})` : '')
+      : `every pose moves its children by ${BUDGET}px or less; only the root travels`);
+
   // Two fighters are held apart so the gap between them stays readable, but a
   // swing has to be allowed to crowd inside that spacing or the separation is
   // a wall. Until the poses were rewritten this was covered by the reach
@@ -477,10 +523,18 @@ try {
   s = await state();
   check('walking moves the fighter', Math.abs(s.a.x - x0) > 30, `${x0} -> ${s.a.x}`);
 
+  // Sampled at the peak rather than at one arbitrary moment after the key.
+  // Reading it 140ms later measured whatever the browser happened to be doing
+  // then: healthy runs came back anywhere from -61 to 0, so the check went red
+  // on working code twice, once in the middle of a mutation run where it was
+  // mistaken for a mutant being caught.
   await page.keyboard.press('KeyW');
-  await page.waitForTimeout(140);
-  s = await state();
-  check('jump leaves the floor', s.a.y < -20, `y ${s.a.y}`);
+  let apex = 0;
+  for (let i = 0; i < 24; i++) {
+    await page.waitForTimeout(25);
+    apex = Math.min(apex, (await state()).a.y);
+  }
+  check('jump leaves the floor', apex < -20, `peak y ${Math.round(apex)}`);
   await shot('2-jump');
   await page.waitForTimeout(700);
   s = await state();

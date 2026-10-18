@@ -47,13 +47,13 @@ export const KIN05 = {
       name: 'roundhouse', label: 'Roundhouse',
       startup: 11, active: 5, recovery: 19,
       damage: 106, knockback: 490, lift: -130, drive: 90,
-      strikePart: 'legL', reach: 55, range: 211,
+      strikePart: 'legL', reach: 55, range: 204,
     }),
     special: move(RIG, {
       name: 'spiral', label: 'Spiral',
       startup: 10, active: 7, recovery: 23,
       damage: 94, knockback: 520, lift: -100, drive: 460,
-      strikePart: 'legR', reach: 57, range: 258,
+      strikePart: 'legR', reach: 57, range: 251,
     }),
   },
 };

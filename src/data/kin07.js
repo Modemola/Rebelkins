@@ -41,7 +41,7 @@ export const KIN07 = {
       name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 8,
       damage: 44, knockback: 200, lift: 0, drive: 170,
-      strikePart: 'armL', reach: 62, range: 188,
+      strikePart: 'armL', reach: 62, range: 189,
     }),
     heavy: move(RIG, {
       name: 'hammer', label: 'Hammer',
@@ -53,7 +53,7 @@ export const KIN07 = {
       name: 'dash', label: 'Dash',
       startup: 9, active: 7, recovery: 21,
       damage: 90, knockback: 500, lift: -60, drive: 600,
-      strikePart: 'torso', reach: 57, range: 145,
+      strikePart: 'torso', reach: 57, range: 146,
     }),
   },
 };
