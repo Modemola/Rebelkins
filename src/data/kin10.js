@@ -41,19 +41,19 @@ export const KIN10 = {
       name: 'jab', label: 'Jab',
       startup: 5, active: 3, recovery: 10,
       damage: 50, knockback: 225, lift: 0, drive: 145,
-      strikePart: 'armL', reach: 62, range: 197,
+      strikePart: 'armL', reach: 62, range: 199,
     }),
     heavy: move(RIG, {
       name: 'flare', label: 'Flare',
       startup: 12, active: 5, recovery: 21,
       damage: 118, knockback: 530, lift: -150, drive: 80,
-      strikePart: 'torso', reach: 66, range: 134,
+      strikePart: 'torso', reach: 66, range: 137,
     }),
     special: move(RIG, {
       name: 'burnout', label: 'Burnout',
       startup: 11, active: 8, recovery: 25,
       damage: 104, knockback: 560, lift: -90, drive: 470,
-      strikePart: 'legR', reach: 58, range: 209,
+      strikePart: 'legR', reach: 58, range: 210,
     }),
   },
 };

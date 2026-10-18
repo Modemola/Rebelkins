@@ -34,7 +34,7 @@ export const KIN06 = {
   subtitle: 'bruiser',
   atlas: 'assets/atlas/kin06.png',
   rig: RIG,
-  scale: 0.6941,
+  scale: 0.7221,
   health: 1120,
   walkSpeed: 142,
   backSpeed: 108,
@@ -107,21 +107,21 @@ export const KIN06 = {
       startup: 5, active: 3, recovery: 10,
       damage: 50, hitstun: 15, blockstun: 9,
       knockback: 250, lift: 0, drive: 130,
-      strikePart: 'armL', reach: 60, range: 190,
+      strikePart: 'armL', reach: 60, range: 198,
     }),
     heavy: move(RIG, {
       name: 'haymaker', label: 'Haymaker',
       startup: 12, active: 4, recovery: 20,
       damage: 115, hitstun: 24, blockstun: 14,
       knockback: 480, lift: -130, drive: 90,
-      strikePart: 'armR', reach: 66, range: 121,
+      strikePart: 'armR', reach: 66, range: 127,
     }),
     special: capStun({
       name: 'charge', label: 'Charge',
       startup: 11, active: 8, recovery: 24,
       damage: 102, hitstun: 26, blockstun: 16,
       knockback: 620, lift: -140, drive: 640,
-      strikePart: 'torso', reach: 55, range: 141,
+      strikePart: 'torso', reach: 55, range: 146,
       pose(f, m) {
         const { wind, strike } = phases(f, m);
         return {
