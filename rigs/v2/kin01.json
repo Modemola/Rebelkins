@@ -1,0 +1,29 @@
+{
+  "name": "kin01new",
+  "root": "torso",
+  "ground": [164, 472],
+  "_source": "A-pose sheet 325x489, keyed --local 10 --global 40, 2 islands (the topknot sits clear of the head). Subject x52..276 y11..471. Replaces a cutout that arrived through a clipping filter and could not be repaired.",
+  "parts": [
+    { "name": "legL", "parent": "hips", "z": 0,
+      "poly": [[108,214],[166,214],[168,476],[58,476]],
+      "pivot": [140,228], "limits": { "rot": [-55,55] } },
+    { "name": "legR", "parent": "hips", "z": 0,
+      "poly": [[166,214],[226,214],[270,476],[168,476]],
+      "pivot": [194,228], "limits": { "rot": [-55,55] } },
+    { "name": "hips", "parent": "torso", "z": 1,
+      "poly": [[108,204],[226,204],[226,252],[108,252]],
+      "pivot": [168,218] },
+    { "name": "torso", "parent": null, "z": 2,
+      "poly": [[100,104],[232,104],[238,160],[230,232],[102,232],[94,160]],
+      "pivot": [166,128], "occludedBy": ["armR","armL"] },
+    { "name": "armR", "parent": "torso", "z": 3,
+      "poly": [[88,110],[124,124],[106,190],[86,234],[78,278],[32,278],[42,226],[64,172]],
+      "pivot": [104,124], "limits": { "rot": [-170,170] } },
+    { "name": "armL", "parent": "torso", "z": 3,
+      "poly": [[208,124],[242,110],[264,172],[284,226],[294,278],[248,278],[240,234],[220,190]],
+      "pivot": [226,124], "limits": { "rot": [-170,170] } },
+    { "name": "head", "parent": "torso", "z": 4,
+      "poly": [[122,2],[206,2],[208,60],[204,114],[126,114],[120,60]],
+      "pivot": [164,110] }
+  ]
+}

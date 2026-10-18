@@ -8,15 +8,15 @@ import { stance, move } from './kit.js';
 
 const RIG = {
   root: 'torso',
-  ground: [300, 536],
+  ground: [164, 472],
   parts: [
-    { name: 'legL', parent: 'hips', z: 0, rect: [85, 0, 114, 135], pivot: [81, 12], origin: [268, 412], limits: { rot: [-55, 55] } },
-    { name: 'legR', parent: 'hips', z: 0, rect: [201, 0, 118, 135], pivot: [29, 12], origin: [330, 412], limits: { rot: [-55, 55] } },
-    { name: 'hips', parent: 'torso', z: 1, rect: [651, 0, 112, 72], pivot: [54, 18], origin: [300, 366] },
-    { name: 'torso', parent: null, z: 2, rect: [411, 0, 134, 124], pivot: [66, 54], origin: [300, 298] },
-    { name: 'armL', parent: 'torso', z: 3, rect: [0, 0, 83, 137], pivot: [59, 119], origin: [240, 248], limits: { rot: [-130, 130] } },
-    { name: 'armR', parent: 'torso', z: 3, rect: [321, 0, 88, 135], pivot: [27, 121], origin: [362, 248], limits: { rot: [-130, 130] } },
-    { name: 'head', parent: 'torso', z: 4, rect: [547, 0, 102, 114], pivot: [48, 96], origin: [300, 258] },
+    { name: 'legL', parent: 'hips', z: 0, rect: [0, 0, 105, 258], pivot: [78, 14], origin: [140, 228], limits: { rot: [-55, 55] } },
+    { name: 'legR', parent: 'hips', z: 0, rect: [107, 0, 99, 257], pivot: [28, 14], origin: [194, 228], limits: { rot: [-55, 55] } },
+    { name: 'hips', parent: 'torso', z: 1, rect: [561, 0, 105, 48], pivot: [47, 14], origin: [168, 218] },
+    { name: 'torso', parent: null, z: 2, rect: [282, 0, 142, 128], pivot: [72, 24], origin: [166, 128] },
+    { name: 'armR', parent: 'torso', z: 3, rect: [208, 0, 72, 142], pivot: [52, 1], origin: [104, 124], limits: { rot: [-170, 170] } },
+    { name: 'armL', parent: 'torso', z: 3, rect: [426, 0, 64, 119], pivot: [13, -25], origin: [226, 124], limits: { rot: [-170, 170] } },
+    { name: 'head', parent: 'torso', z: 4, rect: [492, 0, 67, 103], pivot: [37, 99], origin: [164, 110] },
   ],
 };
 
@@ -26,13 +26,13 @@ export const KIN01 = {
   subtitle: 'brawler',
   atlas: 'assets/atlas/kin01.png',
   rig: RIG,
-  scale: 0.75,
+  scale: 0.6085,
   health: 1060,
   walkSpeed: 160,
   backSpeed: 120,
   jumpVel: 630,
-  bodyHeight: 374,
-  hurtRadius: 60,
+  bodyHeight: 461,
+  hurtRadius: 74,
 
   stance: stance(RIG, { armed: true, weight: 0.7 }),
 
@@ -41,19 +41,19 @@ export const KIN01 = {
       name: 'rake', label: 'Rake',
       startup: 5, active: 3, recovery: 10,
       damage: 46, knockback: 220, lift: 0, drive: 150,
-      strikePart: 'armL', reach: 94, range: 128,
+      strikePart: 'armL', reach: 116, range: 213,
     }),
     heavy: move(RIG, {
       name: 'slam', label: 'Slam',
       startup: 11, active: 4, recovery: 19,
       damage: 104, knockback: 480, lift: -130, drive: 90,
-      strikePart: 'armR', reach: 60, range: 174,
+      strikePart: 'armR', reach: 74, range: 114,
     }),
     special: move(RIG, {
       name: 'pounce', label: 'Pounce',
       startup: 10, active: 7, recovery: 23,
       damage: 92, knockback: 540, lift: -90, drive: 520,
-      strikePart: 'armL', reach: 72, range: 115,
+      strikePart: 'armL', reach: 89, range: 203,
     }),
   },
 };
