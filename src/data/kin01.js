@@ -17,7 +17,12 @@
  */
 
 import { stance, move } from './kit.js';
+import { anim } from './anim.js';
 
+/**
+ * The pose every animation starts and ends in, read off the stance rather
+ * than written out again, so the two can never drift apart.
+ */
 const RIG = {
   root: 'torso',
   ground: [164, 472],
@@ -36,6 +41,9 @@ const RIG = {
   ],
 };
 
+const STANCE = stance(RIG, { armed: true, weight: 0.7 });
+const REST = STANCE.idle(0);
+
 export const KIN01 = {
   id: 'kin01',
   name: 'KIN 01',
@@ -50,14 +58,82 @@ export const KIN01 = {
   bodyHeight: 461,
   hurtRadius: 74,
 
-  stance: stance(RIG, { armed: true, weight: 0.7 }),
+  stance: STANCE,
 
   moves: {
+    /**
+     * The first move in this game that is animated rather than computed.
+     *
+     * It is a lead jab, so it is thrown off the front hand and the body does
+     * almost nothing -- that restraint is the point of a jab, and it is also
+     * the thing a shared formula cannot express, because the formula has to
+     * work for the haymaker too. Eighteen frames: three to load onto the back
+     * foot, four to throw, and the rest getting the hand home.
+     *
+     * Read down the `at` column and it is a sequence of drawings. That is the
+     * whole difference.
+     */
     light: move(RIG, {
       name: 'rake', label: 'Rake',
       startup: 5, active: 3, recovery: 10,
       damage: 46, knockback: 220, lift: 0, drive: 150,
       strikePart: 'foreL', reach: 34, range: 181,
+      pose: anim(REST, [
+        // Load. Weight back, chin down, lead elbow tightens -- the hand draws
+        // a little closer to the body before it goes anywhere.
+        { at: 2,
+          ease: 'out',
+          torso: { rot: 0.11, x: -6, y: 4 },
+          hips: { rot: -0.08 },
+          head: { rot: 0.12 },
+          armL: { rot: -0.40 }, foreL: { rot: -1.64 },
+          armR: { rot: -0.54 }, foreR: { rot: -1.56 },
+          legR: { rot: 0.10 }, shinR: { rot: 0.34 },
+          legL: { rot: -0.06 }, shinL: { rot: 0.22 } },
+
+        // Out. The shoulder goes before the hand does, so the elbow is still
+        // folded here while the upper arm is already round.
+        { at: 5,
+          ease: 'whip',
+          torso: { rot: -0.30, x: 13, y: 7 },
+          hips: { rot: 0.16 },
+          head: { rot: -0.07 },
+          armL: { rot: -1.04 }, foreL: { rot: -0.66 },
+          armR: { rot: -0.20 }, foreR: { rot: -1.74 },
+          legR: { rot: -0.22 }, shinR: { rot: 0.44 },
+          legL: { rot: 0.26 }, shinL: { rot: 0.05 } },
+
+        // Contact. Arm straight and a touch past it, hips turned under a
+        // chest that has turned further, rear hand hard back at the chin.
+        { at: 7,
+          ease: 'back',
+          torso: { rot: -0.46, x: 23, y: 9 },
+          hips: { rot: 0.24 },
+          head: { rot: -0.17 },
+          armL: { rot: -1.34 }, foreL: { rot: 0.07 },
+          armR: { rot: -0.14 }, foreR: { rot: -1.82 },
+          legR: { rot: -0.29 }, shinR: { rot: 0.51 },
+          legL: { rot: 0.35 }, shinL: { rot: -0.02 } },
+
+        // Home, fast. The hand is the first thing back and the body is still
+        // unwinding behind it.
+        { at: 10,
+          ease: 'snap',
+          torso: { rot: -0.18, x: 11, y: 6 },
+          head: { rot: -0.04 },
+          armL: { rot: -0.74 }, foreL: { rot: -1.10 },
+          armR: { rot: -0.34 }, foreR: { rot: -1.62 } },
+
+        // Past the guard and back to it, so nothing arrives at a dead stop.
+        { at: 13,
+          ease: 'out',
+          torso: { rot: 0.05, x: 1, y: 2 },
+          hips: { rot: -0.05 },
+          head: { rot: 0.07 },
+          armL: { rot: -0.57 }, foreL: { rot: -1.40 } },
+
+        { at: 17, rest: true, ease: 'inout' },
+      ]),
     }),
     heavy: move(RIG, {
       // The Slam lunges. His rear fist reaches 105 units measured, against a

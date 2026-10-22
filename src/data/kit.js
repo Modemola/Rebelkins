@@ -462,6 +462,10 @@ export function move(rig, spec) {
   return capStun({
     hitstun: 14 + Math.round(power * 12),
     blockstun: 8 + Math.round(power * 7),
-    lift: 0, drive: 120, ...spec, pose,
+    // The generated pose is the floor, not the ceiling: a move that brings its
+    // own animation keeps it. `...spec` has to come last for that, or a
+    // hand-authored move silently gets the formula instead -- which is a
+    // failure with no symptom except that the move looks like every other one.
+    lift: 0, drive: 120, pose, ...spec,
   });
 }
