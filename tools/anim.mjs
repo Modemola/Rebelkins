@@ -34,6 +34,7 @@ const OUT = arg('--out', `${ID}-${WHAT}.gif`);
 const FPS = Number(arg('--fps', 30));
 const PAD = Number(arg('--pad', 16));
 const ONION = process.argv.includes('--onion');
+const SKIN = process.argv.includes('--skin');
 const [CW, CH] = arg('--cell', '320x420').split('x').map(Number);
 
 if (!ID || !WHAT) {
@@ -71,11 +72,25 @@ const page = await browser.newPage({ viewport: { width: CW, height: CH }, device
 page.on('console', (m) => { if (m.type() === 'error') console.error('page:', m.text()); });
 await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load' });
 
-const frames = await page.evaluate(async ({ id, what, pad, CW, CH, onion }) => {
+const frames = await page.evaluate(async ({ id, what, pad, CW, CH, onion, skin }) => {
   const { Rig } = await import('/src/render/rig.js');
   const def = (await import(`/src/data/${id}.js`))[id.toUpperCase()];
   const img = await new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.src = `/${def.atlas}`; });
   const rig = new Rig(def.rig, img);
+
+  // With --skin the same solved bones drive a skinned mesh over the whole
+  // illustration instead of the cut-out stack, which is the only way to see
+  // whether a joint actually bends rather than coming apart.
+  let skinner = null;
+  let mesh = null;
+  let sheet = null;
+  if (skin) {
+    const { Skinner } = await import('/src/render/skin.js');
+    mesh = await (await fetch(`/meshes/v2/${id}.json`)).json();
+    sheet = await new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.src = `/${mesh.texture}`; });
+    skinner = new Skinner();
+    if (!skinner.ok) throw new Error('no webgl');
+  }
 
   // Idle either side of the move, so the entry and the settle are visible --
   // a move that snaps back to a dead neutral is most of what reads as stiff.
@@ -107,17 +122,19 @@ const frames = await page.evaluate(async ({ id, what, pad, CW, CH, onion }) => {
     ctx.beginPath(); ctx.moveTo(0, place.y); ctx.lineTo(CW, place.y); ctx.stroke();
     if (onion) {
       for (let k = Math.max(0, i - 7); k < i; k++) {
-        rig.draw(ctx, rig.solve(poses[k].pose, place), { alpha: 0.13 });
+        if (skinner) skinner.draw(ctx, [{ id, mesh, image: sheet, matrices: rig.solve(poses[k].pose, place), alpha: 0.13 }]);
+        else rig.draw(ctx, rig.solve(poses[k].pose, place), { alpha: 0.13 });
       }
     }
-    rig.draw(ctx, rig.solve(poses[i].pose, place), {});
+    if (skinner) skinner.draw(ctx, [{ id, mesh, image: sheet, matrices: rig.solve(poses[i].pose, place) }]);
+    else rig.draw(ctx, rig.solve(poses[i].pose, place), {});
     ctx.font = '600 13px ui-monospace, monospace';
     ctx.fillStyle = poses[i].tag === 'ACTIVE' ? '#f5c518' : '#8d87a0';
     ctx.fillText(`${String(i).padStart(3)}  ${poses[i].tag}`, 12, 22);
     out.push(cv.toDataURL('image/png'));
   }
   return out;
-}, { id: ID, what: WHAT, pad: PAD, CW, CH, onion: ONION });
+}, { id: ID, what: WHAT, pad: PAD, CW, CH, onion: ONION, skin: SKIN });
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebelkin-anim-'));
 frames.forEach((d, i) => {

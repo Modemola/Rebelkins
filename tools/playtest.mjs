@@ -572,6 +572,67 @@ try {
   check('both fighters at full health', s.a.hp === 1000 && s.b.hp === 1120, `${s.a.hp} / ${s.b.hp}`);
   await shot('1-start');
 
+  // The skinned renderer, forced on.
+  //
+  // It is off by default wherever WebGL is software-rasterised, which is this
+  // container and so every run of this suite -- meaning the renderer the game
+  // actually ships to anyone with a GPU would otherwise never be executed
+  // here at all. `?skin=force` turns it on regardless, and this checks the
+  // two things that matter: that it draws, and that what it draws is the
+  // character rather than nothing.
+  const skinned = await (async () => {
+    const p2 = await browser.newPage({ viewport: { width: 900, height: 560 } });
+    const errs = [];
+    p2.on('pageerror', (e) => errs.push(e.message));
+    await p2.goto(`http://localhost:${port}/?skin=force`, { waitUntil: 'networkidle' });
+    await p2.waitForFunction(() => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === 10, { timeout: 15000 });
+    const out = await p2.evaluate(async () => {
+      const g = window.__REBELKIN__;
+      g.start('kin01', 'ai', 'kin02');
+      await new Promise((r) => setTimeout(r, 1200));
+      g.match.phase = 'fight';
+      g.renderOnce();
+      await new Promise((r) => requestAnimationFrame(r));
+      const cv = document.getElementById('stage');
+      const ctx = cv.getContext('2d');
+      // Count how much of the frame the two characters cover, by sampling the
+      // band they stand in and looking for pixels that are not the backdrop.
+      const grab = () => ctx.getImageData(0, Math.round(cv.height * 0.3), cv.width, Math.round(cv.height * 0.4));
+      const band = grab();
+      let lit = 0;
+      for (let i = 0; i < band.data.length; i += 4) {
+        const [r, gg, b] = [band.data[i], band.data[i + 1], band.data[i + 2]];
+        if (r + gg + b > 230 && Math.max(r, gg, b) - Math.min(r, gg, b) > 24) lit++;
+      }
+      // The same instant drawn the other way. If the two frames match, the
+      // skinned path did not produce these pixels and the check above is
+      // reporting on the cut-out renderer it was meant to replace.
+      g.skinner.ok = false;
+      g.renderOnce();
+      await new Promise((r) => requestAnimationFrame(r));
+      const other = grab();
+      let differ = 0;
+      for (let i = 0; i < band.data.length; i += 4) {
+        if (Math.abs(band.data[i] - other.data[i]) + Math.abs(band.data[i + 1] - other.data[i + 1])
+          + Math.abs(band.data[i + 2] - other.data[i + 2]) > 30) differ++;
+      }
+      g.skinner.ok = true;
+      return {
+        on: true, software: !!g.skinner.software, renderer: g.skinner.renderer,
+        meshes: Object.keys(g.meshes).length, lit, differ, pixels: band.data.length / 4,
+      };
+    });
+    await p2.close();
+    return { ...out, errs };
+  })();
+  check('the skinned renderer runs when it is asked to', skinned.on && skinned.meshes === 10 && !skinned.errs.length,
+    `${skinned.meshes}/10 meshes, forced on over ${skinned.software ? 'software' : 'hardware'} GL`
+    + (skinned.errs.length ? `, errors: ${skinned.errs[0]}` : ''));
+  check('the skinned renderer actually draws the fighters',
+    skinned.lit > skinned.pixels * 0.01 && skinned.differ > skinned.pixels * 0.004,
+    `${(skinned.lit / skinned.pixels * 100).toFixed(1)}% of the band is character, `
+    + `${(skinned.differ / skinned.pixels * 100).toFixed(1)}% of it differs from the cut-out render`);
+
   console.log('\nmovement');
   // Quiet the CPU first. These checks are about what the player's own inputs
   // do, and a live opponent lands hits during them: a jump pressed in hitstun

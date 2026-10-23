@@ -8,6 +8,7 @@
 import { Loop, TICK } from './engine/loop.js';
 import { Input } from './engine/input.js';
 import { Rig } from './render/rig.js';
+import { Skinner } from './render/skin.js';
 import { Camera, drawStage, drawFloor, drawFore, setArena, arena } from './render/stage.js';
 import { ARENAS } from './render/arena.js';
 import { WEAPONS, byId as weaponById, canHold, drawWeaponOn } from './data/weapons.js';
@@ -66,10 +67,45 @@ function loadImage(src) {
 }
 
 const rigs = {};
+/**
+ * The skinned mesh for each character, drawn instead of the cut-out stack.
+ *
+ * The rig is unchanged and still solves the bones -- the hitboxes ride on
+ * those same matrices -- but the drawing is a single mesh over the whole
+ * illustration rather than a pile of separate quads. Two quads meeting at a
+ * joint come apart when it bends, which is why the punching arm rendered as a
+ * floating sleeve with a gap at the shoulder. A mesh has nothing to come
+ * apart. The cut-out path stays as the fallback for anything without WebGL.
+ */
+const meshes = {};
+const skinner = new Skinner();
+
 async function loadRigs() {
   await Promise.all(Object.values(DEFS).map(async (d) => {
     rigs[d.id] = new Rig(d.rig, await loadImage(d.atlas));
   }));
+  if (!skinner.ok) return;
+  await Promise.all(Object.values(DEFS).map(async (d) => {
+    try {
+      const mesh = await (await fetch(`meshes/v2/${d.id}.json`)).json();
+      meshes[d.id] = { mesh, image: await loadImage(mesh.texture) };
+    } catch { /* this character keeps the cut-out path */ }
+  }));
+}
+
+/** Both fighters in one pass, so the composite happens once rather than twice. */
+function drawFighters(ctx, list, alpha) {
+  const skinned = list.filter((f) => meshes[f.def.id]);
+  if (skinner.ok && skinned.length === list.length) {
+    skinner.draw(ctx, list.map((f) => ({
+      id: f.def.id, ...meshes[f.def.id], matrices: poses[f.pad], alpha,
+    })));
+    return;
+  }
+  for (const f of list) {
+    if (alpha !== undefined) ctx.globalAlpha = alpha;
+    rigs[f.def.id].draw(ctx, poses[f.pad]);
+  }
 }
 
 /* ----------------------------------------------------------------- match */
@@ -265,10 +301,7 @@ function render(alpha, dt) {
   if (!debugDraw.hideFighters) {
     ctx.save();
     ctx.scale(1, -1);
-    for (const f of match.fighters) {
-      ctx.globalAlpha = 0.22;
-      rigs[f.def.id].draw(ctx, poses[f.pad]);
-    }
+    drawFighters(ctx, match.fighters, 0.22);
     ctx.restore();
   }
   // fade the reflection out with distance from the floor line
@@ -290,9 +323,10 @@ function render(alpha, dt) {
 
   // fighters, far one first so the near one overlaps correctly
   const order = debugDraw.hideFighters ? [] : match.fighters.slice().sort((p, q) => p.x - q.x);
+  // Block glows first, then both bodies in one pass, then weapons. Compositing
+  // the skinned canvas is the expensive part of that renderer, so it happens
+  // once for the pair rather than once each.
   for (const f of order) {
-    const rig = rigs[f.def.id];
-    const M = poses[f.pad];
     // No rim light. It was a second full rig draw per fighter per frame under
     // a 'lighter' composite -- about six frames a second of the budget -- and
     // measuring it showed it was not even doing its job: character-to-backdrop
@@ -312,9 +346,9 @@ function render(alpha, dt) {
       ctx.restore();
     }
 
-    rig.draw(ctx, M);
-    drawWeaponOn(ctx, rig, M, f.def, f.weapon, f.facing);
   }
+  drawFighters(ctx, order);
+  for (const f of order) drawWeaponOn(ctx, rigs[f.def.id], poses[f.pad], f.def, f.weapon, f.facing);
 
   fx.drawWorld(ctx, cam.zoom);
 
@@ -540,7 +574,7 @@ loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
   window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
-    ROSTER, ARENAS, arena, debugDraw, STAGE, WEAPONS, progress,
+    ROSTER, ARENAS, arena, debugDraw, STAGE, WEAPONS, progress, skinner, meshes,
     setWeapon: (id) => { p1Weapon = id; p2Weapon = id; repaintLoadout(); },
     poses,
     // One frame, on demand. The legibility and gradient checks need two frames
