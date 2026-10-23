@@ -70,7 +70,7 @@ const port = await new Promise((resolve, reject) => {
 const browser = await chromium.launch({ args: ['--no-sandbox', '--use-gl=swiftshader'] });
 const page = await browser.newPage({ viewport: { width: CW, height: CH }, deviceScaleFactor: 1 });
 page.on('console', (m) => { if (m.type() === 'error') console.error('page:', m.text()); });
-await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load' });
+await page.goto(`http://127.0.0.1:${port}/?skin=force`, { waitUntil: 'load' });
 
 const frames = await page.evaluate(async ({ id, what, pad, CW, CH, onion, skin }) => {
   const { Rig } = await import('/src/render/rig.js');
