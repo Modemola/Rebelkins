@@ -46,8 +46,6 @@ export const KIN09S = {
   subtitle: 'fencer (side)',
   atlas: 'assets/atlas/kin09s.png',
   rig: RIG,
-  // The drawing stands 430 source pixels tall, and 0.707 puts it at the same
-  // 304 world units as the front-facing version, so the two are comparable.
   // 1325 source pixels tall; 0.2294 puts her at the same 304 world units as
   // the rest of the cast, so she stands beside them at one scale.
   scale: 0.2294,
@@ -127,13 +125,13 @@ export const KIN09S = {
   moves: {
     light: move(RIG, {
       name: 'point', label: 'Point',
-      startup: 4, active: 3, recovery: 28,
+      startup: 4, active: 3, recovery: 9,
       damage: 40, knockback: 200, lift: 0, drive: 150,
       strikePart: 'foreL', reach: 105, range: 170,
     }),
     heavy: move(RIG, {
       name: 'lash', label: 'Lash',
-      startup: 10, active: 4, recovery: 55,
+      startup: 10, active: 4, recovery: 18,
       damage: 94, knockback: 450, lift: -110, drive: 230,
       strikePart: 'foreR', reach: 160, range: 120,
     }),
@@ -147,7 +145,7 @@ export const KIN09S = {
      */
     special: move(RIG, {
       name: 'lunge', label: 'Lunge',
-      startup: 9, active: 6, recovery: 62,
+      startup: 9, active: 6, recovery: 20,
       damage: 88, knockback: 500, lift: -80, drive: 420,
       strikePart: 'shinR', reach: 148, range: 180,
       pose: anim({}, [
