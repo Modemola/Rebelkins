@@ -125,8 +125,8 @@ and attach that character's existing image as a reference.
 > shoes, centred, occupying about 88% of the image height, with an even margin
 > and nothing cropped or touching the edge.
 >
-> **Resolution: at least 1024 pixels tall.** This image is used directly as
-> the in-game texture.
+> **Resolution: 1536 pixels tall.** This image is used directly as the in-game
+> texture, so its resolution is the character's resolution in the game.
 >
 > **Background:** flat, even, neutral mid-grey. The figure floats free — no
 > floor, no ground plane, no contact shadow, no shadow of any kind beneath or
@@ -189,7 +189,11 @@ Run these in order. The first three are where both previous attempts failed.
    chest, and between the two legs. A forearm crossing the chest is a reject
    however good the guard looks — those are the same pixels, and the arm
    cannot move without the chest coming with it.
-7. **At least 1024px tall.** Smaller than the current art is a step backwards.
+7. **1536px tall**, PNG, with the figure about 88% of that. Open the file and
+   read its dimensions — if the height starts with a 4, it is the old size.
+   The measured reason for the number is in ART-RESOLUTION.md: a fighter is
+   drawn 1296 device pixels tall on a 1920 desktop, and the art delivered so
+   far is 431, so it is being magnified threefold.
 8. **No floor and no contact shadow.** A shadow keys as part of the character
    and leaves a grey smear welded to the feet.
 9. **Mid-grey background, not white.** White destroyed KIN 04's hair and
