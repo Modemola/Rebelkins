@@ -23,16 +23,24 @@ is what the drawing is *of*.
 the body square to the camera, it is worth nothing to us no matter how good
 it looks, and it should be regenerated rather than accepted.
 
-### What went wrong on the first attempt
+### What went wrong on the attempts so far
 
 The previous brief asked for a three-quarter turn and got front-on figures.
 The second attempt (KIN 09) turned **the head only** — proper profile, looking
 right — while the chest, hips and both feet stayed square to the camera, with
 the legs splayed in a symmetric V.
 
-That is the failure mode to design against: *a generator will turn the head
-and leave the body.* So this brief sets the direction from the **feet
-upward**, because the feet are what the rest of the body has to agree with.
+The third attempt turned the chest and the shoulders properly and drew a
+real guard with both elbows bent — but the legs stayed square and simply
+spread: the feet measured 33% of the figure's height apart and exactly level,
+which is wider and flatter than the front-on characters being replaced. And
+both forearms were drawn across the chest.
+
+So there are two failure modes to design against. *A generator will turn the
+head and leave the body*, and once the body turns it will *still* plant the
+feet square and read "bladed stance" as "wide stance". The stance paragraph
+now describes the feet in terms of how far apart they are **on the canvas**,
+which is the thing that can be checked.
 
 ---
 
@@ -86,20 +94,32 @@ and attach that character's existing image as a reference.
 > the far ear hidden.
 >
 > **Stance:** a boxer's fighting stance, bladed, weight slightly on the rear
-> foot. **Both knees visibly bent, the rear knee bent more than the front.** A
-> clear band of empty background between the two legs along their whole
-> length. Both feet flat on the ground; the rear foot may sit a little higher
-> on the canvas than the front foot to show that it is further away, by no
-> more than a tenth of the figure's height.
+> foot. **The two feet are close together as they appear on the canvas** — the
+> gap between them, measured left to right across the picture, is no more than
+> about a fifth of the character's height. They are far apart in *depth*, not
+> across the image: the rear foot is set back behind the front one, drawn
+> higher up the canvas because it is further from the camera, by roughly a
+> tenth of the character's height. This is a narrow stance seen from the side,
+> not a wide stance seen from the front. **Both knees visibly bent, the rear
+> knee bent more than the front.** A clear band of empty background between
+> the two legs.
 >
-> **Arms:** a loose high guard, both hands up at chin height. **Both elbows
-> clearly bent** — even where an arm is held out long, keep enough bend that
-> the elbow's position is obvious. The near arm is held out from the ribs with
-> a visible band of empty background between the forearm and the chest. The
-> far arm is drawn complete, shoulder to hand, held out and slightly back so
-> that its whole length is silhouetted against the background rather than
-> disappearing behind the torso. Hands closed into fists, wrists straight,
-> each hand clear of the face and of the other hand.
+> **Arms:** a high guard held **wide**, with the elbows flared out away from
+> the ribs. Both hands are up at head height but **out to the sides of the
+> head, not in front of the face or in front of the chest** — a band of empty
+> background is visible between each forearm and the body, and neither forearm
+> crosses the torso. **Both elbows clearly bent** — even where an arm is held
+> out long, keep enough bend that the elbow's position is obvious. The far arm
+> is drawn complete, shoulder to hand, held out and slightly back so that its
+> whole length is silhouetted against the background rather than disappearing
+> behind the torso. Hands closed into fists, wrists straight, each hand clear
+> of the face and of the other hand.
+>
+> *(A real boxing guard tucks the forearms across the chest. Do not draw that
+> here. The forearms must stay clear of the body even though it makes the
+> guard look wider than a real one — the drawing is cut into moving parts, and
+> a forearm drawn over the chest cannot be moved without taking the chest
+> with it.)*
 >
 > **Framing:** the whole figure from the top of the hair to the soles of the
 > shoes, centred, occupying about 88% of the image height, with an even margin
@@ -152,9 +172,13 @@ Run these in order. The first three are where both previous attempts failed.
 1. **Cover the head with your thumb. Can you still tell which way they are
    facing?** If not, reject. The head turning is not the body turning, and the
    head is the part that turns most easily.
-2. **Look at the two feet.** Do both point to the right, one ahead of the
-   other? If either points at the camera, or they sit side by side, or they
-   splay symmetrically outward — reject.
+2. **Look at the two feet.** Do both point to the right, one set back behind
+   the other? If either points at the camera, or they splay symmetrically
+   outward, reject. Measurable, and this one is reliable: the horizontal gap
+   between the feet should be **under a fifth of the figure's height**, and
+   the rear foot should sit **higher up the canvas** than the front one. A
+   front-on splay measures 29–33% apart and dead level; the attempt that was
+   rejected for this measured 33% and 0%.
 3. **Look at the waist.** Is a skirt, coat hem or belt seen edge-on, or is its
    front facing you? Facing you means the hips never turned.
 4. **Both elbows and both knees visibly bent**, with the rear knee bent more
@@ -162,7 +186,9 @@ Run these in order. The first three are where both previous attempts failed.
 5. **The far arm is complete** — shoulder, elbow, hand — and sits against
    background, not against the torso.
 6. **Daylight between things that move apart**: between each forearm and the
-   chest, and between the two legs.
+   chest, and between the two legs. A forearm crossing the chest is a reject
+   however good the guard looks — those are the same pixels, and the arm
+   cannot move without the chest coming with it.
 7. **At least 1024px tall.** Smaller than the current art is a step backwards.
 8. **No floor and no contact shadow.** A shadow keys as part of the character
    and leaves a grey smear welded to the feet.
