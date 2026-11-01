@@ -210,6 +210,15 @@ Run these in order. The first three are where both previous attempts failed.
 Keep each character's existing design exactly — clothing, colours, hair, face.
 The style note is there because it should read in the stance.
 
+**The style note never overrides the stance.** A generator reading "wide and
+planted" against "bladed stance" will take the more specific word and plant
+the feet square — KIN 06's first attempt came back at 33% of height apart
+with the feet dead level, because his line said "wide". Every one of these
+characters stands with one foot in front of the other; what differs between
+them is how low, how far forward the weight is, and how tight the hands are.
+If a style note and the stance paragraph ever disagree, the stance wins and
+the note is wrong.
+
 | | {CHARACTER} — paste this into the prompt | style | what the stance should say |
 |---|---|---|---|
 | **KIN 01** | a fighter in a green and white varsity jacket, baggy blue jeans, a dark cat-eared mask and a topknot | brawler | square-ish and heavy, hands a little low, chin tucked |
@@ -217,7 +226,7 @@ The style note is there because it should read in the stance.
 | **KIN 03** | a fighter in a red cropped jacket, dark trousers, hair in a high bun | duelist | narrow and bladed, lead hand reaching further than the rear |
 | **KIN 04** | a fighter in a black tracksuit with white hair and teal gloves | ghost | loose and low, shoulders relaxed, almost casual |
 | **KIN 05** | a fighter in a yellow jacket, dark cargo trousers, hair in afro puffs | kickboxer | tall and light, weight forward on the balls of the feet |
-| **KIN 06** | a fighter in a dark jacket and white platform boots, with spiked cyan hair | bruiser | wide and planted, elbows out, lowest stance of the ten |
+| **KIN 06** | a fighter in a dark jacket and white platform boots, with spiked cyan hair | bruiser | heavy and low — knees bent deepest of the ten, weight dropped, elbows out. Low, **not** wide: still one foot in front of the other |
 | **KIN 07** | a fighter in a purple crop top and green cargo trousers, with long blue braids | rusher | leaning in, rear heel lifted, ready to close |
 | **KIN 08** | a fighter in a long yellow coat with a white bob | striker | long and upright, lead shoulder well forward |
 | **KIN 09** | a fighter in a blue jacket, black pleated skirt and tall black boots, with long straight dark hair | fencer | side-on, almost in profile, lead arm out long |
