@@ -117,8 +117,8 @@ const MUTANTS = [
     name: 'a weapon arms every limb',
     why: 'a bat must not lengthen a kick, or one weapon is correct on everyone',
     file: 'src/data/weapons.js',
-    find: '  if (!heldParts(def, weapon).includes(move.strikePart)) return move;',
-    with: '  if (!GRIP_PARTS[weapon.grip].concat([\'torso\']).includes(move.strikePart)) return move;',
+    find: '  if (!heldParts(def, weapon).includes(limbOf(move.strikePart))) return move;',
+    with: '  if (!GRIP_PARTS[weapon.grip].concat([\'torso\']).includes(limbOf(move.strikePart))) return move;',
     expect: 'changes only the limb holding it',
   },
   {
