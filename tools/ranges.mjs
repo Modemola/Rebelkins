@@ -74,9 +74,17 @@ for (const id of ids) {
   found[id] = {};
   for (const slot of ['light', 'heavy', 'special']) {
     if (!DEFS[id].moves[slot]) continue;
-    let lo = 60;
+    // Find a gap that works before searching for the furthest one.
+    //
+    // This used to test the closest gap and give up if it missed, which
+    // assumes every move is a simple maximum reach. A punch aimed high has a
+    // hole at point-blank -- the hurtbox is an ellipse, so it is narrow up
+    // where the head is, and a fist can arrive past the edge of it. KIN 01's
+    // jab connected anywhere from 100 to 150 and was reported as 0.
+    let lo = 0;
+    for (let g = 60; g <= 340; g += 8) if (connects(id, slot, g)) { lo = g; break; }
     let hi = 340;
-    if (!connects(id, slot, lo)) { found[id][slot] = 0; continue; }
+    if (!lo) { found[id][slot] = 0; continue; }
     while (hi - lo > 2) {
       const mid = (lo + hi) / 2;
       if (connects(id, slot, mid)) lo = mid; else hi = mid;

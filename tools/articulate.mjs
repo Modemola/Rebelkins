@@ -37,8 +37,9 @@ const ARM_OVER = num('--arm-overlap', 18);
 const LEG_OVER = num('--leg-overlap', 22);
 const OUT = str('--out', src);
 
-if (!src || ELBOW === null || KNEE === null) {
-  console.error('usage: node tools/articulate.mjs <rig.json> --elbow <y> --knee <y> [--out <file>]');
+const AUTO = args.includes('--auto');
+if (!src || (!AUTO && (ELBOW === null || KNEE === null))) {
+  console.error('usage: node tools/articulate.mjs <rig.json> (--elbow <y> --knee <y> | --auto) [--out <file>]');
   process.exit(1);
 }
 
@@ -77,6 +78,31 @@ const by = Object.fromEntries(rig.parts.map((p) => [p.name, p]));
 if (by.foreL) { console.error(`${src} already has elbows`); process.exit(1); }
 
 /**
+ * Where the joints go, taken off the limb rather than read off the picture.
+ *
+ * Doing it by eye is fine for one character and nine chances to be slightly
+ * wrong for the rest. A limb polygon runs from the joint at its top to the
+ * end of the hand or the sole of the boot, so the joint inside it sits at a
+ * fraction of that span: the elbow higher than halfway, because the part
+ * below it carries the hand as well as the forearm, and the knee a little
+ * above halfway for the same reason -- these characters are drawn with very
+ * substantial boots.
+ */
+let elbow = ELBOW;
+let knee = KNEE;
+if (AUTO) {
+  const span = (name, frac) => {
+    const p = by[name];
+    const top = p.pivot[1];
+    const bottom = Math.max(...p.poly.map((q) => q[1]));
+    return Math.round(top + (bottom - top) * frac);
+  };
+  elbow = Math.round((span('armL', 0.40) + span('armR', 0.40)) / 2);
+  knee = Math.round((span('legL', 0.44) + span('legR', 0.44)) / 2);
+  console.log(`derived: elbow y=${elbow}, knee y=${knee}`);
+}
+
+/**
  * z is reassigned wholesale rather than patched, because the new parts have to
  * interleave with the old: each lower half draws directly over its own upper
  * half, and the head stays on top of everything as it was.
@@ -87,10 +113,10 @@ const Z = {
 };
 
 const joints = [
-  { upper: 'armR', lower: 'foreR', y: ELBOW, over: ARM_OVER, limits: { rot: [-160, 20] } },
-  { upper: 'armL', lower: 'foreL', y: ELBOW, over: ARM_OVER, limits: { rot: [-160, 20] } },
-  { upper: 'legL', lower: 'shinL', y: KNEE, over: LEG_OVER, limits: { rot: [-20, 140] } },
-  { upper: 'legR', lower: 'shinR', y: KNEE, over: LEG_OVER, limits: { rot: [-20, 140] } },
+  { upper: 'armR', lower: 'foreR', y: elbow, over: ARM_OVER, limits: { rot: [-160, 20] } },
+  { upper: 'armL', lower: 'foreL', y: elbow, over: ARM_OVER, limits: { rot: [-160, 20] } },
+  { upper: 'legL', lower: 'shinL', y: knee, over: LEG_OVER, limits: { rot: [-20, 140] } },
+  { upper: 'legR', lower: 'shinR', y: knee, over: LEG_OVER, limits: { rot: [-20, 140] } },
 ];
 
 const parts = [];
@@ -124,7 +150,7 @@ const torso = parts.find((p) => p.name === 'torso');
 if (torso?.occludedBy) torso.occludedBy = ['armR', 'foreR', 'armL', 'foreL'];
 
 const out = { ...rig, parts };
-out._source = `${rig._source || ''}\nElbows at y=${ELBOW} and knees at y=${KNEE}, `
+out._source = `${rig._source || ''}\nElbows at y=${elbow} and knees at y=${knee}, `
   + `cut by tools/articulate.mjs with ${ARM_OVER * 2}px of overlap at the elbow `
   + `and ${LEG_OVER * 2}px at the knee.`;
 fs.writeFileSync(OUT, `${JSON.stringify(out, null, 1)}\n`);

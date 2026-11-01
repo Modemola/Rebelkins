@@ -566,6 +566,7 @@ try {
 
 
   await page.click('#startBtn');
+  await page.evaluate(() => { window.__REBELKIN__.ai.set('still'); });
   await page.waitForTimeout(1600);               // intro
   let s = await state();
   check('match started', s.match && s.phase === 'fight', s.phase);
@@ -931,7 +932,9 @@ try {
         const held = W.heldParts(def, w);
         for (const [slot, move] of Object.entries(def.moves)) {
           const armed = W.applyWeapon(w, move, def);
-          const shouldChange = held.includes(move.strikePart);
+          // By the limb, as the code does: `heldParts` names arms and legs
+          // while `strikePart` names the hand or the foot on the end of one.
+          const shouldChange = held.includes(W.limbOf(move.strikePart));
           const didChange = armed !== move;
           if (shouldChange !== didChange) {
             out.wrongScope.push(`${def.id}/${w.id}/${slot}`);
@@ -1024,8 +1027,11 @@ try {
       // until KIN 08's hook moved onto her lead leg, at which point the bat
       // was still in her hand, the check still swung the kick, and the bat
       // correctly added nothing -- a real failure report for a healthy game.
+      // The limb, not the strike part: hands and feet carry the hitboxes now,
+      // so matching on 'armL' finds nothing and the fixture swings undefined.
+      const limb = (x) => ({ foreL: 'armL', foreR: 'armR', shinL: 'legL', shinR: 'legR' }[x] || x);
       const slot = ['heavy', 'light', 'special'].find((s) => {
-        const part = m.a.def.moves[s] && m.a.def.moves[s].strikePart;
+        const part = m.a.def.moves[s] && limb(m.a.def.moves[s].strikePart);
         return part === 'armL' || part === 'armR';
       });
       m.a.startMove(slot);

@@ -217,7 +217,12 @@ export function swingOf(rig, partName) {
  * undo it.
  */
 export function guardOf(rig) {
-  return { armL: swingOf(rig, 'armL') * 0.42, armR: swingOf(rig, 'armR') * 0.26 };
+  // A fraction of the swing that points the arm at the opponent, which lifts
+  // the shoulder; the hand is brought up and in by the elbow, in REST below.
+  // The two have to be read together -- a shoulder raised without an elbow
+  // folded is a character reaching out, not guarding, which is what every one
+  // of these looked like while nine of the ten had no elbow to fold.
+  return { armL: swingOf(rig, 'armL') * 0.60, armR: swingOf(rig, 'armR') * 0.46 };
 }
 
 /**
@@ -302,7 +307,7 @@ const KNEE_FOLD = 0.95;   // knee: heel back under the body
  * arm to a different neutral before it began. That pop was the first 33 pixels
  * of travel on KIN 01's jab, before the wind-up had done anything.
  */
-const REST = { elbowL: 0.74, elbowR: 0.80, kneeL: 0.17, kneeR: 0.15 };
+const REST = { elbowL: 1.02, elbowR: 1.08, kneeL: 0.17, kneeR: 0.15 };
 const mix = (from, to, t) => from + (to - from) * t;
 
 /**
@@ -400,9 +405,18 @@ function punchPose(rig, arm, power, swing) {
 function kickPose(rig, leg, power, swing) {
   const other = leg === 'legL' ? 'legR' : 'legL';
   const guard = guardOf(rig);
+  const knee = lowerOf(rig, leg);
+  const stand = lowerOf(rig, other);
+  const restKnee = KNEE_FOLD * REST.kneeL;
   return (f, m) => {
-    const { wind, strike, coil, settle } = phases(f, m);
+    const { wind, strike, thrown, coil, settle } = phases(f, m);
     const a = coil;
+    // A kick chambers: the knee comes up folded and the shin snaps out of it.
+    // Until the legs had knees there was nothing to fold, and the hitbox sat
+    // on a shin that never moved relative to the thigh carrying it -- the
+    // check calls that a limb that does not bend when it strikes, and it was
+    // right.
+    const snap = Math.min(1.04, Math.pow(Math.max(0, thrown), 1.6));
     return {
       torso: { rot: -0.16 * a + 0.30 * power * strike + settle * 0.05, x: -6 * a + (12 + 10 * power) * strike, y: 5 * strike },
       hips: { rot: 0.18 * a - 0.34 * strike },
@@ -413,6 +427,8 @@ function kickPose(rig, leg, power, swing) {
       // lifted both feet clear of the floor -- every roundhouse read as a
       // flying kick. It braces back instead, by a fixed small amount.
       [other]: { rot: 0.12 * strike },
+      ...(knee ? { [knee]: { rot: mix(restKnee, KNEE_FOLD * 1.35, a) * (1 - snap) } } : {}),
+      ...(stand ? { [stand]: { rot: mix(restKnee, KNEE_FOLD * 0.42, strike) } } : {}),
       // Both hands stay in the guard a kicker would actually keep them in, the
       // lead one dropping a touch as the hip turns over.
       armL: { rot: guard.armL * (1 + 0.20 * a - 0.30 * strike) },

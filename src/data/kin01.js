@@ -77,7 +77,7 @@ export const KIN01 = {
       name: 'rake', label: 'Rake',
       startup: 5, active: 3, recovery: 10,
       damage: 46, knockback: 220, lift: 0, drive: 150,
-      strikePart: 'foreL', reach: 34, range: 181,
+      strikePart: 'foreL', reach: 34, range: 187,
       pose: anim(REST, [
         // Load. Weight back, chin down, lead elbow tightens -- the hand draws
         // a little closer to the body before it goes anywhere.
@@ -98,7 +98,7 @@ export const KIN01 = {
           torso: { rot: -0.30, x: 13, y: 7 },
           hips: { rot: 0.16 },
           head: { rot: -0.07 },
-          armL: { rot: -1.04 }, foreL: { rot: -0.66 },
+          armL: { rot: -0.92 }, foreL: { rot: -0.62 },
           armR: { rot: -0.20 }, foreR: { rot: -1.74 },
           legR: { rot: -0.22 }, shinR: { rot: 0.44 },
           legL: { rot: 0.26 }, shinL: { rot: 0.05 } },
@@ -110,7 +110,7 @@ export const KIN01 = {
           torso: { rot: -0.46, x: 23, y: 9 },
           hips: { rot: 0.24 },
           head: { rot: -0.17 },
-          armL: { rot: -1.34 }, foreL: { rot: 0.07 },
+          armL: { rot: -1.12 }, foreL: { rot: 0.05 },
           armR: { rot: -0.14 }, foreR: { rot: -1.82 },
           legR: { rot: -0.29 }, shinR: { rot: 0.51 },
           legL: { rot: 0.35 }, shinL: { rot: -0.02 } },
@@ -121,7 +121,7 @@ export const KIN01 = {
           ease: 'snap',
           torso: { rot: -0.18, x: 11, y: 6 },
           head: { rot: -0.04 },
-          armL: { rot: -0.74 }, foreL: { rot: -1.10 },
+          armL: { rot: -0.68 }, foreL: { rot: -1.10 },
           armR: { rot: -0.34 }, foreR: { rot: -1.62 } },
 
         // Past the guard and back to it, so nothing arrives at a dead stop.
@@ -144,13 +144,13 @@ export const KIN01 = {
       name: 'slam', label: 'Slam',
       startup: 11, active: 4, recovery: 19,
       damage: 104, knockback: 480, lift: -130, drive: 230,
-      strikePart: 'foreR', reach: 48, range: 107,
+      strikePart: 'foreR', reach: 70, range: 100,
     }),
     special: move(RIG, {
       name: 'pounce', label: 'Pounce',
       startup: 10, active: 7, recovery: 23,
       damage: 92, knockback: 540, lift: -90, drive: 520,
-      strikePart: 'foreL', reach: 34, range: 195,
+      strikePart: 'foreL', reach: 34, range: 190,
     }),
   },
 };

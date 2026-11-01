@@ -1,29 +1,438 @@
 {
-  "name": "kin09new",
-  "root": "torso",
-  "ground": [166, 462],
-  "_source": "single A-pose sheet 328x489, keyed --local 10 --global 40, one island. Head is an M like KIN 07, but her hair columns fall INSIDE the sleeves, so they are narrower and the sleeves pass outboard of them.",
-  "parts": [
-    { "name": "legL", "parent": "hips", "z": 0,
-      "poly": [[114,252],[170,252],[172,466],[108,466]],
-      "pivot": [142,264], "limits": { "rot": [-55,55] } },
-    { "name": "legR", "parent": "hips", "z": 0,
-      "poly": [[170,252],[228,252],[232,466],[172,466]],
-      "pivot": [194,264], "limits": { "rot": [-55,55] } },
-    { "name": "hips", "parent": "torso", "z": 1,
-      "poly": [[100,190],[210,190],[210,266],[100,266]],
-      "pivot": [168,202] },
-    { "name": "torso", "parent": null, "z": 2,
-      "poly": [[136,108],[210,108],[214,160],[208,206],[134,206],[130,160]],
-      "pivot": [172,128], "occludedBy": ["armR","armL"] },
-    { "name": "armR", "parent": "torso", "z": 3,
-      "poly": [[116,110],[146,120],[132,168],[108,200],[78,240],[38,240],[46,194],[86,148]],
-      "pivot": [136,124], "limits": { "rot": [-170,170] } },
-    { "name": "armL", "parent": "torso", "z": 3,
-      "poly": [[198,120],[224,110],[250,150],[284,196],[294,240],[252,242],[224,200],[206,168]],
-      "pivot": [204,124], "limits": { "rot": [-170,170] } },
-    { "name": "head", "parent": "torso", "z": 4,
-      "poly": [[114,22],[210,22],[210,114],[207,230],[183,232],[181,114],[159,114],[157,232],[133,230],[131,114],[114,114]],
-      "pivot": [164,112] }
-  ]
+ "name": "kin09new",
+ "root": "torso",
+ "ground": [
+  166,
+  462
+ ],
+ "_source": "single A-pose sheet 328x489, keyed --local 10 --global 40, one island. Head is an M like KIN 07, but her hair columns fall INSIDE the sleeves, so they are narrower and the sleeves pass outboard of them.\nElbows at y=171 and knees at y=353, cut by tools/articulate.mjs with 36px of overlap at the elbow and 44px at the knee.",
+ "parts": [
+  {
+   "name": "legL",
+   "parent": "hips",
+   "z": 0,
+   "poly": [
+    [
+     114,
+     252
+    ],
+    [
+     170,
+     252
+    ],
+    [
+     171,
+     375
+    ],
+    [
+     111,
+     375
+    ]
+   ],
+   "pivot": [
+    142,
+    264
+   ],
+   "limits": {
+    "rot": [
+     -55,
+     55
+    ]
+   }
+  },
+  {
+   "name": "legR",
+   "parent": "hips",
+   "z": 0,
+   "poly": [
+    [
+     170,
+     252
+    ],
+    [
+     228,
+     252
+    ],
+    [
+     230,
+     375
+    ],
+    [
+     171,
+     375
+    ]
+   ],
+   "pivot": [
+    194,
+    264
+   ],
+   "limits": {
+    "rot": [
+     -55,
+     55
+    ]
+   }
+  },
+  {
+   "name": "shinL",
+   "parent": "legL",
+   "z": 1,
+   "poly": [
+    [
+     171,
+     331
+    ],
+    [
+     172,
+     466
+    ],
+    [
+     108,
+     466
+    ],
+    [
+     112,
+     331
+    ]
+   ],
+   "pivot": [
+    141,
+    353
+   ],
+   "limits": {
+    "rot": [
+     -20,
+     140
+    ]
+   }
+  },
+  {
+   "name": "shinR",
+   "parent": "legR",
+   "z": 1,
+   "poly": [
+    [
+     229,
+     331
+    ],
+    [
+     232,
+     466
+    ],
+    [
+     172,
+     466
+    ],
+    [
+     171,
+     331
+    ]
+   ],
+   "pivot": [
+    200,
+    353
+   ],
+   "limits": {
+    "rot": [
+     -20,
+     140
+    ]
+   }
+  },
+  {
+   "name": "hips",
+   "parent": "torso",
+   "z": 2,
+   "poly": [
+    [
+     100,
+     190
+    ],
+    [
+     210,
+     190
+    ],
+    [
+     210,
+     266
+    ],
+    [
+     100,
+     266
+    ]
+   ],
+   "pivot": [
+    168,
+    202
+   ]
+  },
+  {
+   "name": "torso",
+   "parent": null,
+   "z": 3,
+   "poly": [
+    [
+     136,
+     108
+    ],
+    [
+     210,
+     108
+    ],
+    [
+     214,
+     160
+    ],
+    [
+     208,
+     206
+    ],
+    [
+     134,
+     206
+    ],
+    [
+     130,
+     160
+    ]
+   ],
+   "pivot": [
+    172,
+    128
+   ],
+   "occludedBy": [
+    "armR",
+    "foreR",
+    "armL",
+    "foreL"
+   ]
+  },
+  {
+   "name": "armR",
+   "parent": "torso",
+   "z": 4,
+   "poly": [
+    [
+     116,
+     110
+    ],
+    [
+     146,
+     120
+    ],
+    [
+     132,
+     168
+    ],
+    [
+     116,
+     189
+    ],
+    [
+     50,
+     189
+    ],
+    [
+     86,
+     148
+    ]
+   ],
+   "pivot": [
+    136,
+    124
+   ],
+   "limits": {
+    "rot": [
+     -170,
+     170
+    ]
+   }
+  },
+  {
+   "name": "foreR",
+   "parent": "armR",
+   "z": 5,
+   "poly": [
+    [
+     136,
+     153
+    ],
+    [
+     132,
+     168
+    ],
+    [
+     108,
+     200
+    ],
+    [
+     78,
+     240
+    ],
+    [
+     38,
+     240
+    ],
+    [
+     46,
+     194
+    ],
+    [
+     82,
+     153
+    ]
+   ],
+   "pivot": [
+    98,
+    171
+   ],
+   "limits": {
+    "rot": [
+     -160,
+     20
+    ]
+   }
+  },
+  {
+   "name": "armL",
+   "parent": "torso",
+   "z": 6,
+   "poly": [
+    [
+     198,
+     120
+    ],
+    [
+     224,
+     110
+    ],
+    [
+     250,
+     150
+    ],
+    [
+     279,
+     189
+    ],
+    [
+     218,
+     189
+    ],
+    [
+     206,
+     168
+    ]
+   ],
+   "pivot": [
+    204,
+    124
+   ],
+   "limits": {
+    "rot": [
+     -170,
+     170
+    ]
+   }
+  },
+  {
+   "name": "foreL",
+   "parent": "armL",
+   "z": 7,
+   "poly": [
+    [
+     252,
+     153
+    ],
+    [
+     284,
+     196
+    ],
+    [
+     294,
+     240
+    ],
+    [
+     252,
+     242
+    ],
+    [
+     224,
+     200
+    ],
+    [
+     206,
+     168
+    ],
+    [
+     204,
+     153
+    ]
+   ],
+   "pivot": [
+    237,
+    171
+   ],
+   "limits": {
+    "rot": [
+     -160,
+     20
+    ]
+   }
+  },
+  {
+   "name": "head",
+   "parent": "torso",
+   "z": 8,
+   "poly": [
+    [
+     114,
+     22
+    ],
+    [
+     210,
+     22
+    ],
+    [
+     210,
+     114
+    ],
+    [
+     207,
+     230
+    ],
+    [
+     183,
+     232
+    ],
+    [
+     181,
+     114
+    ],
+    [
+     159,
+     114
+    ],
+    [
+     157,
+     232
+    ],
+    [
+     133,
+     230
+    ],
+    [
+     131,
+     114
+    ],
+    [
+     114,
+     114
+    ]
+   ],
+   "pivot": [
+    164,
+    112
+   ]
+  }
+ ]
 }

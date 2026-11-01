@@ -17,13 +17,13 @@
  *
  * The weights come from the polygons the rig already has. Being inside a
  * part's polygon makes a vertex that bone's, which is the artist's own
- * decision about where the arm ends; then the whole weight field is relaxed
- * across the mesh, which is what turns those hard edges into the soft band at
- * each joint that actually does the bending. So the cutting work is not
- * thrown away -- it stops being a cut and becomes a hint.
+ * decision about where the arm ends, and it then blends with the bones that
+ * bone is jointed to -- its parent and its children -- across a band either
+ * side of the joint they share. So the cutting work is not thrown away; it
+ * stops being a cut and becomes a hint.
  *
  *   node tools/meshgen.mjs <cutout.png> <rig.json> <out.json> [--step 10]
- *                          [--relax 16] [--pad 2]
+ *                          [--blend 26] [--pad 2]
  */
 
 import fs from 'node:fs';
@@ -33,7 +33,7 @@ import { readPng } from './lib/png.mjs';
 const [srcPath, rigPath, outPath] = process.argv.slice(2);
 const num = (f, d) => (process.argv.includes(f) ? Number(process.argv[process.argv.indexOf(f) + 1]) : d);
 const STEP = num('--step', 10);
-const RELAX = num('--relax', 16);
+const BLEND = num('--blend', 26);
 const PAD = num('--pad', 2);
 const ALPHA = 12;
 const MAX_BONES = 4;
@@ -130,41 +130,59 @@ function distToPoly(poly, x, y) {
 }
 
 const nb = bones.length;
-let w = verts.map(([x, y]) => {
-  const row = new Float64Array(nb);
-  // The deepest polygon containing the point wins, which is how a forearm
-  // drawn over a torso ends up belonging to the forearm.
+const parentOf = bones.map((b) => bones.findIndex((q) => q.name === b.parent));
+const childrenOf = bones.map((_, i) => bones.map((b, j) => (b.parent === bones[i].name ? j : -1)).filter((j) => j >= 0));
+
+/** The bone whose polygon owns this point; the deepest one wins. */
+function ownerAt(x, y) {
   let owner = -1;
   for (let i = 0; i < nb; i++) if (inside(bones[i].poly, x, y)) owner = i;
-  if (owner < 0) {
-    let best = Infinity;
-    for (let i = 0; i < nb; i++) {
-      const d = distToPoly(bones[i].poly, x, y);
-      if (d < best) { best = d; owner = i; }
-    }
+  if (owner >= 0) return owner;
+  let best = Infinity;
+  for (let i = 0; i < nb; i++) {
+    const d = distToPoly(bones[i].poly, x, y);
+    if (d < best) { best = d; owner = i; }
   }
-  row[owner] = 1;
+  return owner;
+}
+
+/**
+ * Weights, bound to the skeleton rather than smeared across the drawing.
+ *
+ * The first version of this relaxed the whole weight field over the mesh,
+ * which blends every bone with whatever happens to be near it in the picture
+ * -- so an arm rotating into its guard dragged the jacket, the hip and part of
+ * the opposite leg with it, and the character arrived at its own idle pose
+ * looking melted. Distance on the page is not the same thing as distance along
+ * the body.
+ *
+ * A vertex belongs to the bone whose polygon contains it, and blends only with
+ * the bones that bone is actually jointed to -- its parent and its children --
+ * and only near the joint they share. Everything else stays rigid, which is
+ * what keeps a thigh a thigh while the knee still bends.
+ */
+const w = verts.map(([x, y]) => {
+  const row = new Float64Array(nb);
+  const b = ownerAt(x, y);
+  row[b] = 1;
+  const neighbours = [];
+  const p = parentOf[b];
+  // The joint with the parent sits at this bone's own pivot; the joint with a
+  // child sits at the child's.
+  if (p >= 0) neighbours.push([p, bones[b].pivot]);
+  for (const c of childrenOf[b]) neighbours.push([c, bones[c].pivot]);
+  for (const [n, joint] of neighbours) {
+    const d = Math.hypot(x - joint[0], y - joint[1]);
+    if (d >= BLEND) continue;
+    const t = 1 - d / BLEND;
+    // Half and half at the joint itself, falling smoothly to nothing at the
+    // edge of the band.
+    row[n] += 0.5 * t * t * (3 - 2 * t);
+  }
+  const sum = row.reduce((a, v) => a + v, 0) || 1;
+  for (let i = 0; i < nb; i++) row[i] /= sum;
   return row;
 });
-
-/* ---- relax the weight field across the mesh
-   This is the step that makes it a mesh rather than a stack: a hard boundary
-   between two bones is a cut, and a soft one is a joint. */
-const adj = verts.map(() => []);
-for (const [a, b, c] of tris) {
-  adj[a].push(b, c); adj[b].push(a, c); adj[c].push(a, b);
-}
-for (let pass = 0; pass < RELAX; pass++) {
-  const next = w.map((row, i) => {
-    const out = new Float64Array(nb);
-    for (let k = 0; k < nb; k++) out[k] = row[k];
-    let n = 1;
-    for (const j of adj[i]) { const r = w[j]; for (let k = 0; k < nb; k++) out[k] += r[k]; n++; }
-    for (let k = 0; k < nb; k++) out[k] /= n;
-    return out;
-  });
-  w = next;
-}
 
 /* ---- keep the strongest few per vertex and renormalise */
 const weights = w.map((row) => {
@@ -186,13 +204,13 @@ const out = {
   verts: verts.map(([x, y]) => [x, y]),
   tris,
   weights,
-  _source: `${path.basename(srcPath)} at ${STEP}px, ${RELAX} relaxation passes, `
-    + `weights seeded from ${path.basename(rigPath)}'s polygons.`,
+  _source: `${path.basename(srcPath)} at ${STEP}px, `
+    + `weights from ${path.basename(rigPath)}'s polygons, blended ${BLEND}px either side of each joint.`,
 };
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, `${JSON.stringify(out)}\n`);
 
 const spread = weights.filter((p) => p.length > 1).length;
-console.log(`${verts.length} vertices, ${tris.length} triangles, ${nb} bones`);
+console.log(`${verts.length} vertices, ${tris.length} triangles, ${nb} bones, ${BLEND}px blend band`);
 console.log(`${spread} of ${verts.length} vertices (${(spread / verts.length * 100).toFixed(0)}%) are shared between bones -- those are the joints`);
 console.log(`wrote ${outPath}`);

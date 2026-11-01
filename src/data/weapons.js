@@ -187,12 +187,21 @@ export function canHold(def, weapon) {
  * committed swing, because that is where a weapon changes the fight, and that
  * is then the only hand whose moves it modifies.
  */
+/**
+ * Hands and feet carry the hitboxes now, so a weapon has to be matched to the
+ * limb rather than to the part named by `strikePart`. Matching the name alone
+ * stopped finding anything the moment punches began striking with `foreR`,
+ * and a bat silently added nothing to anybody.
+ */
+const LIMB_OF = { foreL: 'armL', foreR: 'armR', shinL: 'legL', shinR: 'legR' };
+export const limbOf = (part) => LIMB_OF[part] || part;
+
 export function heldParts(def, weapon) {
   if (!weapon || !weapon.grip) return [];
-  const have = new Set(def.rig.parts.map((p) => p.name));
+  const have = new Set(def.rig.parts.map((p) => limbOf(p.name)));
   const candidates = GRIP_PARTS[weapon.grip].filter((p) => have.has(p));
   if (weapon.grip === 'boot') return candidates;
-  const heavy = def.moves.heavy && def.moves.heavy.strikePart;
+  const heavy = def.moves.heavy && limbOf(def.moves.heavy.strikePart);
   return candidates.includes(heavy) ? [heavy] : candidates.slice(0, 1);
 }
 
@@ -237,7 +246,7 @@ export function drawWeaponOn(ctx, rig, M, def, weapon, facing) {
 const cache = new WeakMap();
 export function applyWeapon(weapon, move, def) {
   if (!weapon || !weapon.grip) return move;
-  if (!heldParts(def, weapon).includes(move.strikePart)) return move;
+  if (!heldParts(def, weapon).includes(limbOf(move.strikePart))) return move;
   let byMove = cache.get(weapon);
   if (!byMove) { byMove = new WeakMap(); cache.set(weapon, byMove); }
   const hit = byMove.get(move);
