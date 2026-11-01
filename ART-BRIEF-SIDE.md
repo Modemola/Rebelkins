@@ -1,6 +1,7 @@
 # REBELKIN — side-view character sheet brief
 
-**This replaces every earlier brief. Use only this file.**
+**This replaces every earlier brief, ART-RESOLUTION.md included. Use only
+this file.**
 
 Ten characters, one image each. Everything here is load-bearing for the
 rigger; where a rule looks arbitrary, the reason it exists is given beside it.
@@ -148,7 +149,83 @@ generation; restating it at the end holds it.)*
 
 ---
 
-## 4. Negative prompt
+## 4. Resolution, in detail
+
+**1536 pixels tall, PNG or high-quality WebP, figure filling about 88% of it.**
+
+| | |
+|---|---|
+| **Canvas height** | **1536 px** (minimum 1280, no benefit above 2048) |
+| **Canvas width** | whatever the figure needs — about 1024 for these proportions. Do not pad with empty background to reach a square. |
+| **Figure within it** | about 88% of canvas height, so roughly **1350 px** from the top of the hair to the soles of the boots |
+
+### Why that number
+
+The drawing is not a reference image. It is loaded directly as the character's
+texture and drawn to the screen, so its resolution *is* the character's
+resolution in the game. Anything smaller than the on-screen size is being
+magnified, and magnified art looks soft.
+
+Measured on the actual renderer, with the real camera, this is how tall a
+fighter stands in **device pixels**:
+
+| display | device pixel ratio | fighter height on screen |
+|---|---|---|
+| phone, 390×844 | 3 | 749 px |
+| laptop, 1280×800 | 2 | 957 px |
+| tablet, 834×1112 | 2 | 1010 px |
+| desktop, 1920×1080 | 2 | 1296 px |
+| large desktop, 2560×1440 | 2 | 1337 px |
+
+So the figure needs to be about **1350 pixels tall in the drawing** for the
+worst case to be drawn at 1:1 with no magnification. At 88% of the canvas,
+that is a canvas 1536 tall.
+
+The first round of art arrived at 431 pixels of figure. On a desktop that was
+being blown up 3.1×, which is exactly why those characters look soft, and it
+is not something the renderer can improve — the detail was never in the file.
+
+### Why not larger
+
+Above about 2048 the extra pixels are never seen on any display anyone will
+use, and texture memory is real: ten characters at 1024×1536 is around 63 MB
+of decoded image. 2048-tall sheets would double that for nothing. If a
+generator only offers 1024 or 2048, **take 2048** and it will be downscaled —
+too much detail is a problem that can be solved, too little is not.
+
+### Format
+
+PNG is safest. The background is removed by flood-filling inward from the
+edges, and a lossy encoder puts ringing artefacts along every high-contrast
+edge — which is precisely where the character meets the background, so the
+keyer either eats into the figure or leaves a halo welded to it.
+
+**In practice WebP at quality 92 was tested and did no harm**: KIN 09's sheet
+came through as a single clean island of 383,547 pixels with clean edges. So
+high-quality WebP is fine. Avoid JPEG, and avoid anything below about quality
+85.
+
+*(If the keying tool reports a high island count, that counts regions during
+processing, not in the finished cutout. It is not by itself a reason to reject
+a sheet.)*
+
+### One thing that gets worse at higher resolution
+
+Generators sometimes add faint texture, grain or a soft gradient to a
+background at larger sizes where at small sizes they leave it flat. The keyer
+needs the backdrop genuinely flat and even. If a 1536 render comes back
+mottled or vignetted, that is worth a regeneration even if the character on it
+is perfect — a flat 1024 beats a noisy 1536.
+
+### How to check
+
+Open the file and read its pixel dimensions. If the height starts with a 4, it
+is the old size. It should start with a 1 and have four digits. That is the
+whole check.
+
+---
+
+## 5. Negative prompt
 
 > facing the viewer, front view, front-facing body, shoulders square to
 > camera, hips square to camera, symmetric pose, symmetric wide stance, legs
@@ -165,7 +242,7 @@ generation; restating it at the end holds it.)*
 
 ---
 
-## 5. Accept or reject
+## 6. Accept or reject
 
 Run these in order. The first three are where both previous attempts failed.
 
@@ -191,9 +268,9 @@ Run these in order. The first three are where both previous attempts failed.
    cannot move without the chest coming with it.
 7. **1536px tall**, PNG, with the figure about 88% of that. Open the file and
    read its dimensions — if the height starts with a 4, it is the old size.
-   The measured reason for the number is in ART-RESOLUTION.md: a fighter is
-   drawn 1296 device pixels tall on a 1920 desktop, and the art delivered so
-   far is 431, so it is being magnified threefold.
+   Section 4 has the measurements: a fighter is drawn 1296 device pixels tall
+   on a 1920 desktop, and the first round of art was 431, so it was being
+   magnified threefold.
 8. **No floor and no contact shadow.** A shadow keys as part of the character
    and leaves a grey smear welded to the feet.
 9. **Mid-grey background, not white.** White destroyed KIN 04's hair and
@@ -205,7 +282,7 @@ Run these in order. The first three are where both previous attempts failed.
 
 ---
 
-## 6. The ten
+## 7. The ten
 
 Keep each character's existing design exactly — clothing, colours, hair, face.
 The style note is there because it should read in the stance.
@@ -234,7 +311,7 @@ the note is wrong.
 
 ---
 
-## 7. If it still will not turn
+## 8. If it still will not turn
 
 It will drift back to front-on. In rough order of what works:
 
@@ -253,7 +330,7 @@ It will drift back to front-on. In rough order of what works:
 
 ---
 
-## 8. Order to generate in
+## 9. Order to generate in
 
 **KIN 09 first**, then **KIN 06**, then the rest.
 
