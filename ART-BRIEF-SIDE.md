@@ -37,11 +37,40 @@ spread: the feet measured 33% of the figure's height apart and exactly level,
 which is wider and flatter than the front-on characters being replaced. And
 both forearms were drawn across the chest.
 
-So there are two failure modes to design against. *A generator will turn the
-head and leave the body*, and once the body turns it will *still* plant the
-feet square and read "bladed stance" as "wide stance". The stance paragraph
-now describes the feet in terms of how far apart they are **on the canvas**,
-which is the thing that can be checked.
+The fourth attempt (KIN 06 again, after his style note was corrected) came
+back **wider still**: feet 37.5% of the figure's height apart and 0.7% of
+depth between the soles. Head in profile, chest square, legs splayed.
+
+### Why, and what this file got wrong
+
+Correcting the style note did not help, because the style note was not the
+cause. This brief was.
+
+It asked for a turned body *and*, in the same prompt, for a guard with both
+arms "held wide, elbows flared out away from the ribs, hands out to the sides
+of the head", with "a band of empty background between each forearm and the
+body", and for "a clear band of empty background between the two legs".
+
+**There is no camera angle at which a turned figure looks like that.** A body
+seen from the side hides its far arm behind its near arm and its far leg
+behind its near leg; separation between them is in *depth*, which a flat
+drawing shows as overlap and a value change, not as background. The only way
+to satisfy the arms-and-legs paragraphs is to face the camera. Given a prompt
+that contradicts itself, a generator keeps whichever half is described in the
+more concrete spatial terms — and the arms paragraph was the most concrete
+thing in the file. Each rejected sheet obeyed it exactly.
+
+Those paragraphs existed to serve a renderer rule that is itself out of date;
+see §2. They have been rewritten.
+
+So there are three failure modes to design against. *A generator will turn the
+head and leave the body*; once the body turns it will *still* plant the feet
+square and read "bladed stance" as "wide stance"; and *anything in the prompt
+that only makes sense from the front will pull the whole figure back to the
+front*. The stance paragraph describes the feet in terms of how far apart they
+are **on the canvas**, which is the thing that can be checked — by
+`node tools/sidecheck.mjs <sheet.png>`, which needs no keying and takes a
+second.
 
 ---
 
@@ -54,13 +83,29 @@ no frame-by-frame animation.
 
 Three consequences:
 
-**Limbs must not overlap each other or the body.** The drawing is one flat
-texture, so where a forearm is drawn across a thigh those are the same pixels,
-and rotating the arm drags the thigh with it. A band of clear background
-between two things that need to move apart is what lets them move apart.
-*(This used to be even stricter — parts were physically cut out, so an overlap
-tore a hole in whatever was beneath. The mesh removed that, so a short overlap
-now survives. A long one still does not.)*
+**A limb may overlap the body. It may not overlap another limb.**
+
+The drawing is one flat texture, so two things drawn over each other are the
+same pixels and cannot move apart. But the body is not one of those things:
+every part declares what covers it, and the rigger grows its surviving pixels
+inward to fill the gap before the atlas is packed, so the chest exists
+underneath the arm lying across it. On the one side-view sheet accepted so
+far, both arms cross the torso and **15,824 covered pixels were filled, all
+of them** — the arms lift off a complete jacket. It works because a jacket
+panel is flat colour with a soft gradient; it would not work across a face or
+a printed graphic, which is why each part declares its own occluders rather
+than the tool guessing.
+
+What cannot be recovered is two parts that *both move* sharing pixels: one
+fist drawn behind the other, a hand over the face, a forearm over the far
+thigh. There is nothing to fill those from — whichever part loses the pixels
+is simply missing them.
+
+*(An earlier version of this section said limbs must not overlap the body
+either, left over from when parts were physically cut out and an overlap tore
+a hole. That rule is what pushed §3 into asking for a wide symmetric guard,
+and that is what kept turning the figures back to face the camera. Overlap
+with the torso is fine. Ask for the turn instead.)*
 
 **Joints must be findable.** A pivot gets placed at every elbow and knee. On
 the first set the limbs were nearly straight and the elbow had to be guessed
@@ -74,7 +119,7 @@ characters are soft on a large screen.
 
 ## 3. The prompt
 
-Use this for every character. Substitute `{CHARACTER}` from the table in §6,
+Use this for every character. Substitute `{CHARACTER}` from the table in §7,
 and attach that character's existing image as a reference.
 
 > Full-body character sheet of **{CHARACTER}**. Same character, same design,
@@ -97,30 +142,33 @@ and attach that character's existing image as a reference.
 > **Stance:** a boxer's fighting stance, bladed, weight slightly on the rear
 > foot. **The two feet are close together as they appear on the canvas** — the
 > gap between them, measured left to right across the picture, is no more than
-> about a fifth of the character's height. They are far apart in *depth*, not
-> across the image: the rear foot is set back behind the front one, drawn
-> higher up the canvas because it is further from the camera, by roughly a
-> tenth of the character's height. This is a narrow stance seen from the side,
-> not a wide stance seen from the front. **Both knees visibly bent, the rear
-> knee bent more than the front.** A clear band of empty background between
-> the two legs.
+> about a quarter of the character's height. They are far apart in *depth*,
+> not across the image: the rear foot is set back behind the front one and
+> only slightly higher on the canvas — a small offset, a few percent of the
+> figure's height, because both feet are standing on the same flat floor.
+> This is a narrow stance seen from the side, not a wide stance seen from the
+> front. **Both knees visibly bent, the rear knee bent more than the front.**
+> The two legs nearly meet at the hips and draw apart toward the feet; the
+> rear leg is told apart from the near one by being darker and partly behind
+> it, not by a band of background between them.
 >
-> **Arms:** a high guard held **wide**, with the elbows flared out away from
-> the ribs. Both hands are up at head height but **out to the sides of the
-> head, not in front of the face or in front of the chest** — a band of empty
-> background is visible between each forearm and the body, and neither forearm
-> crosses the torso. **Both elbows clearly bent** — even where an arm is held
-> out long, keep enough bend that the elbow's position is obvious. The far arm
-> is drawn complete, shoulder to hand, held out and slightly back so that its
-> whole length is silhouetted against the background rather than disappearing
-> behind the torso. Hands closed into fists, wrists straight, each hand clear
-> of the face and of the other hand.
+> **Arms:** a boxer's high guard, both fists up at head height, **both elbows
+> bent well past a right angle** so that each elbow's position is obvious.
+> Seen from this angle the near arm is between the camera and the chest and
+> the far arm is on the far side of the body — **they are not a symmetric
+> pair and they are not held out level with each other.** The near fist is
+> lower and further forward, the far fist higher and further back, so the two
+> hands read as two separate shapes with clear space between them and neither
+> one hidden behind the other. The far arm is drawn complete, shoulder to
+> elbow to hand; where it passes across the chest it stays readable as a
+> separate limb, darker than the jacket behind it and outlined against it.
+> Hands closed into fists, wrists straight, both hands clear of the face.
 >
-> *(A real boxing guard tucks the forearms across the chest. Do not draw that
-> here. The forearms must stay clear of the body even though it makes the
-> guard look wider than a real one — the drawing is cut into moving parts, and
-> a forearm drawn over the chest cannot be moved without taking the chest
-> with it.)*
+> *(The arms may cross the body freely — the renderer paints the chest in
+> underneath them. What it cannot do is separate one hand from the other, or
+> a hand from the face: those are two independently moving parts sharing the
+> same pixels. So the one thing the guard must do is keep the two fists
+> apart.)*
 >
 > **Framing:** the whole figure from the top of the hair to the soles of the
 > shoes, centred, occupying about 88% of the image height, with an even margin
@@ -231,14 +279,20 @@ whole check.
 > camera, hips square to camera, symmetric pose, symmetric wide stance, legs
 > splayed in a V, feet side by side, both feet pointing at the camera, skirt
 > facing the camera, both ears visible, head turned but body facing forward,
-> A-pose, T-pose, straight legs, locked knees, arms straight, arms hanging
-> down, arms crossed, hands in pockets, hands behind back, arm flat against
-> the body, forearm crossing the chest, hand overlapping the face, one leg
-> crossing the other, legs together, floor, ground plane, cast shadow, contact
-> shadow, drop shadow, reflection, motion blur, speed lines, energy effects,
-> glow, particles, weapons, props, cropped, cut off at the edge, multiple
-> views, turnaround sheet, text, labels, watermark, white background, busy
-> background, gradient background, vignette, low resolution
+> symmetric guard, both arms held out level with each other, mirrored arms,
+> arms spread wide to both sides, A-pose, T-pose, straight legs, locked knees,
+> arms straight, arms hanging down, arms crossed, hands in pockets, hands
+> behind back, arm flat against the body, one fist hidden behind the other,
+> hand overlapping the face, one leg crossing the other, legs together, floor,
+> ground plane, cast shadow, contact shadow, drop shadow, reflection, motion
+> blur, speed lines, energy effects, glow, particles, weapons, props, cropped,
+> cut off at the edge, multiple views, turnaround sheet, text, labels,
+> watermark, white background, busy background, gradient background, vignette,
+> low resolution
+
+*(`forearm crossing the chest` used to be on this list. It is deliberately
+gone: see §2. Banning it is what produced front-on sheets, because a figure
+whose forearms clear its own chest is a figure facing you.)*
 
 ---
 
@@ -249,23 +303,41 @@ Run these in order. The first three are where both previous attempts failed.
 1. **Cover the head with your thumb. Can you still tell which way they are
    facing?** If not, reject. The head turning is not the body turning, and the
    head is the part that turns most easily.
-2. **Look at the two feet.** Do both point to the right, one set back behind
-   the other? If either points at the camera, or they splay symmetrically
-   outward, reject. Measurable, and this one is reliable: the horizontal gap
-   between the feet should be **under a fifth of the figure's height**, and
-   the rear foot should sit **higher up the canvas** than the front one. A
-   front-on splay measures 29–33% apart and dead level; the attempt that was
-   rejected for this measured 33% and 0%.
+2. **Look at the two feet** — or rather, measure them. Run
+
+   ```
+   node tools/sidecheck.mjs <sheet.png>
+   ```
+
+   on the file exactly as it arrives; it needs no keying and takes a second.
+   It prints the gap between the feet across the picture, and the depth
+   offset between the soles, both as a percentage of the figure's height:
+
+   | sheet | gap | depth |
+   |---|---|---|
+   | KIN 09 — accepted, reads side-on | **21.3%** | 1.9% |
+   | KIN 06 first attempt — rejected | 33.0% | 0.0% |
+   | KIN 06 second attempt — rejected | 37.5% | 0.7% |
+
+   The gap must be **under 26%**, which is where the tool draws the line:
+   between the sheet that works and the ones that do not. The depth offset
+   should be small but not zero — a couple of percent. *An earlier draft of
+   this file demanded under 20% and a depth offset of a tenth of the figure's
+   height. Both were made up rather than measured: the one sheet that works
+   fails the first, and the second would be a character standing on a
+   hillside when the rig stands both feet on one ground line.*
 3. **Look at the waist.** Is a skirt, coat hem or belt seen edge-on, or is its
    front facing you? Facing you means the hips never turned.
 4. **Both elbows and both knees visibly bent**, with the rear knee bent more
    than the front.
-5. **The far arm is complete** — shoulder, elbow, hand — and sits against
-   background, not against the torso.
-6. **Daylight between things that move apart**: between each forearm and the
-   chest, and between the two legs. A forearm crossing the chest is a reject
-   however good the guard looks — those are the same pixels, and the arm
-   cannot move without the chest coming with it.
+5. **The far arm is complete** — shoulder, elbow, hand — and readable along
+   its whole length, whether it lies across the torso or against background.
+   Crossing the torso is fine; vanishing behind it is not.
+6. **The two fists are separate shapes, and neither is over the face.** This
+   is the one overlap that cannot be undone: the chest can be painted in
+   under an arm, but one hand cannot be reconstructed from behind another.
+   The same goes for the two legs — they may overlap near the hips, but not
+   so far down that the rear foot disappears behind the near one.
 7. **1536px tall**, PNG, with the figure about 88% of that. Open the file and
    read its dimensions — if the height starts with a 4, it is the old size.
    Section 4 has the measurements: a fighter is drawn 1296 device pixels tall
@@ -327,19 +399,34 @@ It will drift back to front-on. In rough order of what works:
   Asking for more than you want is more reliable than asking for exactly it.
 - **Repeat the turn at the end of the prompt**, after all the rendering
   instructions. It is the first thing to get lost.
+- **Check the rest of the prompt for anything that is secretly a front view.**
+  This is what went wrong three times here, and it beat every lever above,
+  because it was not fighting the turn with a weaker instruction — it was
+  asking for the front in concrete, drawable terms while asking for the side
+  in abstract ones. A symmetric guard, both arms clear of the body, a band of
+  background between the legs: each is invisible as a camera instruction and
+  each one is one. If a sheet comes back front-on and the prompt *says* side,
+  suspect the prompt before blaming the generator.
 
 ---
 
 ## 9. Order to generate in
 
-**KIN 09 first**, then **KIN 06**, then the rest.
+**KIN 06 next, alone**, then the rest.
 
-KIN 09's style wants the strongest turn anyway, so she is the cheapest test of
-whether the generator will turn a body at all. KIN 06 is the hardest: a wide
-planted stance fights the bladed pose, and white platform boots against a
-mid-grey background are exactly where the keyer struggles. If those two come
-back clean, the other eight will follow.
+KIN 09 is done and accepted; she is the reference every other sheet is
+measured against. KIN 06 has now failed twice, which makes him the right test
+of the rewritten prompt rather than the wrong one to retry: he is the hardest
+of the ten — a low heavy stance pulls toward planting the feet square, and
+white platform boots against a mid-grey backdrop are where the keyer
+struggles. A prompt that turns him will turn anyone.
 
-Send them one at a time. The first one gets keyed, meshed, rigged and sent
-back as a moving test before the other nine are generated — better to find out
-the brief is wrong on character one than on character ten.
+**Generate him on his own and stop.** The arms and stance paragraphs in §3
+have just been rewritten and have never produced a sheet; until one comes
+back and measures under 26%, there is no evidence the new wording is any
+better than the wording it replaced. Eight sheets generated against an
+unproven prompt is eight regenerations.
+
+Once he passes, send the remaining eight one at a time or in a batch, as
+suits. Run `node tools/sidecheck.mjs` on each as it arrives, before anything
+else — a sheet that fails there is not worth looking at closely.
