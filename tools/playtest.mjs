@@ -140,7 +140,7 @@ await page.addInitScript(() => {
  * a change in the number is a change in the AI.
  */
 async function fightChecks() {
-  const { spar, loadCast, IDS, pct } = await import('./spar.mjs');
+  const { spar, loadCast, loadSide, IDS, SIDE_IDS, pct } = await import('./spar.mjs');
   const { AI } = await import('../src/fight/ai.js');
   const { Match, PHASE } = await import('../src/fight/match.js');
   const { STATE } = await import('../src/fight/fighter.js');
@@ -148,6 +148,7 @@ async function fightChecks() {
   const { Rig } = await import('../src/render/rig.js');
   const { totalFrames } = await import('../src/data/common.js');
   const { DEFS, rigs } = await loadCast();
+  const { SIDE } = await loadSide();
 
   console.log('\nframe advantage');
   const bare = byId('bare');
@@ -333,6 +334,75 @@ async function fightChecks() {
   check('an articulated limb bends when it strikes', stiff.length === 0,
     stiff.length ? stiff.join(', ')
       : `${IDS.filter((id) => DEFS[id].rig.parts.some((p) => p.name === 'foreL')).length} of 10 rigs have elbows, and every move on them uses one`);
+
+  /**
+   * No pose turns a joint past the angle the rig says it has.
+   *
+   * `limits` has been on every part since the first rig and until now nothing
+   * read it -- not the solver, not the renderer, not this file. It was a
+   * comment that looked like a constraint.
+   *
+   * Making it a real one is worth doing because it is exactly the bug that
+   * got through on both side-view characters. `move()` builds a pose out of a
+   * figure standing to attention and folds each non-striking elbow by FOLD,
+   * -1.75 radians, to manufacture a guard. On art already drawn in a guard
+   * that fold happens twice: KIN 09's generated heavy asked for the far
+   * forearm at -102 degrees, through her own chest, and the near shoulder at
+   * +132, a third of a turn. Both sit inside the limits those parts declared
+   * at the time, which is why the limits had to be made honest before the
+   * check was worth having; against the corrected ones both are caught.
+   *
+   * It is a gate on the side-view cast only. The shipped ten all exceed their
+   * own declared limits -- shoulders to -206 degrees, hips to -102 -- and
+   * that is reported here rather than fixed or quietly widened, because
+   * whether each one is a visible fault is a per-character question and
+   * re-animating ten working fighters is not a thing to do inside a check.
+   * The ratchet stops the count growing in the meantime.
+   */
+  const SHIPPED_OVER_LIMIT = 11;
+  const overLimit = (def) => {
+    const lim = Object.fromEntries(
+      def.rig.parts.filter((p) => p.limits?.rot).map((p) => [p.name, p.limits.rot]));
+    const worst = {};
+    const scan = (pose) => {
+      for (const [name, v] of Object.entries(pose || {})) {
+        if (v?.rot == null || !lim[name]) continue;
+        const deg = v.rot * 180 / Math.PI;
+        const [lo, hi] = lim[name];
+        const over = deg < lo ? deg - lo : deg > hi ? deg - hi : 0;
+        if (over && Math.abs(over) > Math.abs(worst[name]?.over ?? 0)) worst[name] = { over, deg, lo, hi };
+      }
+    };
+    for (const m of Object.values(def.moves)) for (let f = 0; f < totalFrames(m); f++) scan(m.pose(f, m));
+    // stance functions take (t), (t, dir), (vy) or (frame); 0..60 covers all of them
+    for (const fn of Object.values(def.stance)) {
+      for (let f = 0; f < 60; f++) { try { scan(fn(f / 60, 1)); } catch { /* not that shape */ } }
+    }
+    return worst;
+  };
+
+  const sideBroken = [];
+  for (const id of SIDE_IDS) {
+    for (const [name, w] of Object.entries(overLimit(SIDE[id])))
+      sideBroken.push(`${id} ${name} reaches ${w.deg.toFixed(0)} deg, limit [${w.lo}, ${w.hi}]`);
+  }
+  let shippedOver = 0;
+  const shippedWorst = [];
+  for (const id of IDS) {
+    for (const [name, w] of Object.entries(overLimit(DEFS[id]))) {
+      shippedOver++;
+      shippedWorst.push({ id, name, deg: w.deg, lim: [w.lo, w.hi] });
+    }
+  }
+  shippedWorst.sort((a, b) => Math.abs(b.deg) - Math.abs(a.deg));
+  check('no pose turns a joint past the rig\'s own limit',
+    sideBroken.length === 0 && shippedOver <= SHIPPED_OVER_LIMIT,
+    sideBroken.length ? sideBroken.join('; ')
+      : shippedOver > SHIPPED_OVER_LIMIT
+        ? `the shipped ten now break their limits in ${shippedOver} places, up from ${SHIPPED_OVER_LIMIT}`
+        : `${SIDE_IDS.length} side-view characters clean; the shipped ten still break theirs in `
+          + `${shippedOver} places, worst ${shippedWorst[0].id} ${shippedWorst[0].name} at `
+          + `${shippedWorst[0].deg.toFixed(0)} deg against [${shippedWorst[0].lim}]`);
 
   // A pose translating a part that hangs off another part does not move the
   // fighter -- it pulls that part away from its parent, and the art only

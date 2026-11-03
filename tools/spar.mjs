@@ -32,7 +32,22 @@ import { byId as weaponById } from '../src/data/weapons.js';
 
 export const IDS = ['kin01', 'kin02', 'kin03', 'kin04', 'kin05', 'kin06', 'kin07', 'kin08', 'kin09', 'kin10'];
 
+/**
+ * The side-view characters, which are not in the roster.
+ *
+ * They are drawn for a side-on camera and the rest of the cast is not, so
+ * they cannot be balanced against it and are deliberately absent from IDS --
+ * nothing imports them, and the fight, balance and AI checks never see them.
+ * That is also how two real faults lived in them undetected: a rescale that
+ * multiplied KIN 09's recovery frames, and generated punch poses that folded
+ * her forearms through her own chest. Anything that is a property of one
+ * character on its own, rather than of a matchup, should be checked on these
+ * too.
+ */
+export const SIDE_IDS = ['kin06s', 'kin09s'];
+
 let cast = null;
+let side = null;
 
 /** The ten definitions and their image-less rigs, loaded once per process. */
 export async function loadCast() {
@@ -47,6 +62,21 @@ export async function loadCast() {
   }
   cast = { DEFS, rigs };
   return cast;
+}
+
+/** The same, for the side-view characters. */
+export async function loadSide() {
+  if (side) return side;
+  const SIDE = {};
+  const rigs = {};
+  for (const id of SIDE_IDS) {
+    const mod = await import(`../src/data/${id}.js`);
+    const def = mod[id.toUpperCase()];
+    SIDE[id] = def;
+    rigs[id] = new Rig(def.rig, null);
+  }
+  side = { SIDE, rigs };
+  return side;
 }
 
 /**
