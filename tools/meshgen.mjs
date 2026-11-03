@@ -194,6 +194,73 @@ const weights = w.map((row) => {
   return top.map(([i, v]) => [i, Number((v / sum).toFixed(4))]);
 });
 
+/**
+ * Cut the mesh wherever two parts merely touch in the drawing.
+ *
+ * The grid is laid over the whole illustration, so a triangle spans whatever
+ * happens to be next to it on the page. Where that is a real joint -- the
+ * forearm against the upper arm -- the span is the point: both bones share
+ * the geometry and it bends across them. Where it is two parts that only
+ * happen to be adjacent, it is a bridge between things that move in opposite
+ * directions, and it stretches.
+ *
+ * KIN 06 is where this showed up, because his platform soles abut: the
+ * triangles spanning the two boots stayed welded to both, so the kicking leg
+ * towed a pale streak forty units long out of the standing one. The drawing
+ * is riggable -- the polygons separate the boots perfectly well -- but the
+ * mesh laid straight over the top does not know the two feet are unrelated.
+ *
+ * Relatedness is the bone hierarchy, not distance: a bone, its parent and its
+ * children share vertices, and anything else gets its own copy. Duplicating
+ * rather than dropping the triangle is what keeps this from punching a hole:
+ * each side of the seam stays complete right up to it, and the two sides
+ * simply stop being the same points.
+ */
+const relatedTo = bones.map((_, i) => {
+  const set = new Set([i]);
+  if (parentOf[i] >= 0) set.add(parentOf[i]);
+  for (const c of childrenOf[i]) set.add(c);
+  return set;
+});
+const dominant = weights.map((ws) => ws[0][0]);
+const zOf = Object.fromEntries(rig.parts.map((p, i) => [i, p.z ?? i]));
+
+const outVerts = verts.map(([x, y]) => [x, y]);
+const outWeights = weights.map((ws) => ws);
+/** A private copy of vertex v bound wholly to bone b, made once and reused. */
+const copies = new Map();
+function boundCopy(v, b) {
+  const k = `${v}:${b}`;
+  if (copies.has(k)) return copies.get(k);
+  const i = outVerts.length;
+  outVerts.push([verts[v][0], verts[v][1]]);
+  outWeights.push([[b, 1]]);
+  copies.set(k, i);
+  return i;
+}
+
+let cutCount = 0;
+const outTris = tris.map((t) => {
+  const ds = t.map((v) => dominant[v]);
+  // The triangle belongs to whichever of its bones holds the most corners;
+  // a three-way tie goes to the frontmost, which is the part drawn on top.
+  const tally = new Map();
+  for (const d of ds) tally.set(d, (tally.get(d) || 0) + 1);
+  let owner = ds[0];
+  for (const [b, n] of tally) {
+    const bn = tally.get(owner);
+    if (n > bn || (n === bn && zOf[b] > zOf[owner])) owner = b;
+  }
+  let cut = false;
+  const out = t.map((v, k) => {
+    if (relatedTo[owner].has(ds[k])) return v;
+    cut = true;
+    return boundCopy(v, owner);
+  });
+  if (cut) cutCount++;
+  return out;
+});
+
 const out = {
   texture: path.relative(process.cwd(), srcPath).replace(/\\/g, '/'),
   size: [W, H],
@@ -201,16 +268,18 @@ const out = {
   root: rig.root,
   step: STEP,
   bones: bones.map((b) => ({ name: b.name, parent: b.parent, pivot: b.pivot })),
-  verts: verts.map(([x, y]) => [x, y]),
-  tris,
-  weights,
+  verts: outVerts,
+  tris: outTris,
+  weights: outWeights,
   _source: `${path.basename(srcPath)} at ${STEP}px, `
     + `weights from ${path.basename(rigPath)}'s polygons, blended ${BLEND}px either side of each joint.`,
 };
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, `${JSON.stringify(out)}\n`);
 
-const spread = weights.filter((p) => p.length > 1).length;
-console.log(`${verts.length} vertices, ${tris.length} triangles, ${nb} bones, ${BLEND}px blend band`);
-console.log(`${spread} of ${verts.length} vertices (${(spread / verts.length * 100).toFixed(0)}%) are shared between bones -- those are the joints`);
+const spread = outWeights.filter((p) => p.length > 1).length;
+console.log(`${outVerts.length} vertices, ${outTris.length} triangles, ${nb} bones, ${BLEND}px blend band`);
+console.log(`${spread} of ${outVerts.length} vertices (${(spread / outVerts.length * 100).toFixed(0)}%) are shared between bones -- those are the joints`);
+console.log(`${cutCount} triangle(s) cut free of a bone they only touch; `
+  + `${outVerts.length - verts.length} duplicated vertices hold the seams`);
 console.log(`wrote ${outPath}`);

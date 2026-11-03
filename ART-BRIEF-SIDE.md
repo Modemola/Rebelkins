@@ -315,9 +315,10 @@ Run these in order. The first three are where both previous attempts failed.
 
    | sheet | gap | depth |
    |---|---|---|
-   | KIN 09 — accepted, reads side-on | **21.3%** | 1.9% |
+   | KIN 06 third attempt — **accepted**, built and animated | **17.4%** | soles touch |
+   | KIN 09 — accepted, reads side-on | **21.0%** | 1.9% |
    | KIN 06 first attempt — rejected | 33.0% | 0.0% |
-   | KIN 06 second attempt — rejected | 37.5% | 0.7% |
+   | KIN 06 second attempt — rejected | 36.5% | 0.7% |
 
    The gap must be **under 26%**, which is where the tool draws the line:
    between the sheet that works and the ones that do not. The depth offset
@@ -338,18 +339,25 @@ Run these in order. The first three are where both previous attempts failed.
    under an arm, but one hand cannot be reconstructed from behind another.
    The same goes for the two legs — they may overlap near the hips, but not
    so far down that the rear foot disappears behind the near one.
-7. **1536px tall**, PNG, with the figure about 88% of that. Open the file and
+7. **Daylight under the arches, if the shoes allow it.** Not a rejection —
+   KIN 06's platform soles abut and he was accepted and built — but it is
+   half an hour of extra hand work each time: the leg polygons have to be
+   drawn down the seam, the rear boot declared as covering the front one, and
+   the mesh cut along it so the kicking leg does not tow the standing one
+   across the screen. `sidecheck` says when this applies and where the seam
+   is. A stance with the feet clear of each other avoids all of it.
+8. **1536px tall**, PNG or high-quality WebP, with the figure about 88% of that. Open the file and
    read its dimensions — if the height starts with a 4, it is the old size.
    Section 4 has the measurements: a fighter is drawn 1296 device pixels tall
    on a 1920 desktop, and the first round of art was 431, so it was being
    magnified threefold.
-8. **No floor and no contact shadow.** A shadow keys as part of the character
+9. **No floor and no contact shadow.** A shadow keys as part of the character
    and leaves a grey smear welded to the feet.
-9. **Mid-grey background, not white.** White destroyed KIN 04's hair and
+10. **Mid-grey background, not white.** White destroyed KIN 04's hair and
    KIN 06's trainers last time — pale edges dissolve into a pale background
    and the keyer eats them.
-10. **Nothing touches the edge of the frame.**
-11. **Same framing and figure height across all ten**, so they stand together
+11. **Nothing touches the edge of the frame.**
+12. **Same framing and figure height across all ten**, so they stand together
     at one scale.
 
 ---
@@ -412,21 +420,16 @@ It will drift back to front-on. In rough order of what works:
 
 ## 9. Order to generate in
 
-**KIN 06 next, alone**, then the rest.
+**The remaining eight, in any order.**
 
-KIN 09 is done and accepted; she is the reference every other sheet is
-measured against. KIN 06 has now failed twice, which makes him the right test
-of the rewritten prompt rather than the wrong one to retry: he is the hardest
-of the ten — a low heavy stance pulls toward planting the feet square, and
-white platform boots against a mid-grey backdrop are where the keyer
-struggles. A prompt that turns him will turn anyone.
+KIN 09 and KIN 06 are both done: keyed, rigged, meshed, animated and in the
+repo. KIN 06 is the one that matters here, because he was the test of the
+rewritten prompt and he was the hardest of the ten — he had already failed
+twice at 33.0% and 36.5%. Against the corrected §3 he came back at 17.4%,
+narrower than KIN 09. The prompt is proven; the other eight can be generated
+together.
 
-**Generate him on his own and stop.** The arms and stance paragraphs in §3
-have just been rewritten and have never produced a sheet; until one comes
-back and measures under 26%, there is no evidence the new wording is any
-better than the wording it replaced. Eight sheets generated against an
-unproven prompt is eight regenerations.
-
-Once he passes, send the remaining eight one at a time or in a batch, as
-suits. Run `node tools/sidecheck.mjs` on each as it arrives, before anything
-else — a sheet that fails there is not worth looking at closely.
+Measure each one as it arrives — `node tools/sidecheck.mjs <file>` — before
+looking at it closely. A sheet that fails there is not worth studying, and
+three of the four sheets so far looked fine to the eye and did not measure
+fine.

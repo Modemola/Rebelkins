@@ -1,0 +1,32 @@
+{
+ "name": "kin06side",
+ "root": "torso",
+ "ground": [496, 1461],
+ "_source": "Side-view sheet 1024x1536, WebP q92, keyed to a single island. Subject x222..796 y103..1461 (575 x 1359). Third attempt at KIN 06; the first two came back front-on at 33.0% and 36.5% of height between the feet, this one at 17.4%. Polygons authored by hand: tools/articulate.mjs splits a limb on a horizontal line, which cannot work on arms already bent at the elbow with both forearms coming back up past it. The two platform soles abut around x=500, so the leg polygons are drawn down that seam and shinR is occluded by shinL -- the rear boot is nearer the camera, its sole sitting 35px lower.",
+ "parts": [
+  { "name": "legR", "parent": "hips", "z": 0, "pivot": [580, 870], "limits": { "rot": [-55, 55] },
+    "poly": [[536, 842], [694, 846], [742, 1012], [734, 1118], [598, 1116], [552, 982]] },
+  { "name": "shinR", "parent": "legR", "z": 1, "pivot": [648, 1072], "occludedBy": ["shinL"],
+    "limits": { "rot": [-20, 140] },
+    "poly": [[578, 1036], [744, 1036], [762, 1252], [748, 1432], [496, 1434], [493, 1248], [544, 1118]] },
+  { "name": "legL", "parent": "hips", "z": 2, "pivot": [440, 870], "limits": { "rot": [-55, 55] },
+    "poly": [[356, 842], [524, 842], [524, 1014], [482, 1150], [326, 1150], [306, 1008]] },
+  { "name": "shinL", "parent": "legL", "z": 3, "pivot": [370, 1108], "limits": { "rot": [-20, 140] },
+    "poly": [[306, 1072], [472, 1072], [502, 1232], [538, 1400], [522, 1468], [232, 1468], [228, 1280], [288, 1178]] },
+  { "name": "hips", "parent": "torso", "z": 4, "pivot": [500, 800],
+    "poly": [[352, 776], [652, 772], [682, 880], [662, 984], [388, 988], [336, 898]] },
+  { "name": "torso", "parent": null, "z": 5, "pivot": [520, 520],
+    "occludedBy": ["armR", "foreR", "armL", "foreL", "head"],
+    "poly": [[394, 462], [572, 456], [656, 500], [686, 626], [674, 792], [600, 820], [408, 814], [346, 732], [340, 544]] },
+  { "name": "head", "parent": "torso", "z": 6, "pivot": [535, 478],
+    "poly": [[300, 268], [420, 124], [500, 103], [586, 117], [666, 171], [742, 220], [698, 310], [690, 406], [650, 458], [606, 476], [508, 480], [466, 436], [424, 414], [344, 350]] },
+  { "name": "armL", "parent": "torso", "z": 7, "pivot": [612, 545], "limits": { "rot": [-170, 170] },
+    "poly": [[556, 496], [668, 514], [702, 642], [692, 724], [576, 734], [544, 640]] },
+  { "name": "foreL", "parent": "armL", "z": 8, "pivot": [596, 692], "limits": { "rot": [-160, 20] },
+    "poly": [[556, 702], [572, 636], [698, 588], [686, 502], [804, 496], [810, 612], [762, 652], [700, 738], [582, 744]] },
+  { "name": "armR", "parent": "torso", "z": 9, "pivot": [400, 505], "limits": { "rot": [-170, 170] },
+    "poly": [[342, 466], [474, 488], [458, 602], [382, 682], [276, 692], [258, 588], [288, 492]] },
+  { "name": "foreR", "parent": "armR", "z": 10, "pivot": [322, 648], "limits": { "rot": [-160, 20] },
+    "poly": [[264, 598], [298, 556], [478, 498], [588, 502], [598, 602], [502, 638], [398, 702], [282, 704]] }
+ ]
+}

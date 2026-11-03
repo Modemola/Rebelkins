@@ -198,6 +198,66 @@ function dropIslands(mask, w, h, minFrac) {
   return { dropped, components: sizes.length };
 }
 
+/**
+ * Clear backdrop the fill could not reach because the character encloses it.
+ *
+ * The fill starts at the frame edge and works inward, so a pocket of backdrop
+ * with the subject all the way around it survives, and it survives attached to
+ * the subject -- one connected blob, so dropIslands cannot see it either. On
+ * front-facing art this almost never happens. On a side-view fighting stance
+ * it is the normal case: the legs part at the hips, come back together at the
+ * boots, and the gap between them is a closed room. KIN 06 arrived with a
+ * 30,000-pixel wedge of grey welded between his thighs, which then rigged as
+ * part of a leg and swung with it.
+ *
+ * A pocket is recognised by colour rather than by shape: these backdrops are
+ * flat and even, so an enclosed region that still matches the sampled palette
+ * this closely is backdrop, not character. The tolerance is deliberately
+ * tighter than the fill's own, because this runs without the fill's local
+ * gradient-following leash and a loose one here would eat anything grey the
+ * character is wearing.
+ */
+function dropPockets(rgba, mask, w, h, palette, tol) {
+  const bgish = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    if (mask[i]) continue;
+    const o = i * 4;
+    if (palette.some((s) => dist2(rgba[o], rgba[o + 1], rgba[o + 2], s[0], s[1], s[2]) < tol * tol)) bgish[i] = 1;
+  }
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  let cleared = 0;
+  let pockets = 0;
+  for (let i = 0; i < w * h; i++) {
+    if (!bgish[i] || seen[i]) continue;
+    const members = [];
+    let touchesEdge = false;
+    stack.push(i);
+    seen[i] = 1;
+    while (stack.length) {
+      const q = stack.pop();
+      members.push(q);
+      const x = q % w;
+      const y = (q / w) | 0;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesEdge = true;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const ni = ny * w + nx;
+        if (!bgish[ni] || seen[ni]) continue;
+        seen[ni] = 1;
+        stack.push(ni);
+      }
+    }
+    // An edge-touching run is backdrop the fill already owns, or should have.
+    if (touchesEdge || members.length < 160) continue;
+    pockets++;
+    for (const q of members) { mask[q] = 1; cleared++; }
+  }
+  return { pockets, cleared };
+}
+
 function cutout(rgba, w, h, localTol, globalTol) {
   let palette = samplePalette(rgba, w, h);
   let { mask, edgeOutlier, edgeTotal } = floodFrom(rgba, w, h, palette, localTol, globalTol);
@@ -229,6 +289,7 @@ function cutout(rgba, w, h, localTol, globalTol) {
   }
 
   const islands = dropIslands(mask, w, h, 0.012);
+  const pockets = dropPockets(rgba, mask, w, h, palette, Math.min(globalTol, 40));
 
   const out = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y++) {
@@ -256,7 +317,7 @@ function cutout(rgba, w, h, localTol, globalTol) {
 
   const removed = mask.reduce((a, v) => a + v, 0);
   return {
-    out, removed, total: w * h, palette: palette.length, islands,
+    out, removed, total: w * h, palette: palette.length, islands, pockets,
     edgeTouch: edgeOutlier / edgeTotal,
   };
 }
@@ -291,7 +352,7 @@ for (const f of files) {
       if (v > best) { best = v; r = cand; chosen = c; }
     }
   }
-  const { out, removed, total, palette, islands, edgeTouch } = r;
+  const { out, removed, total, palette, islands, pockets, edgeTouch } = r;
   const pct = (removed / total) * 100;
   const b = bounds(out, png.width, png.height);
   // A subject spanning the full frame means backdrop survived at the edges --
@@ -309,7 +370,11 @@ for (const f of files) {
   console.log(`${f.padEnd(8)} ${png.width}x${png.height}  bg removed ${pct.toFixed(1).padStart(5)}%  `
     + `L${String(chosen.local).padStart(2)}/G${String(chosen.global).padStart(3)}  `
     + `islands ${String(islands.components).padStart(3)}  `
-    + `subject ${b ? `${b.w}x${b.h}` : 'none'}  ${verdict}`);
+    + `subject ${b ? `${b.w}x${b.h}` : 'none'}  ${verdict}`
+    + (pockets && pockets.pockets
+      ? `\n${' '.repeat(9)}cleared ${pockets.pockets} enclosed pocket(s) of backdrop, ${pockets.cleared} px `
+        + '-- the gap between the legs, which the fill cannot reach from the frame edge'
+      : ''));
 }
 
 const bad = results.filter((r) => r.verdict !== 'ok');

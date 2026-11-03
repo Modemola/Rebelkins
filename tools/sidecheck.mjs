@@ -112,50 +112,78 @@ const margin = Math.min(x0, W - 1 - x1, y0, H - 1 - y1);
 note(margin >= 8, `closest approach to the frame edge ${margin}px`);
 
 /**
- * The feet: the two largest connected blobs in the bottom fifth of the figure.
+ * The feet: split the bottom fifth of the figure down its emptiest column.
  *
- * Taking the bottom fifth rather than the bottom row is what makes this work
- * on a bladed stance, where the rear sole can sit well above the front one and
- * a single-row scan would find one foot and call it the pair.
+ * The first version of this looked for two separate connected blobs, and the
+ * third KIN 06 sheet broke it -- the best sheet so far, properly turned and
+ * the narrowest stance of any of them, reported as "the two feet are not
+ * separable" and nothing else. His platform soles are enormous and they abut,
+ * so the two feet are one blob while being perfectly distinct to look at. A
+ * check that answers "cannot tell" to the one case it exists to judge, and
+ * answers it in the same words it would use for a figure facing the camera,
+ * is worse than no check. These are different situations and the tool has to
+ * say which.
+ *
+ * So the feet are separated by geometry rather than by connectivity: count
+ * how many opaque pixels each column holds over the band, and cut at the
+ * emptiest column in the middle half. That column is the gap between the feet
+ * when there is one, and the pinch between two touching soles when there is
+ * not -- and how deep it runs is itself the answer to whether they touch.
+ *
+ * Taking a band rather than the bottom row is what makes this work on a
+ * bladed stance, where the rear sole sits well above the front one.
  */
 const top = y1 - Math.round(FH * 0.20);
-const seen = new Uint8Array(W * H);
-const blobs = [];
+const band = y1 - top + 1;
+const col = new Int32Array(W);
+for (let y = top; y <= y1; y++) for (let x = 0; x < W; x++) if (on(x, y)) col[x]++;
+
+let a = x0; let b = x1;
+while (a < W && !col[a]) a++;
+while (b >= 0 && !col[b]) b--;
+let seam = -1; let lowest = Infinity;
+// Only the middle half is considered: the emptiest column overall is outside
+// the figure, and the emptiest one near a foot is the arch.
+for (let x = a + Math.round((b - a) * 0.25); x <= a + Math.round((b - a) * 0.75); x++) {
+  if (col[x] < lowest) { lowest = col[x]; seam = x; }
+}
+
+let sumL = 0; let nL = 0; let sumR = 0; let nR = 0; let lowL = -1; let lowR = -1;
 for (let y = top; y <= y1; y++) {
   for (let x = 0; x < W; x++) {
-    if (!on(x, y) || seen[y * W + x]) continue;
-    const stack = [[x, y]];
-    seen[y * W + x] = 1;
-    let minx = x; let maxx = x; let maxy = y; let n = 0;
-    while (stack.length) {
-      const [cx, cy] = stack.pop();
-      n++;
-      if (cx < minx) minx = cx; if (cx > maxx) maxx = cx; if (cy > maxy) maxy = cy;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = cx + dx; const ny = cy + dy;
-        if (nx < 0 || ny < top || nx >= W || ny > y1 || seen[ny * W + nx] || !on(nx, ny)) continue;
-        seen[ny * W + nx] = 1;
-        stack.push([nx, ny]);
-      }
-    }
-    blobs.push({ minx, maxx, maxy, n, cx: (minx + maxx) / 2 });
+    if (!on(x, y)) continue;
+    if (x < seam) { sumL += x; nL++; if (y > lowL) lowL = y; } else { sumR += x; nR++; if (y > lowR) lowR = y; }
   }
 }
-blobs.sort((a, b) => b.n - a.n);
 
 console.log(`${src}`);
 console.log(`  figure ${x1 - x0 + 1} x ${FH} at y ${y0}..${y1}${keyed ? '' : `, keyed on the fly against rgb(${bg})`}`);
 
-if (blobs.length < 2 || blobs[1].n < blobs[0].n * 0.25) {
-  fail.push('the two feet are not separable -- they touch, or one is hidden behind the other');
+if (!nL || !nR) {
+  fail.push('only one foot in the bottom fifth of the figure -- the other is hidden behind it');
 } else {
-  const [a, b] = blobs;
-  const near = a.cx < b.cx ? a : b;
-  const far = a.cx < b.cx ? b : a;
-  const gap = Math.abs(far.cx - near.cx) / FH * 100;
-  const depth = Math.abs(far.maxy - near.maxy) / FH * 100;
+  const gap = Math.abs(sumR / nR - sumL / nL) / FH * 100;
+  const touch = lowest / band * 100;
   note(gap <= MAX_GAP, `feet ${gap.toFixed(1)}% of height apart across the picture (want under ${MAX_GAP}%)`);
-  note(depth >= MIN_DEPTH, `rear sole sits ${depth.toFixed(1)}% of height above the front one (want at least ${MIN_DEPTH}%, and small -- both feet are on one floor)`);
+
+  if (touch >= 70) {
+    fail.push(`the two feet are one shape -- the seam at x=${seam} is filled for ${touch.toFixed(0)}% of the foot band, so there is nothing to draw a polygon down`);
+  } else if (touch > 0) {
+    /**
+     * Touching soles are work, not a rejection. Overlap with the body is
+     * repaired by inpainting; overlap between two feet is not -- but a seam
+     * the polygons can be drawn down costs only hand time, and the seam is
+     * exactly where they get drawn. The depth offset is not reported here
+     * because a merged sole has no two bottoms to measure between.
+     */
+    pass.push(`feet distinguishable, though the soles touch: a seam runs down x=${seam}, `
+      + `filled for ${touch.toFixed(0)}% of the foot band`);
+    pass.push('riggable by drawing the leg polygons down that seam -- hand work, but it works');
+  } else {
+    const depth = Math.abs(lowR - lowL) / FH * 100;
+    note(depth >= MIN_DEPTH, `rear sole sits ${depth.toFixed(1)}% of height above the front one `
+      + `(want at least ${MIN_DEPTH}%, and small -- both feet are on one floor)`);
+  }
 }
 
 console.log('');

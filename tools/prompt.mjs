@@ -15,6 +15,8 @@
  * the only place a rule is written down.
  *
  *   node tools/prompt.mjs kin06 [--out NEXT.md]
+ *   node tools/prompt.mjs kin01 kin02 kin03 --out NEXT.md
+ *   node tools/prompt.mjs --rest --out NEXT.md     (every one not yet built)
  *   node tools/prompt.mjs --list
  */
 
@@ -26,7 +28,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BRIEF = path.join(ROOT, 'ART-BRIEF-SIDE.md');
 const arg = (f, d) => (process.argv.includes(f) ? process.argv[process.argv.indexOf(f) + 1] : d);
 const OUT = arg('--out', null);
-const who = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2].toLowerCase() : null;
+const flagArgs = new Set(['--out']);
+const named = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !flagArgs.has(all[i - 1]));
+const REST = process.argv.includes('--rest');
 
 const brief = fs.readFileSync(BRIEF, 'utf8');
 const lines = brief.split('\n');
@@ -62,12 +66,20 @@ function roster() {
 }
 
 const cast = roster();
-if (!who || process.argv.includes('--list')) {
-  console.log(Object.entries(cast).map(([k, v]) => `  ${k}  ${v.name} -- ${v.style}`).join('\n'));
-  process.exit(who ? 0 : 1);
+/** A character is done when its side-view rig is in the repo. */
+const built = (k) => fs.existsSync(path.join(ROOT, 'rigs/side', `${k.replace(/^kin/, 'kin')}.json`));
+
+if (process.argv.includes('--list') || (!named.length && !REST)) {
+  for (const [k, v] of Object.entries(cast)) {
+    console.log(`  ${k}  ${v.name} -- ${v.style}${built(k) ? '   (built)' : ''}`);
+  }
+  // Naming nothing at all is a usage error; asking for the list is not.
+  process.exit(process.argv.includes('--list') ? 0 : 1);
 }
-const c = cast[who];
-if (!c) { console.error(`no such character "${who}"; try --list`); process.exit(1); }
+
+const ids = REST ? Object.keys(cast).filter((k) => !built(k)) : named.map((n) => n.toLowerCase());
+for (const id of ids) if (!cast[id]) { console.error(`no such character "${id}"; try --list`); process.exit(1); }
+if (!ids.length) { console.log('every character in the table already has a side-view rig'); process.exit(0); }
 
 /**
  * The style word ("bruiser", "ghost") is deliberately left out of the subject
@@ -82,45 +94,57 @@ if (!c) { console.error(`no such character "${who}"; try --list`); process.exit(
  * stops it being read as an override. Dropping the style word costs nothing:
  * it never described anything the drawing shows.
  */
-const prompt = quoted(3)
-  .replace(/\{CHARACTER\}/g, c.character)
-  .replace(/\n\n\*\*Arms:\*\*/, `\n>\n> Within that stance, this character is ${c.stance}.\n\n**Arms:**`)
-  .replace(/^>\n> /m, '\n');
-const negative = quoted(5);
+function promptFor(c) {
+  return quoted(3)
+    .replace(/\{CHARACTER\}/g, c.character)
+    .replace(/\n\n\*\*Arms:\*\*/, `\n>\n> Within that stance, this character is ${c.stance}.\n\n**Arms:**`)
+    .replace(/^>\n> /m, '\n');
+}
+const refFor = (id) => ['assets/cutouts/v2', 'assets/cutouts']
+  .map((d) => path.join(d, `${id}.png`))
+  .find((f) => fs.existsSync(path.join(ROOT, f)));
 
-const ref = ['assets/cutouts/v2', 'assets/cutouts']
-  .map((d) => path.join(d, `${who}.png`))
-  .find((p) => fs.existsSync(path.join(ROOT, p)));
+const many = ids.length > 1;
+const title = many
+  ? `# Generate the remaining ${ids.length} — side view`
+  : `# Generate ${cast[ids[0]].name} — side view`;
 
-const doc = `# Generate ${c.name} — side view
+const head = `${title}
 
-**One image, then stop.** Not the whole set.
+${many
+  ? `${ids.length} images, same prompt each time with one paragraph changed. Send
+them as they come or all together — I measure each before doing anything
+with it.`
+  : 'One image.'}
 
-1. Attach \`${ref ?? `the existing ${c.name} art`}\` as the reference image.
-2. Paste the prompt below, and the negative prompt below that.
+1. Attach the character's existing art as the reference image (named under
+   each one below).
+2. Paste that character's prompt, and the negative prompt at the end, which
+   is the same for all of them.
 3. Send me whatever comes back — I check it before doing anything else.
 
-**Take only the character from the reference — the jacket, the hair, the
-face, the boots. Not the pose, and not the camera.** The reference is a
+**Take only the character from the reference — the clothes, the hair, the
+face, the shoes. Not the pose, and not the camera.** Every reference is a
 front-on figure with its feet planted wide and level, which is the exact
-thing this pass exists to replace. Three sheets so far have come back
+thing this pass exists to replace. Three of the first four sheets came back
 copying that stance.
+`;
+
+const sections = ids.map((id) => {
+  const c = cast[id];
+  return `\n---\n\n## ${c.name}\n\nReference image: \`${refFor(id) ?? `the existing ${c.name} art`}\`\n\n${promptFor(c)}\n`;
+}).join('');
+
+const doc = `${head}${sections}
+---
+
+## Negative prompt — the same for every one
+
+${quoted(5)}
 
 ---
 
-## Prompt
-
-${prompt}
-
----
-
-## Negative prompt
-
-${negative}
-
----
-
-## What happens when you send it
+## What happens when you send one
 
 I run \`node tools/sidecheck.mjs\` on it first — the file as delivered, WebP or
 PNG, about a second. It measures how far apart the feet are across the
@@ -129,28 +153,28 @@ separates a side view from a front view dressed up as one:
 
 | | gap | verdict |
 |---|---|---|
-| KIN 09 | 21.3% | accepted, reads side-on |
+| KIN 06, third try | 17.4% | accepted, built and animated |
+| KIN 09 | 21.0% | accepted, reads side-on |
 | KIN 06, first try | 33.0% | rejected |
-| KIN 06, second try | 37.5% | rejected |
+| KIN 06, second try | 36.5% | rejected |
 
-Under 26% passes. If it fails I will tell you in one line and you regenerate
-— nothing else about the image matters until that number is right, and I would
-rather you throw away four generations than I spend an hour rigging a figure
-that cannot kick. No need to look closely at it yourself first; send the first
-one it gives you.
+Under 26% passes. If one fails I will say so in a line and you regenerate
+that character — nothing else about the image matters until that number is
+right, and I would rather you throw away four generations than I spend an
+hour rigging a figure that cannot kick. No need to look closely yourself
+first; send the first thing it gives you.
 
-If it passes, that is about an hour of work on my side: key the background
-out, hand-place the joints, build the mesh, wire up his three moves. You get
-it back as a GIF of him actually moving, and only then do we generate the
-other eight.
+Each one that passes is about an hour on my side: key the background out,
+hand-place the joints, build the mesh, wire up the three moves. You get it
+back as a GIF of them actually moving.
 
-*Generated from ART-BRIEF-SIDE.md §3, §5 and §7 by \`node tools/prompt.mjs ${who}\`.
-Edit the brief, not this file.*
+*Generated from ART-BRIEF-SIDE.md §3, §5 and §7 by
+\`node tools/prompt.mjs ${REST ? '--rest' : ids.join(' ')}\`. Edit the brief, not this file.*
 `;
 
 if (OUT) {
   fs.writeFileSync(path.join(ROOT, OUT), doc);
-  console.log(`wrote ${OUT} for ${c.name}`);
+  console.log(`wrote ${OUT} for ${ids.map((i) => cast[i].name).join(', ')}`);
 } else {
   process.stdout.write(doc);
 }
