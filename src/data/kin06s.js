@@ -201,6 +201,14 @@ export const KIN06S = {
      * The rear cross. It has to travel across the whole body, so it loads
      * first -- weight back, shoulder coiled away -- and the hips arrive
      * before the hand does.
+     *
+     * It lands at chin height rather than past the nose, and that is where
+     * it stays. Pushing `armR` from -1.12 to -1.88 does get the fist 31
+     * pixels past the face on paper, and what it looks like is the forearm
+     * lying flat across his head: the measurement tracks the glove and says
+     * nothing about the sleeve behind it. Four different numbers argued for
+     * a longer punch here and the render disagreed with all of them. The
+     * render is the judge.
      */
     heavy: move(RIG, {
       name: 'cross', label: 'Cross',
