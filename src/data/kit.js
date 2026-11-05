@@ -326,7 +326,34 @@ function kneesFor(rig, front, rear, frontBend, rearBend) {
 }
 
 /** A punch: the named arm cocks back, then whips through to full extension. */
-function punchPose(rig, arm, power, swing) {
+/**
+ * `sweepPast` keeps the old, wrong arm formula, and exists because two
+ * characters need it.
+ *
+ * swingOf points the arm at the opponent and that is where the shoulder should
+ * stop. Adding the guard on top of it, which is what this did for the whole
+ * life of the cast, finished every rear hand 46% past the person it was aiming
+ * at -- between 173 and 206 degrees of shoulder, more than half a turn. On
+ * five of the seven that is plainly a fault and the correction is plainly
+ * better: KIN 03 stopped dragging a wedge of her own jacket across her jaw,
+ * KIN 04 and KIN 06 stopped throwing the punch with a glove over one eye.
+ *
+ * On KIN 02 and KIN 09 the correction is plainly worse, for a reason no angle
+ * expresses: stopping the arm where the opponent is leaves the forearm lying
+ * across the face, and the overshoot was what carried it past. They keep the
+ * additive form rather than a scaled one, because a scale cannot reproduce it
+ * -- the two differ in shape, not just in peak, and the blended version
+ * arrives later in the move. Matching the peak with a 1.4 multiplier still
+ * cost them 23 and 19 units of reach, which the strike-point check caught.
+ *
+ * So this is a per-character escape hatch, not a second theory of punching.
+ * On front-facing art a shoulder angle is not anatomy, it is a flat sweep
+ * around a head, and whether it finishes over the face depends on where that
+ * head was drawn. A formula cannot know. The side-view pass replaces all ten
+ * of these drawings, which is why the answer here is a flag on two of them
+ * rather than a rewrite.
+ */
+function punchPose(rig, arm, power, swing, sweepPast = false) {
   const other = arm === 'armL' ? 'armR' : 'armL';
   const guard = guardOf(rig)[other];
   const self = guardOf(rig)[arm];
@@ -381,7 +408,24 @@ function punchPose(rig, arm, power, swing) {
       // the forearm whips out. That ordering is the whole difference between a
       // punch and a limb sweeping an arc, and it needs an elbow to exist --
       // the fallback below is what every un-articulated rig still does.
-      [arm]: { rot: mix(self, -0.30 * swing, a) + swing * (1 + power * 0.08) * (elbow ? reach : strike) + settle * 0.07 },
+      //
+      // The shoulder travels TO the swing, not BY it. `swing` is measured from
+      // the illustration's own rest pose, and the arm does not start there --
+      // it starts at `self`, the guard, which is already 46% of the way round.
+      // Adding the full swing on top of that took the arm 46% past the person
+      // it was aiming at: every rear hand in the cast finished its heavy
+      // between 173 and 206 degrees, a shoulder more than half a turn over,
+      // pointing down and behind. Blending from the guard to the swing instead
+      // lands it where swingOf says the opponent is, which is the only thing
+      // swingOf ever claimed to measure. `reach` still passes 1 at the peak,
+      // so the overshoot that sells the snap is kept -- it now overshoots the
+      // target by a few degrees rather than by the whole guard.
+      [arm]: { rot: (() => {
+        const start = mix(self, -0.30 * swing, a);
+        const target = swing * (1 + power * 0.08);
+        const t = elbow ? reach : strike;
+        return (sweepPast ? start + target * t : mix(start, target, t)) + settle * 0.07;
+      })() },
       // Folded at the chin through the wind-up, straight at full extension.
       ...(elbow ? { [elbow]: { rot: mix(restElbow, FOLD * 1.3, a) * (1 - snap) } } : {}),
       // Back to the chin, not back to the A-pose: the off arm stays at its
@@ -470,7 +514,7 @@ export function move(rig, spec) {
   const power = Math.min(1, spec.damage / 120);
   const limb = limbOf(spec.strikePart);
   const swing = swingOf(rig, limb);
-  const pose = limb === 'armL' || limb === 'armR' ? punchPose(rig, limb, power, swing)
+  const pose = limb === 'armL' || limb === 'armR' ? punchPose(rig, limb, power, swing, spec.armSweep === 'past')
     : limb === 'legL' || limb === 'legR' ? kickPose(rig, limb, power, swing)
       : chargePose(rig, power);
   // capStun last, so a hitstun written by hand in a character file is capped

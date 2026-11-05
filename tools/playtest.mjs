@@ -352,14 +352,19 @@ async function fightChecks() {
    * at the time, which is why the limits had to be made honest before the
    * check was worth having; against the corrected ones both are caught.
    *
-   * It is a gate on the side-view cast only. The shipped ten all exceed their
-   * own declared limits -- shoulders to -206 degrees, hips to -102 -- and
-   * that is reported here rather than fixed or quietly widened, because
-   * whether each one is a visible fault is a per-character question and
-   * re-animating ten working fighters is not a thing to do inside a check.
-   * The ratchet stops the count growing in the meantime.
+   * It is a gate on the whole cast. The shipped ten broke their own limits in
+   * eleven places when this check first ran -- shoulders to -206 degrees,
+   * hips to -102 -- and all eleven are now closed, two different ways. The
+   * legs were the limit being wrong: a kick raises the thigh about a hundred
+   * degrees and 55 was a walking range copied across the cast. The shoulders
+   * were punchPose adding the guard to the swing, which took every rear hand
+   * 46% past the person it was aiming at; five of the seven are plainly
+   * better for the fix and two needed the old sweep back, by a number in
+   * their own data, because stopping the arm where the opponent is parks the
+   * forearm on their face. Those two carry a wider armR limit that is openly
+   * fitted to the animation and says so.
    */
-  const SHIPPED_OVER_LIMIT = 11;
+  const SHIPPED_OVER_LIMIT = 0;
   const overLimit = (def) => {
     const lim = Object.fromEntries(
       def.rig.parts.filter((p) => p.limits?.rot).map((p) => [p.name, p.limits.rot]));
@@ -399,10 +404,9 @@ async function fightChecks() {
     sideBroken.length === 0 && shippedOver <= SHIPPED_OVER_LIMIT,
     sideBroken.length ? sideBroken.join('; ')
       : shippedOver > SHIPPED_OVER_LIMIT
-        ? `the shipped ten now break their limits in ${shippedOver} places, up from ${SHIPPED_OVER_LIMIT}`
-        : `${SIDE_IDS.length} side-view characters clean; the shipped ten still break theirs in `
-          + `${shippedOver} places, worst ${shippedWorst[0].id} ${shippedWorst[0].name} at `
-          + `${shippedWorst[0].deg.toFixed(0)} deg against [${shippedWorst[0].lim}]`);
+        ? `${shippedOver} over, up from ${SHIPPED_OVER_LIMIT}: `
+          + shippedWorst.slice(0, 3).map((w) => `${w.id} ${w.name} ${w.deg.toFixed(0)} deg vs [${w.lim}]`).join('; ')
+        : `all ${IDS.length + SIDE_IDS.length} characters inside their own joints`);
 
   // A pose translating a part that hangs off another part does not move the
   // fighter -- it pulls that part away from its parent, and the art only

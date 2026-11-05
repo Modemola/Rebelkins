@@ -10,8 +10,8 @@ const RIG = {
   root: 'torso',
   ground: [165, 466],
   parts: [
-    { name: 'legL', parent: 'hips', z: 0, rect: [332, 0, 83, 148], pivot: [56, 12], origin: [142, 210], limits: { rot: [-55, 55] } },
-    { name: 'legR', parent: 'hips', z: 0, rect: [417, 0, 74, 148], pivot: [26, 12], origin: [194, 210], limits: { rot: [-55, 55] } },
+    { name: 'legL', parent: 'hips', z: 0, rect: [332, 0, 83, 148], pivot: [56, 12], origin: [142, 210], limits: { rot: [-110, 55] } },
+    { name: 'legR', parent: 'hips', z: 0, rect: [417, 0, 74, 148], pivot: [26, 12], origin: [194, 210], limits: { rot: [-110, 55] } },
     { name: 'shinR', parent: 'legR', z: 1, rect: [134, 0, 90, 165], pivot: [40, 22], origin: [209, 324], limits: { rot: [-20, 140] } },
     { name: 'shinL', parent: 'legL', z: 1, rect: [226, 0, 104, 162], pivot: [60, 22], origin: [126, 324], limits: { rot: [-20, 140] } },
     { name: 'hips', parent: 'torso', z: 2, rect: [912, 0, 98, 44], pivot: [50, 12], origin: [168, 200] },
