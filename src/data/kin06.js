@@ -109,14 +109,14 @@ export const KIN06 = {
       startup: 5, active: 3, recovery: 10,
       damage: 50, hitstun: 15, blockstun: 9,
       knockback: 250, lift: 0, drive: 130,
-      strikePart: 'foreL', reach: 33, range: 168,
+      strikePart: 'foreL', reach: 33, range: 197,
     }),
     heavy: move(RIG, {
       name: 'haymaker', label: 'Haymaker',
       startup: 12, active: 4, recovery: 20,
       damage: 115, hitstun: 24, blockstun: 14,
       knockback: 480, lift: -130, drive: 230,
-      strikePart: 'foreR', reach: 52, range: 108,
+      strikePart: 'foreR', reach: 52, range: 132,
     }),
     // The one move in the cast that still carried its own hand-written pose,
     // and it had both of the faults the generated ones have just lost: it

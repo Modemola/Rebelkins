@@ -27,10 +27,26 @@ import { KIN07 } from './data/kin07.js';
 import { KIN08 } from './data/kin08.js';
 import { KIN09 } from './data/kin09.js';
 import { KIN10 } from './data/kin10.js';
+import { KIN06S } from './data/kin06s.js';
+import { KIN09S } from './data/kin09s.js';
 import { Sfx } from './audio/sfx.js';
 
 /** Roster order is the order they were drawn in, not a power ranking. */
-const ROSTER = [KIN01, KIN02, KIN03, KIN04, KIN05, KIN06, KIN07, KIN08, KIN09, KIN10];
+/**
+ * The ten front-facing originals, then the side-view pair.
+ *
+ * The side two are drawn for a camera the other ten are not: the whole point
+ * of the redraw is that a limb pointing at the opponent is a limb seen from
+ * the side, so their kicks read where the others' cannot. They stand at the
+ * same 304 world units and are picked the same way; what differs is that
+ * their moves are written out frame by frame rather than generated, because
+ * the generator builds motion out of a figure standing to attention and both
+ * of them are already drawn in a guard.
+ *
+ * They are at the end rather than beside their front-facing namesakes so the
+ * first two rows of the select grid stay the set people already know.
+ */
+const ROSTER = [KIN01, KIN02, KIN03, KIN04, KIN05, KIN06, KIN07, KIN08, KIN09, KIN10, KIN06S, KIN09S];
 const DEFS = Object.fromEntries(ROSTER.map((d) => [d.id, d]));
 const cv = document.getElementById('stage');
 const ctx = cv.getContext('2d');

@@ -102,7 +102,10 @@ export const KIN06S = {
       };
     },
     crouch() {
-      return { torso: { rot: 0.12, y: 86 }, hips: { rot: -0.07, y: 10 }, head: { rot: 0.13 },
+      // The drop belongs on the torso, which is the root and takes the whole
+      // body down with it. On the hips, which hang off the torso, it does not
+      // lower the fighter -- it slides the pelvis out from under the ribcage.
+      return { torso: { rot: 0.12, y: 96 }, hips: { rot: -0.07 }, head: { rot: 0.13 },
         legL: { rot: 0.32 }, legR: { rot: -0.36 }, shinL: { rot: 0.54 }, shinR: { rot: 0.5 } };
     },
     air(vy) {
@@ -171,7 +174,7 @@ export const KIN06S = {
       name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 10,
       damage: 44, knockback: 210, lift: 0, drive: 140,
-      strikePart: 'foreL', reach: 112, range: 160,
+      strikePart: 'foreL', reach: 112, range: 158,
       pose: anim({}, [
         // Barely any wind-up -- a jab that telegraphs is not a jab.
         { at: 2, ease: 'out',
@@ -214,7 +217,7 @@ export const KIN06S = {
       name: 'cross', label: 'Cross',
       startup: 11, active: 4, recovery: 19,
       damage: 102, knockback: 470, lift: -90, drive: 200,
-      strikePart: 'foreR', reach: 168, range: 130,
+      strikePart: 'foreR', reach: 168, range: 132,
       pose: anim({}, [
         // Coil. He sits back onto the rear foot and turns away from the shot.
         { at: 5, ease: 'out',
@@ -271,7 +274,7 @@ export const KIN06S = {
       name: 'stomp', label: 'Stomp',
       startup: 10, active: 6, recovery: 22,
       damage: 96, knockback: 540, lift: -70, drive: 380,
-      strikePart: 'shinR', reach: 156, range: 190,
+      strikePart: 'shinR', reach: 156, range: 196,
       pose: anim({}, [
         // Sit down into the back leg. He is heavy, so he loads visibly.
         { at: 5, ease: 'out',

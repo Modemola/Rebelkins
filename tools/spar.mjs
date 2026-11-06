@@ -30,26 +30,25 @@ import { STATE } from '../src/fight/fighter.js';
 import { totalFrames } from '../src/data/common.js';
 import { byId as weaponById } from '../src/data/weapons.js';
 
-export const IDS = ['kin01', 'kin02', 'kin03', 'kin04', 'kin05', 'kin06', 'kin07', 'kin08', 'kin09', 'kin10'];
+export const IDS = ['kin01', 'kin02', 'kin03', 'kin04', 'kin05', 'kin06', 'kin07', 'kin08', 'kin09',
+  'kin10', 'kin06s', 'kin09s'];
 
 /**
- * The side-view characters, which are not in the roster.
+ * Which of IDS were drawn for the side-on camera.
  *
- * They are drawn for a side-on camera and the rest of the cast is not, so
- * they cannot be balanced against it and are deliberately absent from IDS --
- * nothing imports them, and the fight, balance and AI checks never see them.
- * That is also how two real faults lived in them undetected: a rescale that
- * multiplied KIN 09's recovery frames, and generated punch poses that folded
- * her forearms through her own chest. Anything that is a property of one
- * character on its own, rather than of a matchup, should be checked on these
- * too.
+ * These two used to sit outside IDS, because they are drawn for a camera the
+ * other ten are not and could not be balanced against them. That absence is
+ * how two real faults lived in them undetected: a rescale that multiplied KIN
+ * 09's recovery frames, and generated punch poses that folded her forearms
+ * through her own chest. They are in the roster now and every check sees
+ * them; the list is kept so a check can still say which camera a character
+ * was drawn for.
  */
 export const SIDE_IDS = ['kin06s', 'kin09s'];
 
 let cast = null;
-let side = null;
 
-/** The ten definitions and their image-less rigs, loaded once per process. */
+/** Every definition and its image-less rig, loaded once per process. */
 export async function loadCast() {
   if (cast) return cast;
   const DEFS = {};
@@ -174,6 +173,10 @@ function round(defA, defB, rigs, aiA, aiB, stats, weapon) {
 export function spar({
   AiA, AiB, rigs, DEFS, rounds = 6, seed = 1,
   levelA = 'brisk', levelB = 'brisk', weapon = 'bare', pairs = Infinity,
+  // Which characters to draw the matchups from. Defaults to the whole
+  // roster; pass a subset to ask about particular ones, which is the only
+  // way to get a per-character answer out of an aggregate like this.
+  ids = IDS,
 }) {
   const restore = seedRandom(seed);
   const w = weaponById(weapon);
@@ -182,7 +185,7 @@ export function spar({
   let total = 0;
   try {
     const orderings = [];
-    for (const x of IDS) for (const y of IDS) if (x !== y) orderings.push([x, y]);
+    for (const x of ids) for (const y of ids) if (x !== y) orderings.push([x, y]);
     for (const [x, y] of orderings.slice(0, pairs)) {
       for (let r = 0; r < rounds; r++) {
         // Both AIs fight from both corners across the round repeats, so a

@@ -140,7 +140,7 @@ await page.addInitScript(() => {
  * a change in the number is a change in the AI.
  */
 async function fightChecks() {
-  const { spar, loadCast, loadSide, IDS, SIDE_IDS, pct } = await import('./spar.mjs');
+  const { spar, loadCast, IDS, SIDE_IDS, pct } = await import('./spar.mjs');
   const { AI } = await import('../src/fight/ai.js');
   const { Match, PHASE } = await import('../src/fight/match.js');
   const { STATE } = await import('../src/fight/fighter.js');
@@ -148,7 +148,6 @@ async function fightChecks() {
   const { Rig } = await import('../src/render/rig.js');
   const { totalFrames } = await import('../src/data/common.js');
   const { DEFS, rigs } = await loadCast();
-  const { SIDE } = await loadSide();
 
   console.log('\nframe advantage');
   const bare = byId('bare');
@@ -195,7 +194,8 @@ async function fightChecks() {
   const blockedAll = onBlock.every((r) => r.outcome === 'block');
   const worst = Math.min(...onBlock.map((r) => r.adv));
   check('a light is blocked by every character', blockedAll,
-    onBlock.filter((r) => r.outcome !== 'block').map((r) => `${r.x} ${r.outcome}`).join(', ') || '10 of 10');
+    onBlock.filter((r) => r.outcome !== 'block').map((r) => `${r.x} ${r.outcome}`).join(', ')
+      || `${IDS.length} of ${IDS.length}`);
   check('blocking a light earns a turn', worst >= 4,
     `defender free ${worst} to ${Math.max(...onBlock.map((r) => r.adv))} frames first`);
   // Whether a heavy is safer than a light is a claim about frame data, so it
@@ -333,7 +333,8 @@ async function fightChecks() {
   }
   check('an articulated limb bends when it strikes', stiff.length === 0,
     stiff.length ? stiff.join(', ')
-      : `${IDS.filter((id) => DEFS[id].rig.parts.some((p) => p.name === 'foreL')).length} of 10 rigs have elbows, and every move on them uses one`);
+      : `${IDS.filter((id) => DEFS[id].rig.parts.some((p) => p.name === 'foreL')).length} of ${IDS.length} `
+        + 'rigs have elbows, and every move on them uses one');
 
   /**
    * No pose turns a joint past the angle the rig says it has.
@@ -387,16 +388,13 @@ async function fightChecks() {
   };
 
   const sideBroken = [];
-  for (const id of SIDE_IDS) {
-    for (const [name, w] of Object.entries(overLimit(SIDE[id])))
-      sideBroken.push(`${id} ${name} reaches ${w.deg.toFixed(0)} deg, limit [${w.lo}, ${w.hi}]`);
-  }
   let shippedOver = 0;
   const shippedWorst = [];
   for (const id of IDS) {
     for (const [name, w] of Object.entries(overLimit(DEFS[id]))) {
-      shippedOver++;
-      shippedWorst.push({ id, name, deg: w.deg, lim: [w.lo, w.hi] });
+      const line = `${id} ${name} reaches ${w.deg.toFixed(0)} deg, limit [${w.lo}, ${w.hi}]`;
+      if (SIDE_IDS.includes(id)) sideBroken.push(line);
+      else { shippedOver++; shippedWorst.push({ id, name, deg: w.deg, lim: [w.lo, w.hi] }); }
     }
   }
   shippedWorst.sort((a, b) => Math.abs(b.deg) - Math.abs(a.deg));
@@ -406,7 +404,7 @@ async function fightChecks() {
       : shippedOver > SHIPPED_OVER_LIMIT
         ? `${shippedOver} over, up from ${SHIPPED_OVER_LIMIT}: `
           + shippedWorst.slice(0, 3).map((w) => `${w.id} ${w.name} ${w.deg.toFixed(0)} deg vs [${w.lim}]`).join('; ')
-        : `all ${IDS.length + SIDE_IDS.length} characters inside their own joints`);
+        : `all ${IDS.length} characters inside their own joints`);
 
   // A pose translating a part that hangs off another part does not move the
   // fighter -- it pulls that part away from its parent, and the art only
@@ -603,17 +601,26 @@ const state = () => page.evaluate(() => {
 });
 
 const WEAPON_COUNT = 6;
+// The browser checks below run at module scope, outside the block that
+// destructures spar.mjs, so the roster size is imported separately rather
+// than written out as a literal that goes stale when a character is added.
+const { IDS } = await import('./spar.mjs');
 const arenaIdsForLook = () => page.evaluate(() => window.__REBELKIN__.ARENAS.map((a) => a.id));
 
 try {
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => !!window.__REBELKIN__, { timeout: 15000 });
   console.log('\nboot');
-  check('rigs loaded', await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length) === 10,
-    `${await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length)} of 10`);
-  check('roster is on the select screen',
-    await page.evaluate(() => document.querySelectorAll('#rosterA .face').length) === 10
-    && await page.evaluate(() => document.querySelectorAll('#rosterB .face').length) === 10);
+  // Counted against IDS rather than a literal, because the roster grows: the
+  // two side-view characters joined it and this read "12 of 10".
+  const loaded = await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length);
+  check('rigs loaded', loaded === IDS.length, `${loaded} of ${IDS.length}`);
+  const tiles = await page.evaluate(() => [
+    document.querySelectorAll('#rosterA .face').length,
+    document.querySelectorAll('#rosterB .face').length,
+  ]);
+  check('roster is on the select screen', tiles[0] === IDS.length && tiles[1] === IDS.length,
+    `${tiles[0]} and ${tiles[1]} tiles against ${IDS.length} characters`);
   await shot('0-select');
 
   // The crash this guards against happened on the very first frame after a
@@ -660,7 +667,8 @@ try {
     const errs = [];
     p2.on('pageerror', (e) => errs.push(e.message));
     await p2.goto(`http://localhost:${port}/?skin=force`, { waitUntil: 'networkidle' });
-    await p2.waitForFunction(() => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === 10, { timeout: 15000 });
+    await p2.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+      IDS.length, { timeout: 15000 });
     const out = await p2.evaluate(async () => {
       const g = window.__REBELKIN__;
       g.start('kin01', 'ai', 'kin02');
@@ -700,8 +708,8 @@ try {
     await p2.close();
     return { ...out, errs };
   })();
-  check('the skinned renderer runs when it is asked to', skinned.on && skinned.meshes === 10 && !skinned.errs.length,
-    `${skinned.meshes}/10 meshes, forced on over ${skinned.software ? 'software' : 'hardware'} GL`
+  check('the skinned renderer runs when it is asked to', skinned.on && skinned.meshes === IDS.length && !skinned.errs.length,
+    `${skinned.meshes}/${IDS.length} meshes, forced on over ${skinned.software ? 'software' : 'hardware'} GL`
     + (skinned.errs.length ? `, errors: ${skinned.errs[0]}` : ''));
   check('the skinned renderer actually draws the fighters',
     skinned.lit > skinned.pixels * 0.01 && skinned.differ > skinned.pixels * 0.004,

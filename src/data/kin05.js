@@ -45,7 +45,7 @@ export const KIN05 = {
       name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 9,
       damage: 44, knockback: 210, lift: 0, drive: 150,
-      strikePart: 'foreL', reach: 34, range: 172,
+      strikePart: 'foreL', reach: 34, range: 180,
     }),
     heavy: move(RIG, {
       name: 'roundhouse', label: 'Roundhouse',

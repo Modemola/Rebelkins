@@ -24,8 +24,12 @@ import { Rig } from '../src/render/rig.js';
 import { Match } from '../src/fight/match.js';
 import { byId } from '../src/data/weapons.js';
 
+// The roster, not a copy of it: this list went stale the moment the two
+// side-view characters joined, and a move whose range is never measured
+// keeps whatever number was guessed when it was written.
+import { IDS as ids } from './spar.mjs';
+
 const DRY = process.argv.includes('--dry');
-const ids = ['kin01', 'kin02', 'kin03', 'kin04', 'kin05', 'kin06', 'kin07', 'kin08', 'kin09', 'kin10'];
 const DEFS = {};
 const rigs = {};
 for (const id of ids) {

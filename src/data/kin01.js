@@ -144,13 +144,13 @@ export const KIN01 = {
       name: 'slam', label: 'Slam',
       startup: 11, active: 4, recovery: 19,
       damage: 104, knockback: 480, lift: -130, drive: 230,
-      strikePart: 'foreR', reach: 70, range: 100,
+      strikePart: 'foreR', reach: 70, range: 129,
     }),
     special: move(RIG, {
       name: 'pounce', label: 'Pounce',
       startup: 10, active: 7, recovery: 23,
       damage: 92, knockback: 540, lift: -90, drive: 520,
-      strikePart: 'foreL', reach: 34, range: 190,
+      strikePart: 'foreL', reach: 34, range: 192,
     }),
   },
 };

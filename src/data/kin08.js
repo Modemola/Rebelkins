@@ -133,7 +133,7 @@ export const KIN08 = {
       startup: 4, active: 3, recovery: 9,
       damage: 42, hitstun: 14, blockstun: 8,
       knockback: 210, lift: 0, drive: 150,
-      strikePart: 'foreL', reach: 30, range: 167,
+      strikePart: 'foreL', reach: 30, range: 179,
     }),
     heavy: move(RIG, {
       name: 'teep', label: 'Teep',

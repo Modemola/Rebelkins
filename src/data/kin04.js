@@ -45,13 +45,13 @@ export const KIN04 = {
       name: 'jab', label: 'Jab',
       startup: 5, active: 3, recovery: 9,
       damage: 48, knockback: 215, lift: 0, drive: 150,
-      strikePart: 'foreL', reach: 33, range: 193,
+      strikePart: 'foreL', reach: 33, range: 201,
     }),
     heavy: move(RIG, {
       name: 'hook', label: 'Hook',
       startup: 12, active: 4, recovery: 20,
       damage: 110, knockback: 500, lift: -140, drive: 230,
-      strikePart: 'foreR', reach: 52, range: 105,
+      strikePart: 'foreR', reach: 52, range: 130,
     }),
     special: move(RIG, {
       name: 'blackout', label: 'Blackout',

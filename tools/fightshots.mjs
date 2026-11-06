@@ -55,7 +55,11 @@ const browser = await chromium.launch({ args: ['--no-sandbox', '--use-gl=swiftsh
 const page = await browser.newPage({ viewport: { width: 1280, height: 760 }, deviceScaleFactor: 1 });
 page.on('console', (m) => { if (m.type() === 'error') console.error('page:', m.text()); });
 await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle' });
-await page.waitForFunction(() => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === 10, { timeout: 30000 });
+// Against the roster, not a literal: this read 10 and hung for thirty
+// seconds the first time a character was added.
+const { IDS } = await import('./spar.mjs');
+await page.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+  IDS.length, { timeout: 30000 });
 
 // Both corners driven by the AI, so it is the game playing itself rather than
 // a scripted set-piece: P2 by the opponent AI the game ships with, P1 by a

@@ -52,23 +52,23 @@ export const KIN09 = {
       name: 'point', label: 'Point',
       startup: 4, active: 3, recovery: 8,
       damage: 40, knockback: 190, lift: 0, drive: 160,
-      strikePart: 'foreL', reach: 30, range: 163,
+      strikePart: 'foreL', reach: 30, range: 180,
     }),
     heavy: move(RIG, {
       name: 'lash', label: 'Lash',
       startup: 10, active: 4, recovery: 17,
       damage: 94, knockback: 450, lift: -110, drive: 230,
-      strikePart: 'foreR',
       // Stopping the shoulder where swingOf says the opponent is leaves this
       // character's forearm lying across their own face; the old additive
       // sweep is what carries it past the head. See punchPose in kit.js.
-      armSweep: 'past', reach: 44, range: 120,
+      armSweep: 'past',
+      strikePart: 'foreR', reach: 44, range: 120,
     }),
     special: move(RIG, {
       name: 'lunge', label: 'Lunge',
       startup: 9, active: 7, recovery: 22,
       damage: 88, knockback: 500, lift: -50, drive: 560,
-      strikePart: 'foreR', reach: 45, range: 121,
+      strikePart: 'foreR', reach: 45, range: 140,
     }),
   },
 };

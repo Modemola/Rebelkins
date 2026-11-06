@@ -17,18 +17,35 @@ const OUT = 'assets/portraits';
 const SIZE = 192;
 fs.mkdirSync(OUT, { recursive: true });
 
-/** rig name -> source cutout */
+/**
+ * Character id -> the rig that says where the head is, and the cutout to crop.
+ *
+ * Spelled out rather than derived, because the side-view characters do not
+ * follow the original set's numbering: their rigs live under rigs/side and
+ * their cutouts are named after the character rather than the order the
+ * illustrations arrived in.
+ */
 const SOURCE = {
-  kin01: 1, kin02: 2, kin03: 3, kin04: 4, kin05: 5,
-  kin06: 6, kin07: 7, kin08: 8, kin09: 9, kin10: 10,
+  kin01: ['rigs/kin01.json', 'assets/cutouts/1.png'],
+  kin02: ['rigs/kin02.json', 'assets/cutouts/2.png'],
+  kin03: ['rigs/kin03.json', 'assets/cutouts/3.png'],
+  kin04: ['rigs/kin04.json', 'assets/cutouts/4.png'],
+  kin05: ['rigs/kin05.json', 'assets/cutouts/5.png'],
+  kin06: ['rigs/kin06.json', 'assets/cutouts/6.png'],
+  kin07: ['rigs/kin07.json', 'assets/cutouts/7.png'],
+  kin08: ['rigs/kin08.json', 'assets/cutouts/8.png'],
+  kin09: ['rigs/kin09.json', 'assets/cutouts/9.png'],
+  kin10: ['rigs/kin10.json', 'assets/cutouts/10.png'],
+  kin06s: ['rigs/side/kin06.json', 'assets/cutouts/side/kin06.png'],
+  kin09s: ['rigs/side/kin09.json', 'assets/cutouts/side/kin09.png'],
 };
 
-for (const [id, n] of Object.entries(SOURCE)) {
-  const rig = JSON.parse(fs.readFileSync(path.join('rigs', `${id}.json`), 'utf8'));
+for (const [id, [rigPath, cutPath]] of Object.entries(SOURCE)) {
+  const rig = JSON.parse(fs.readFileSync(rigPath, 'utf8'));
   const head = rig.parts.find((p) => p.name === 'head');
   if (!head) { console.log(`${id}: no head part, skipped`); continue; }
 
-  const png = readPng(fs.readFileSync(`assets/cutouts/${n}.png`));
+  const png = readPng(fs.readFileSync(cutPath));
   const src = png.toRgba();
   const { width: w, height: h } = png;
 
@@ -37,23 +54,58 @@ for (const [id, n] of Object.entries(SOURCE)) {
   let x0 = Math.min(...xs); let x1 = Math.max(...xs);
   let y0 = Math.min(...ys); let y1 = Math.max(...ys);
 
-  // tighten onto pixels that are actually there -- a U-shaped head part spans
-  // the full width of the hair and would otherwise frame mostly empty space
+  /**
+   * Tighten onto pixels that are actually the head.
+   *
+   * Inside the polygon, not inside its bounding rectangle. A head part is
+   * rarely a rectangle -- it is a U around the hair, or an L down one side of
+   * a face -- and its bounding box takes in whatever else is drawn in the
+   * corners. On KIN 09's side view that is her near arm and half her torso,
+   * so the "head" measured 678 pixels wide on a 628-pixel-wide figure and the
+   * portrait framed her whole body.
+   */
+  const inHead = (px, py) => {
+    let hit = false;
+    for (let i = 0, j = head.poly.length - 1; i < head.poly.length; j = i++) {
+      const [xi, yi] = head.poly[i];
+      const [xj, yj] = head.poly[j];
+      if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
+  };
   let tx0 = x1; let tx1 = x0; let ty0 = y1; let ty1 = y0;
   for (let y = Math.max(0, y0 | 0); y <= Math.min(h - 1, y1 | 0); y++) {
     for (let x = Math.max(0, x0 | 0); x <= Math.min(w - 1, x1 | 0); x++) {
-      if (src[(y * w + x) * 4 + 3] < 24) continue;
+      if (src[(y * w + x) * 4 + 3] < 24 || !inHead(x + 0.5, y + 0.5)) continue;
       if (x < tx0) tx0 = x; if (x > tx1) tx1 = x;
       if (y < ty0) ty0 = y; if (y > ty1) ty1 = y;
     }
   }
   [x0, x1, y0, y1] = [tx0, tx1, ty0, ty1];
 
-  // square it off around the face, with a little air
+  /**
+   * Square it off around the face, with a little air.
+   *
+   * Anchored at the crown rather than centred on the head part, because hair
+   * is not symmetrical about the face: it hangs below it. Centring on the
+   * whole part is fine while the hair frames the head -- KIN 07's braids make
+   * her box 76% of her own height and she still reads, because they are as
+   * wide as they are long. It fails the moment the hair is long and narrow:
+   * KIN 09's side-view portrait came out at 63% and showed her whole body
+   * down to the skirt, with her face a sixth of the tile, because the box was
+   * centred halfway down a column of hair.
+   *
+   * The crown is a reliable landmark on all twelve and the face always sits
+   * just under it, so the box starts there and the width decides the size.
+   * `heightCap` still lets a tall head grow the box, so a character who is
+   * mostly hat or horns is not cropped -- it just cannot drag the frame down
+   * past the shoulders.
+   */
+  const heightCap = Math.min(y1 - y0, (x1 - x0) * 1.35);
+  const side = Math.max(x1 - x0, heightCap) * 1.12;
   const cx = (x0 + x1) / 2;
-  const cy = (y0 + y1) / 2;
-  const side = Math.max(x1 - x0, y1 - y0) * 1.12;
-  x0 = Math.round(cx - side / 2); y0 = Math.round(cy - side / 2);
+  x0 = Math.round(cx - side / 2);
+  y0 = Math.round(y0 - side * 0.06);
 
   const dst = new Uint8Array(SIZE * SIZE * 4);
   const step = side / SIZE;
@@ -89,5 +141,5 @@ for (const [id, n] of Object.entries(SOURCE)) {
 
   const file = path.join(OUT, `${id}.png`);
   fs.writeFileSync(file, Buffer.from(encodeRgba(SIZE, SIZE, dst)));
-  console.log(`${file}  from ${n}.png  head box ${x0},${y0} ${Math.round(side)}px`);
+  console.log(`${file}  from ${cutPath}  head box ${x0},${y0} ${Math.round(side)}px`);
 }

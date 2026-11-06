@@ -56,7 +56,11 @@ const browser = await chromium.launch({ args: ['--no-sandbox', '--use-gl=swiftsh
 const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
 page.on('console', (m) => { if (m.type() === 'error') console.error('page:', m.text()); });
 await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle' });
-await page.waitForFunction(() => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === 10, { timeout: 30000 });
+// Against the roster, not a literal: this read 10 and hung for thirty
+// seconds the first time a character was added.
+const { IDS } = await import('./spar.mjs');
+await page.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+  IDS.length, { timeout: 30000 });
 
 const sheet = await page.evaluate(async ({ CW, CH }) => {
   const g = window.__REBELKIN__;

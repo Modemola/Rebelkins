@@ -93,7 +93,9 @@ export const KIN09S = {
       };
     },
     crouch() {
-      return { torso: { rot: 0.1, y: 80 }, hips: { rot: -0.06, y: 9 }, head: { rot: 0.12 },
+      // See the note on KIN 06's crouch: a drop written on the hips pulls the
+      // pelvis off the torso instead of lowering the fighter.
+      return { torso: { rot: 0.1, y: 89 }, hips: { rot: -0.06 }, head: { rot: 0.12 },
         legL: { rot: 0.3 }, legR: { rot: -0.34 }, shinL: { rot: 0.5 }, shinR: { rot: 0.46 } };
     },
     air(vy) {
@@ -160,7 +162,7 @@ export const KIN09S = {
       name: 'point', label: 'Point',
       startup: 4, active: 3, recovery: 9,
       damage: 40, knockback: 200, lift: 0, drive: 150,
-      strikePart: 'foreL', reach: 105, range: 170,
+      strikePart: 'foreL', reach: 105, range: 149,
       pose: anim({}, [
         { at: 2, ease: 'out',
           torso: { rot: 0.02, x: -8 }, hips: { rot: 0.03 },
@@ -218,7 +220,7 @@ export const KIN09S = {
       name: 'lash', label: 'Lash',
       startup: 10, active: 4, recovery: 18,
       damage: 94, knockback: 450, lift: -110, drive: 230,
-      strikePart: 'foreR', reach: 160, range: 120,
+      strikePart: 'foreR', reach: 160, range: 106,
       pose: anim({}, [
         // Cock it further back and sit onto the rear foot.
         { at: 5, ease: 'out',
@@ -269,7 +271,7 @@ export const KIN09S = {
       name: 'lunge', label: 'Lunge',
       startup: 9, active: 6, recovery: 20,
       damage: 88, knockback: 500, lift: -80, drive: 420,
-      strikePart: 'shinR', reach: 148, range: 180,
+      strikePart: 'shinR', reach: 148, range: 204,
       pose: anim({}, [
         // Load onto the back foot and gather the knee.
         { at: 4, ease: 'out',

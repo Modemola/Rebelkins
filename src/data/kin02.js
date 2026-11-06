@@ -52,17 +52,17 @@ export const KIN02 = {
       name: 'jab', label: 'Jab',
       startup: 4, active: 3, recovery: 8,
       damage: 44, knockback: 210, lift: 0, drive: 160,
-      strikePart: 'foreL', reach: 34, range: 175,
+      strikePart: 'foreL', reach: 34, range: 201,
     }),
     heavy: move(RIG, {
       name: 'overhand', label: 'Overhand',
       startup: 10, active: 5, recovery: 18,
       damage: 100, knockback: 470, lift: -120, drive: 230,
-      strikePart: 'foreR',
       // Stopping the shoulder where swingOf says the opponent is leaves this
       // character's forearm lying across their own face; the old additive
       // sweep is what carries it past the head. See punchPose in kit.js.
-      armSweep: 'past', reach: 44, range: 107,
+      armSweep: 'past',
+      strikePart: 'foreR', reach: 44, range: 107,
     }),
     special: move(RIG, {
       name: 'shoulder', label: 'Shoulder',

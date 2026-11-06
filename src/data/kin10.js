@@ -45,7 +45,7 @@ export const KIN10 = {
       name: 'jab', label: 'Jab',
       startup: 5, active: 3, recovery: 10,
       damage: 50, knockback: 225, lift: 0, drive: 145,
-      strikePart: 'foreL', reach: 34, range: 192,
+      strikePart: 'foreL', reach: 34, range: 201,
     }),
     heavy: move(RIG, {
       name: 'flare', label: 'Flare',
