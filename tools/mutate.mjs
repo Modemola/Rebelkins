@@ -309,9 +309,28 @@ const MUTANTS = [
     name: 'punches that do not move the arm',
     why: 'the hitbox rides the limb, so a frozen limb is a move that only pretends to swing',
     file: 'src/data/kit.js',
-    find: '      [arm]: { rot: mix(self, -0.30 * swing, a) + swing * (1 + power * 0.08) * (elbow ? reach : strike) + settle * 0.07 },',
-    with: '      [arm]: { rot: 0 },',
+    find: '        return (sweepPast ? start + target * t : mix(start, target, t)) + settle * 0.07;',
+    with: '        return 0;',
     expect: 'swings the limb it strikes with',
+  },
+  {
+    name: 'a shoulder turned past the joint it has',
+    why: 'limits were data nothing read; every rear hand in the cast finished '
+      + 'its heavy more than half a turn over, pointing down and behind',
+    file: 'src/data/kit.js',
+    find: '        return (sweepPast ? start + target * t : mix(start, target, t)) + settle * 0.07;',
+    with: '        return start + target * t * 1.6 + settle * 0.07;',
+    expect: 'turns a joint past the rig',
+  },
+  {
+    name: 'a stored range that no longer matches the move',
+    why: 'range is generated and the AI holds its distance by it, so a stale '
+      + 'number parks the opponent where it cannot hit; it went stale twice '
+      + 'with nothing to say so',
+    file: 'src/data/kin03.js',
+    find: "      strikePart: 'foreL', reach: 30, range: 190,",
+    with: "      strikePart: 'foreL', reach: 30, range: 240,",
+    expect: 'stored range matches what the move reaches',
   },
 ];
 
