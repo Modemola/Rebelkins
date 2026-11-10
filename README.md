@@ -51,19 +51,49 @@ damage is chipped and clamped so a block can never finish a round.
 
 ## Pipeline
 
+One illustration in, one playable fighter out. The whole chain, in order:
+
 ```sh
+# 0. judge the sheet before spending an hour on it     (side-view sheets only)
+node tools/sidecheck.mjs assets/sheets/side/<id>.webp
+
 # 1. separate the subject from its backdrop
 node tools/cutout.mjs <indir> <outdir> --auto --sheet
 
 # 2. read joint positions in source pixels
 node tools/rig-grid.mjs <cutout.png> grid.png --scale 2
 
+#    then author rigs/side/<id>.json by hand: one polygon per part, with its
+#    pivot, z order, occludedBy and joint limits. articulate.mjs splits a limb
+#    on a horizontal line and cannot do an arm already bent at the elbow, which
+#    is every side-view guard, so these are drawn by hand.
+
 # 3. cut into parts, heal what the limbs occlude, pack an atlas
-node tools/rig.mjs <cutout.png> rigs/<name>.json <outdir> --debug
+node tools/rig.mjs <cutout.png> rigs/side/<id>.json <outdir> --debug
+#    -> <outdir>/atlas.png and <outdir>/rig.json
+
+# 4. bind a vertex grid to those polygons
+node tools/meshgen.mjs <cutout.png> rigs/side/<id>.json meshes/v2/<id>s.json
+#    reads the hand-authored polygons in SOURCE pixels, not the packed rig
+
+# 5. write src/data/<id>s.js, then copy the packed rects into it
+node tools/rigsync.mjs <outdir>/rig.json src/data/<id>s.js
+#    add --check to report drift and exit non-zero without writing
+
+# 6. hand-animate light, heavy and special, and add the id to IDS in
+#    tools/spar.mjs and ROSTER in src/main.js so every check sees it
 ```
 
 `tools/rig-preview.html` plays the result — seven moves, skeleton and part
-overlays, so a rig can be judged before anything is built on it.
+overlays, so a rig can be judged before anything is built on it. Step 6 is the
+hour; everything above it is minutes.
+
+Two things that are easy to get backwards. `meshgen` wants the **hand-authored**
+rig, because it reads polygons in source pixels; `rigsync` wants the **built**
+one, because it reads atlas rects. And shelf-packing means changing any one
+polygon moves every other part in the atlas, so step 5 is not optional after a
+re-rig — a stale rect draws the wrong rectangle of the sheet and looks like a
+rigging mistake.
 
 ### cutout.mjs
 
@@ -84,18 +114,29 @@ coat pixels underneath, so the layer beneath is grown back from its own
 surviving pixels before packing. On the first character that was 12,622 pixels
 of coat invented behind two sleeves.
 
-**Known limit:** a hard-edged 2D cut does not deform like a mesh, so the seam
-where a sleeve meets a body shows under large rotations. Acceptable at fight
-distance, not in a slow close-up.
+**That limit has since been lifted, and the cut survives as a hint.** A
+hard-edged 2D cut does not deform: the seam where a sleeve meets a body shows
+under large rotations, and a part whose pivot sits outside its own bitmap
+swings away and leaves a hole at the shoulder. `meshgen.mjs` lays a vertex grid
+over the whole drawing instead and binds each vertex to the bones nearest it,
+using these polygons to decide which bone owns which pixels — so the geometry at
+a joint is shared and bends across it, because nothing was ever cut. The rigid
+path is still what draws a fighter whose mesh is missing, seam and all.
 
 ## Rigs
 
 | Rig | Character | Parts | Case |
 | --- | --- | --- | --- |
-| `rigs/kin08.json` | yellow coat, white bob | 7 | arms clear of the body — the easy case |
-| `rigs/kin06.json` | navy jacket, cyan spikes | 5 | arms folded — arms stay welded on |
+| `rigs/kin08.json` | yellow coat, white bob | 7 | front-on, arms clear of the body — the easy case |
+| `rigs/kin06.json` | navy jacket, cyan spikes | 5 | front-on, arms folded — arms stay welded on |
+| `rigs/side/kin06.json` | the same character, redrawn side-on | 11 | the fix |
 
-### What the two cases established
+The part counts are the argument. The ten front-facing rigs carry five to seven
+parts; the two side-view rigs carry eleven each — upper arm, forearm, thigh and
+shin on both sides, all separable, because a bladed stance shows them. A
+folded-arm front-on character gets five and can never punch.
+
+### What these cases established
 
 Separating a limb means inventing what was behind it. That is affordable when
 the hidden region is a narrow band at the edge of a large flat panel, which is
@@ -111,8 +152,14 @@ characters the arms stay welded to the torso, which costs the independent punch
 set and keeps everything else — idle, walk, kicks, stomps, body charges, hit
 reactions, and a guard pose their folded arms already read as.
 
-The lasting fix is one extra generation per folded-arm character, in an open
-pose with the limbs clear of the body. Five of the ten need it.
+The first answer was one extra generation per folded-arm character, in an open
+pose with the limbs clear of the body — five of the ten needed it. That is not
+what shipped. An open pose fixes the occlusion and leaves the camera, and a
+front-facing limb extended toward the opponent is the front of a limb seen
+end-on however cleanly it was cut. So all ten are being redrawn side-on
+instead, which fixes the occlusion and the camera in the same image: eleven
+separable parts against five, and strikes that sweep twice as far relative to
+the body throwing them. Two are done; see `ART-BRIEF-SIDE.md`.
 
 ## Art direction
 
