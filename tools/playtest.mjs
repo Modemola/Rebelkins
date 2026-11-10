@@ -309,10 +309,19 @@ async function fightChecks() {
   // Measured on the live cast: thirty of the thirty-six moves are at a flat
   // 100%, the six easing cases land between 92 and 98, and nothing is below
   // 92. The threshold sits at 85, under every real move and far above a move
-  // that connects on its wind-up. This has nothing to redden today -- it is
-  // here because the eight characters still to be hand-animated are exactly
-  // where that mistake gets made, and three frames of startup is an easy
-  // number to get wrong by one.
+  // that connects on its wind-up.
+  //
+  // Worth knowing what this can and cannot catch, because the two halves of
+  // the cast are animated differently. A move built by `move()` runs off the
+  // shared curve, where the pose is a function of the phase -- so moving the
+  // active window drags the whole swing along with it and the fist arrives
+  // on time at its new time. Those moves are close to unfalsifiable here, and
+  // a mutant aimed at one stayed green, correctly. A hand-animated pose keys
+  // on absolute frame numbers, so the window can slide out from under the
+  // swing while the swing stays put. That is where this bites, and it is also
+  // where the work is: the eight characters still to be drawn will all be
+  // hand-animated, and three frames of startup is an easy number to get wrong
+  // by one.
   const early = [];
   for (const id of IDS) {
     const def = DEFS[id];

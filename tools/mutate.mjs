@@ -360,14 +360,21 @@ const MUTANTS = [
     name: 'a hitbox that goes live before the swing arrives',
     why: 'the active frame is the one the hit freeze holds up for the player, '
       + 'so a strike caught on its wind-up reads as a miss that hurt',
-    file: 'src/data/kin02.js',
-    // Total length is kept at 33 frames deliberately. Moving the whole active
-    // window to the front of the move, rather than shortening or lengthening
-    // it, leaves frame advantage and move length alone and breaks only the
-    // thing this check is about: the overhand now connects on frames 0 to 4,
-    // while the arm is still at the chin.
-    find: '      startup: 10, active: 5, recovery: 18,',
-    with: '      startup: 0, active: 5, recovery: 28,',
+    file: 'src/data/kin06s.js',
+    // Aimed at a hand-animated character on purpose, and the first attempt at
+    // this mutant is why. It moved the same window to the front of kin02's
+    // overhand, which is built by `move()` from the shared curve -- and there
+    // the pose is a function of the phase, so dragging the window drags the
+    // whole swing along with it and the fist arrives exactly on time at its
+    // new time. The check stayed green and it was right to.
+    //
+    // A hand-animated pose keys on absolute frame numbers, so the window can
+    // slide out from under the swing while the swing stays where it was. The
+    // jab's full extension is keyed at frame 8; with no startup the hitbox is
+    // live on frames 0 to 2, when the arm has barely left the guard. Total
+    // length stays at 17 so nothing length-dependent moves.
+    find: '      startup: 4, active: 3, recovery: 10,',
+    with: '      startup: 0, active: 3, recovery: 14,',
     expect: 'at full stretch when its hitbox is live',
   },
   {
