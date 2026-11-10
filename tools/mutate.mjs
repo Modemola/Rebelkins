@@ -357,6 +357,20 @@ const MUTANTS = [
     expect: 'swings the limb it strikes with',
   },
   {
+    name: 'a hitbox that goes live before the swing arrives',
+    why: 'the active frame is the one the hit freeze holds up for the player, '
+      + 'so a strike caught on its wind-up reads as a miss that hurt',
+    file: 'src/data/kin02.js',
+    // Total length is kept at 33 frames deliberately. Moving the whole active
+    // window to the front of the move, rather than shortening or lengthening
+    // it, leaves frame advantage and move length alone and breaks only the
+    // thing this check is about: the overhand now connects on frames 0 to 4,
+    // while the arm is still at the chin.
+    find: '      startup: 10, active: 5, recovery: 18,',
+    with: '      startup: 0, active: 5, recovery: 28,',
+    expect: 'at full stretch when its hitbox is live',
+  },
+  {
     name: 'a shoulder turned past the joint it has',
     why: 'limits were data nothing read; every rear hand in the cast finished '
       + 'its heavy more than half a turn over, pointing down and behind',

@@ -288,7 +288,56 @@ async function fightChecks() {
     }
   }
   check('every move swings the limb it strikes with', frozen.length === 0,
-    frozen.length ? frozen.join(', ') : `all ${IDS.length * 3} moves move their striking point 25 or more`);
+    frozen.length ? frozen.join(', ') : `all ${IDS.length * 3} moves move their striking point 12 or more`);
+
+  // Swinging is not the same as connecting at full stretch.
+  //
+  // The check above asks whether the limb moves at all, which is a question
+  // about the animation. The player is asking a different one, and only ever
+  // about a single frame: at the moment the hitbox goes live, does the strike
+  // LOOK like it has arrived? A move can sweep the whole screen and still be
+  // caught mid-flight on its active window -- the arm is on its way out, or
+  // already on its way back -- and that frame is the one the hit freeze holds
+  // up for the player to look at. The sweep is the cheap measurement; this is
+  // the one the eye is making.
+  //
+  // So: take the striking point's distance from where it rests at frame 0,
+  // find its peak anywhere in the move, and compare that with the furthest it
+  // gets while the hitbox is live. 100% means the strike connects at full
+  // extension.
+  //
+  // Measured on the live cast: thirty of the thirty-six moves are at a flat
+  // 100%, the six easing cases land between 92 and 98, and nothing is below
+  // 92. The threshold sits at 85, under every real move and far above a move
+  // that connects on its wind-up. This has nothing to redden today -- it is
+  // here because the eight characters still to be hand-animated are exactly
+  // where that mistake gets made, and three frames of startup is an easy
+  // number to get wrong by one.
+  const early = [];
+  for (const id of IDS) {
+    const def = DEFS[id];
+    const rig = rigs[id];
+    for (const [slot, m] of Object.entries(def.moves)) {
+      const solve = (f) => rig.solve(m.pose(f, m), { x: 0, y: 0, scale: def.scale, facing: 1 });
+      const [lx, ly] = rig.gripLocal(solve(0), m.strikePart, 1);
+      const ownBody = m.strikePart === 'torso';
+      const at = (f) => {
+        const M = solve(f);
+        const w = xf(M[m.strikePart], lx, ly);
+        return ownBody ? w : xf(inv(M.torso), w.x, w.y);
+      };
+      const rest = at(0);
+      const reach = (f) => { const p = at(f); return Math.hypot(p.x - rest.x, p.y - rest.y); };
+      let peak = 0;
+      for (let f = 0; f < totalFrames(m); f++) peak = Math.max(peak, reach(f));
+      let live = 0;
+      for (let f = m.startup; f < m.startup + m.active; f++) live = Math.max(live, reach(f));
+      const pct = peak > 0 ? (live / peak) * 100 : 0;
+      if (pct < 85) early.push(`${id} ${slot} connects at ${pct.toFixed(0)}% of its own extension`);
+    }
+  }
+  check('every move is at full stretch when its hitbox is live', early.length === 0,
+    early.length ? early.join(', ') : `${IDS.length * 3} moves, none under 85% extended at contact`);
 
   // `art` records which way an illustration was drawn facing, so that `facing`
   // can stay a plain "which way is the opponent" everywhere else. Six of the
