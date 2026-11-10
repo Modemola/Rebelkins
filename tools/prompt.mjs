@@ -2,13 +2,14 @@
  * Print one character's art prompt, assembled from the brief rather than
  * copied out of it.
  *
- * ART-BRIEF-SIDE.md is 430 lines and most of it is reasoning -- why a rule
- * exists, which earlier version of it was wrong, what the numbers were on the
- * sheets that failed. That reasoning is the point of the file and it is also
- * what makes it a bad thing to hand someone who just needs to generate an
- * image. The alternative, pasting the prompt into a second file by hand, is
- * how the two drift apart: a rule gets corrected in the brief and the copy
- * keeps asking for the thing that was wrong.
+ * ART-BRIEF-SIDE.md runs to several hundred lines and most of it is
+ * reasoning -- why a rule exists, which earlier version of it was wrong,
+ * what the numbers were on the sheets that failed. That reasoning is the
+ * point of the file and it is also what makes it a bad thing to hand someone
+ * who just needs to generate an image. The alternative, pasting the prompt
+ * into a second file by hand, is how the two drift apart: a rule gets
+ * corrected in the brief and the copy keeps asking for the thing that was
+ * wrong.
  *
  * So this reads §3, §5 and the §7 table out of the brief itself, substitutes
  * the named character, and writes the paste-ready version. The brief stays

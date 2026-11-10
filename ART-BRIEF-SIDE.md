@@ -63,6 +63,29 @@ thing in the file. Each rejected sheet obeyed it exactly.
 Those paragraphs existed to serve a renderer rule that is itself out of date;
 see §2. They have been rewritten.
 
+### What the two accepted sheets bought
+
+The argument above is a claim about drawings, so it is worth checking against
+the two characters that have been through this pass. The measurement is how
+far a move carries its striking point, as a fraction of the fighter's own
+height — the thing an eye is judging when it decides whether a swing looks
+like a swing.
+
+| | mean sweep, as a share of body height |
+|---|---|
+| the ten front-on characters | 50% |
+| KIN 06 and KIN 09, redrawn side-on | 94% |
+
+The three widest swings in the cast are all side-view, and every one of the
+side-view moves is at full extension on the frame its hitbox goes live.
+
+Worth saying how little the pictures show of this: on the contact sheet the
+redrawn pair read as the *quieter* of the two groups — compact, guard up,
+close to the body — next to front-on figures flinging a leg to shoulder
+height. That reading is wrong by a factor of two, and it is wrong in the
+direction that would have cancelled this pass. The front-on kick is wide on
+the canvas and narrow in the drawing: it is the front of a leg, seen end-on.
+
 So there are three failure modes to design against. *A generator will turn the
 head and leave the body*; once the body turns it will *still* plant the feet
 square and read "bladed stance" as "wide stance"; and *anything in the prompt
