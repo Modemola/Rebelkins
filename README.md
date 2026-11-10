@@ -95,6 +95,19 @@ polygon moves every other part in the atlas, so step 5 is not optional after a
 re-rig — a stale rect draws the wrong rectangle of the sheet and looks like a
 rigging mistake.
 
+One thing to re-measure rather than assume, once a side-view character is in:
+`node tools/hurtfit.mjs`. The hurtbox is an ellipse centred on the root pivot,
+and the root is placed by hand at rigging time, so whether the drawn body sits
+over it is a property of the art. Across the current twelve it does — the centre
+of mass lands within 12px of the root against radii of 32–49px. The furthest
+off is KIN 09 side-on at 12px; the front-facing ten reach 8px at worst. That is
+one character, not a pattern — the other side-on one sits at 7px, mid-pack among
+the ten — but a bladed stance does put the lead foot forward of the torso, which
+is the only mechanism yet seen that moves a body off its root, and eight more
+bladed stances are coming. The tool prints offsets and no pass mark on purpose:
+the whole signal is about 12px and nothing yet says what fraction of a radius is
+too much.
+
 ### cutout.mjs
 
 Flood fills inward from the frame edge with a local tolerance, so it follows a

@@ -292,6 +292,35 @@ export class Fighter {
    * figure three times taller than it is wide: the first version sat at the
    * ankles while every hitbox arrived at chest height, so nothing ever
    * connected.
+   *
+   * `x: this.x` puts the ellipse on the root pivot, which is an assumption
+   * about the artwork and not a fact about it -- nothing makes a drawing sit
+   * centred over the point its rig hangs from. So it was measured: the figure
+   * rendered through the same Rig.draw the game uses, over idle, walk and
+   * guard, and the alpha weighed inside the ellipse's own vertical band. The
+   * body's centre of mass lands within 12px of the root for all twelve (3px
+   * in front to 12px behind) against radii of 32 to 49px, so the assumption
+   * holds with room to spare and there is nothing to fix here.
+   *
+   * The extreme is KIN 09 side-on, 12px behind of a 33px radius, and the
+   * camera is why: a bladed stance puts the lead foot forward of the torso,
+   * so the mass sits behind a root placed at the feet. One character carries
+   * that, though: the other side-on one sits at 7px, which is mid-pack among
+   * the front-facing ten, and one of those reaches 8px. So this is a
+   * mechanism to watch rather than a trend already in the numbers -- worth
+   * re-measuring with tools/hurtfit.mjs as the side-view pass lands rather
+   * than assumed to keep holding.
+   *
+   * No check guards it, deliberately. Reading the alpha needs a canvas, and
+   * the cheap stand-in -- an area-weighted centroid of the part rects, which
+   * runs in Node -- disagrees with the pixels by up to 7px. Against a signal
+   * whose largest value is 12px that instrument cannot carry a threshold,
+   * and inventing one anyway is how a check ends up measuring its own error.
+   *
+   * One scanline is not a body, either. Read at chest height alone these same
+   * figures look wildly off-centre: KIN 09 shows 52px of ink behind the root
+   * against 15px in front, because at that height her arms are tucked. Over
+   * the whole band she is 79 behind and 91 in front.
    */
   hurtbox() {
     const h = this.def.bodyHeight * this.def.scale;
