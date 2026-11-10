@@ -214,6 +214,39 @@ const MUTANTS = [
     expect: 'reaches the mixer',
   },
   {
+    name: 'impacts throw no sparks',
+    why: 'the burst at the contact point is how a player sees where a hit landed',
+    file: 'src/render/fx.js',
+    find: '    const n = ko ? 54 : 18 + Math.round(move.damage / 5);',
+    with: '    const n = 0;',
+    expect: 'impact spawns sparks',
+  },
+  {
+    name: 'camera shake never reaches the transform',
+    why: 'the shake number going up is not the screen moving, and the screen '
+      + 'moving is the whole effect',
+    file: 'src/render/stage.js',
+    // Aimed at a check that read `cam.shake > 0` and nothing else, so it could
+    // not tell a camera that shakes from a counter that increments. This
+    // mutant survived it. It reads Stage.apply's own transform now.
+    find: '    const sx = (Math.random() - 0.5) * this.shake + this.kick.x;\n'
+      + '    const sy = (Math.random() - 0.5) * this.shake + this.kick.y;',
+    with: '    const sx = this.kick.x;\n    const sy = this.kick.y;',
+    expect: 'impact shakes the camera',
+  },
+  {
+    name: 'a mute button that does not mute',
+    why: 'the flag is not the sound: what silences the game is the master gain, '
+      + 'and a player who hits mute and still hears it has no second recourse',
+    file: 'src/audio/sfx.js',
+    // The check this is aimed at read `sfx.muted` either side of setMuted and
+    // nothing else, so it asserted that an assignment assigns. This mutant
+    // survived it. It reads the master gain now, after the ramp settles.
+    find: '      this.master.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.02);',
+    with: '      this.master.gain.setTargetAtTime(0.9, this.ctx.currentTime, 0.02);',
+    expect: 'mute silences and restores',
+  },
+  {
     name: 'hitstun uncapped',
     why: 'a move that stuns for longer than it takes to come round again loops forever',
     file: 'src/data/common.js',

@@ -909,10 +909,32 @@ try {
     const before = g.fx.sparks.length;
     g.match.onEvent('hit', { contact: { x: g.match.a.x, y: -120 },
       move: g.match.a.def.moves.heavy, attacker: g.match.a, defender: g.match.b, ko: false });
-    return { before, after: g.fx.sparks.length, shake: g.cam.shake };
+
+    // `cam.shake > 0` is a number going up, which is not a camera moving: the
+    // two lines in Stage.apply that spend that number on the transform could
+    // both go and the figure would sit perfectly still while the check stayed
+    // green. So the transform is asked directly -- 24 applies at the shake the
+    // impact just set, and 24 more with it zeroed, which must not wander.
+    // Nothing is awaited in here, so no frame runs and the decay cannot touch
+    // the value mid-measurement.
+    const probe = document.createElement('canvas').getContext('2d');
+    const view = { w: 1280, h: 720 };
+    const originX = () => { probe.resetTransform(); g.cam.apply(probe, view, 1); return probe.getTransform().e; };
+    const spread = (xs) => Math.max(...xs) - Math.min(...xs);
+    const shake = g.cam.shake;
+    const moving = [];
+    for (let i = 0; i < 24; i++) moving.push(originX());
+    g.cam.shake = 0;
+    const still = [];
+    for (let i = 0; i < 24; i++) still.push(originX());
+    g.cam.shake = shake;
+    return { before, after: g.fx.sparks.length, shake, moves: spread(moving), fixed: spread(still) };
   });
   check('impact spawns sparks', fxProbe.after > fxProbe.before, `${fxProbe.before} -> ${fxProbe.after}`);
-  check('impact shakes the camera', fxProbe.shake > 0, fxProbe.shake.toFixed(1));
+  check('impact shakes the camera',
+    fxProbe.shake > 0 && fxProbe.moves > 1 && fxProbe.fixed === 0,
+    `shake ${fxProbe.shake.toFixed(1)}, origin wanders ${fxProbe.moves.toFixed(1)}px with it `
+    + `and ${fxProbe.fixed.toFixed(1)}px without`);
 
   console.log('\nKO ends the round');
   await quietCpu();
@@ -995,14 +1017,29 @@ try {
   check('a landed hit reaches the mixer', wired.landed && wired.calls >= 1,
     `${wired.calls} impact voice${wired.calls === 1 ? '' : 's'} for ${wired.landed ? 'a landed hit' : 'nothing (it missed)'}`);
 
-  const muteCheck = await page.evaluate(() => {
+  // The flag is not the sound. This read `g.muted` either side of setMuted and
+  // nothing else, so it asserted that an assignment assigns -- the one line
+  // that actually silences anything could be deleted and this stayed green,
+  // which it was measured doing. What mutes the game is the master gain, so
+  // that is what gets read, after waiting out the ramp setMuted schedules.
+  const muteCheck = await page.evaluate(async () => {
     const g = window.__REBELKIN__.sfx;
+    const settle = () => new Promise((r) => setTimeout(r, 220));   // ~10 time constants
+    const gain = () => (g.master ? g.master.gain.value : null);
     g.setMuted(true);
-    const muted = g.muted;
+    await settle();
+    const down = { flag: g.muted, gain: gain() };
     g.setMuted(false);
-    return { muted, restored: !g.muted };
+    await settle();
+    const up = { flag: !g.muted, gain: gain() };
+    return { down, up, state: g.ctx ? g.ctx.state : 'none', open: gain() !== null };
   });
-  check('mute silences and restores', muteCheck.muted && muteCheck.restored);
+  check('mute silences and restores',
+    muteCheck.open && muteCheck.down.flag && muteCheck.up.flag
+      && muteCheck.down.gain < 0.05 && muteCheck.up.gain > 0.8,
+    muteCheck.open
+      ? `master gain ${muteCheck.down.gain.toFixed(3)} muted, ${muteCheck.up.gain.toFixed(3)} restored`
+      : `no master gain to read -- context ${muteCheck.state}`);
 
   console.log('\nevery move can reach');
   // Thirty moves, each put at the stage's own spacing and asked to connect. A
