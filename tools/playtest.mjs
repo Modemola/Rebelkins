@@ -1054,13 +1054,33 @@ try {
   const loadout = await page.evaluate(async () => {
     const g = window.__REBELKIN__;
     const W = await import('./src/data/weapons.js');
-    const out = { badReach: [], wrongScope: [], offered: [], rank: null, persisted: null };
+    const out = { badReach: [], badTable: [], armedPairs: 0, wrongScope: [], offered: [], rank: null, persisted: null };
 
-    // Reach can only go up. The 30-move check that proves every move can
-    // connect runs bare-handed; that is only a lower bound for the armed
-    // cases if no weapon shortens anything.
+    // Reach can only go up. The check that proves every move can connect runs
+    // bare-handed; that is only a lower bound for the armed cases if no
+    // weapon shortens anything.
+    //
+    // This used to read the table and stop there -- every weapon's reach is
+    // >= 0, every damage multiplier >= 1, therefore nothing shortens a move.
+    // That is the check and the code sharing an assumption: applyWeapon could
+    // have been subtracting the reach instead of adding it and this would
+    // still have been green. It was, deliberately, and it was: the suite
+    // passed with `move.reach - weapon.reach`. So the numbers are run through
+    // the real path now, for every weapon every character can actually hold,
+    // and compared against the bare move.
     for (const w of W.WEAPONS) {
-      if (w.reach < 0 || w.damage < 1) out.badReach.push(w.id);
+      if (w.reach < 0 || w.damage < 1) out.badTable.push(w.id);
+    }
+    for (const def of g.ROSTER) {
+      for (const w of W.WEAPONS) {
+        if (!W.canHold(def, w)) continue;
+        for (const [slot, m] of Object.entries(def.moves)) {
+          const armed = W.applyWeapon(w, m, def);
+          out.armedPairs++;
+          if (armed.reach < m.reach) out.badReach.push(`${def.id} ${slot} with ${w.id}: reach ${m.reach} -> ${armed.reach}`);
+          if (armed.damage < m.damage) out.badReach.push(`${def.id} ${slot} with ${w.id}: damage ${m.damage} -> ${armed.damage}`);
+        }
+      }
     }
 
     // A weapon changes the limb it is held in, and nothing else.
@@ -1129,8 +1149,9 @@ try {
     g.progress.setWins(0);
     return out;
   });
-  check('no weapon shortens a move', loadout.badReach.length === 0,
-    loadout.badReach.length ? loadout.badReach.join(', ') : `${WEAPON_COUNT} weapons, all reach >= 0`);
+  check('no weapon shortens a move', loadout.badReach.length === 0 && loadout.badTable.length === 0,
+    [...loadout.badTable, ...loadout.badReach].slice(0, 4).join(', ')
+    || `${loadout.armedPairs} character/weapon/move combinations, every one at least as long and as hard as the bare move`);
   check('a weapon changes only the limb holding it', loadout.wrongScope.length === 0,
     loadout.wrongScope.length ? loadout.wrongScope.slice(0, 5).join(', ') : 'every character x weapon x move');
   check('hand weapons are not offered to folded arms', loadout.offered.length === 0,

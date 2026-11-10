@@ -451,12 +451,20 @@ const MUTANTS = [
     expect: 'no weapon shortens a move',
   },
   {
-    name: 'a heavy safer on block than a light',
+    name: 'a light that recovers as slowly as a heavy',
     why: 'a big slow punch has to be the risky one, or there is no reason to '
       + 'ever throw the small one',
     file: 'src/data/kin01.js',
-    find: '      startup: 11, active: 4, recovery: 19,',
-    with: '      startup: 11, active: 4, recovery: 8,',
+    // Shortening the HEAVY was the obvious mutation and it survived. capStun
+    // clamps blockstun to `active - 1 + recovery - 6`, which makes every
+    // move's advantage-on-block exactly max(raw, 6) -- so a heavy cannot go
+    // below 6 however short you make it, and every light in the cast sits on
+    // that floor at exactly 6. Nothing strictly below 6 exists to find.
+    // Raising a LIGHT above its own heavy is the breakable direction: at 22
+    // frames of recovery kin01's jab is +13 on block against a heavy that is
+    // +8, which is the ordering this check forbids.
+    find: '      startup: 5, active: 3, recovery: 10,',
+    with: '      startup: 5, active: 3, recovery: 22,',
     expect: 'a heavy is never safer on block',
   },
 ];
