@@ -8,6 +8,7 @@
  * strip is an impact, a guard or a break rather than a pose.
  *
  *   node tools/fightshots.mjs [--a kin05] [--b kin10] [--shots 6] [--out f.png]
+ *                              [--cols 1]
  *   node tools/fightshots.mjs --pairs kin01:kin02,kin03:kin04 [--shots 2]
  *
  * `--pairs` runs several matchups in one browser and tiles them together,
@@ -24,6 +25,14 @@ const arg = (f, d) => (process.argv.includes(f) ? process.argv[process.argv.inde
 const A = arg('--a', 'kin05');
 const B = arg('--b', 'kin10');
 const SHOTS = Number(arg('--shots', 6));
+// Tiles are the canvas at half size, and two of them side by side is a sheet
+// you can take in at once -- which is what it is for when the question is
+// "did anything break across the whole roster". It is the wrong picture for
+// "does this move read": at 640px a 300px figure's limbs are a few pixels
+// wide and a driving kick is invisible. I misread the same three frames three
+// times before cropping one and zooming it. `--cols 1` draws the canvas at
+// full size instead, which is the view to use on a character you are judging.
+const COLS = Number(arg('--cols', 2));
 const OUT = arg('--out', 'fight.png');
 
 const { chromium } = await load();
@@ -143,13 +152,15 @@ for (const [a, b] of PAIRS) {
 console.log(`captured ${frames.length} impact frames`);
 if (!frames.length) { await browser.close(); server.close(); process.exit(1); }
 
-const sheet = await page.evaluate(async ({ frames }) => {
+const sheet = await page.evaluate(async ({ frames, wide }) => {
   const imgs = await Promise.all(frames.map(async (f) => {
     const im = new Image(); im.src = f.png; await im.decode(); return im;
   }));
-  const cols = Math.min(2, imgs.length);
+  const cols = Math.min(wide, imgs.length);
   const rows = Math.ceil(imgs.length / cols);
-  const W = 640, H = 380, pad = 26;
+  const W = cols === 1 ? 1280 : 640;
+  const H = cols === 1 ? 760 : 380;
+  const pad = 26;
   const cv = document.createElement('canvas');
   cv.width = cols * W;
   cv.height = rows * (H + pad) + 34;
@@ -170,7 +181,7 @@ const sheet = await page.evaluate(async ({ frames }) => {
     ctx.fillText(frames[i].label, x + 150, y + H + 17);
   });
   return cv.toDataURL('image/png');
-}, { frames });
+}, { frames, wide: COLS });
 
 fs.writeFileSync(path.resolve(ROOT, OUT), Buffer.from(sheet.split(',')[1], 'base64'));
 console.log(`wrote ${OUT}`);
