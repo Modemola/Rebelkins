@@ -406,6 +406,34 @@ async function fightChecks() {
           + shippedWorst.slice(0, 3).map((w) => `${w.id} ${w.name} ${w.deg.toFixed(0)} deg vs [${w.lim}]`).join('; ')
         : `all ${IDS.length} characters inside their own joints`);
 
+  /**
+   * Every stored range still matches what the move actually reaches.
+   *
+   * `range` is generated: tools/ranges.mjs binary-searches the furthest gap
+   * each move still connects from, in the real simulation, and writes the
+   * answer into the character files. The AI holds its distance by it, so a
+   * stored number that is too long parks the opponent where it cannot hit
+   * and one that is too short walks it into everything.
+   *
+   * Nothing noticed it going stale. Changing punchPose moved the whole cast's
+   * reach and the stored numbers stayed where they were for a commit --
+   * KIN 01's heavy carried 100 against a real 129 -- and the only reason that
+   * came out was that the generator happened to get re-run while something
+   * else was being debugged. Two side-view characters shipped with ranges
+   * that had never been measured at all, because the generator kept its own
+   * copy of the roster and could not see them.
+   *
+   * It costs a fraction of a second, which is the whole argument for doing it
+   * here rather than trusting anyone to remember.
+   */
+  const { measure, drift } = await import('./ranges.mjs');
+  const stale = drift(measure());
+  check('every stored range matches what the move reaches', stale.length === 0,
+    stale.length
+      ? stale.map((d) => `${d.id} ${d.slot} stored ${d.stored}, reaches ${d.measured}`).join('; ')
+      : `all ${IDS.reduce((n, id) => n + Object.keys(DEFS[id].moves).length, 0)} moves, `
+        + 're-measured in the simulation');
+
   // A pose translating a part that hangs off another part does not move the
   // fighter -- it pulls that part away from its parent, and the art only
   // covers the join while the two polygons still overlap. Measured on these

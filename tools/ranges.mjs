@@ -16,7 +16,14 @@
  * committed beside it, the same arrangement as the atlases: re-run this
  * whenever a reach, a scale or a pose changes.
  *
- *   node tools/ranges.mjs [--dry]
+ *   node tools/ranges.mjs [--dry] [--check]
+ *
+ * `--check` measures without writing and exits non-zero if what is stored
+ * disagrees with what the moves reach. The playtest calls `measure()` for the
+ * same reason: this is generated data, and the only thing that had ever
+ * noticed it going stale was someone happening to re-run the generator. A
+ * change to a pose or a reach silently invalidates every number here, and a
+ * move whose stored range is too long makes the AI stand where it cannot hit.
  */
 
 import fs from 'node:fs';
@@ -29,7 +36,6 @@ import { byId } from '../src/data/weapons.js';
 // keeps whatever number was guessed when it was written.
 import { IDS as ids } from './spar.mjs';
 
-const DRY = process.argv.includes('--dry');
 const DEFS = {};
 const rigs = {};
 for (const id of ids) {
@@ -73,29 +79,66 @@ function connects(attacker, slot, gap) {
   return false;
 }
 
-const found = {};
-for (const id of ids) {
-  found[id] = {};
-  for (const slot of ['light', 'heavy', 'special']) {
-    if (!DEFS[id].moves[slot]) continue;
-    // Find a gap that works before searching for the furthest one.
-    //
-    // This used to test the closest gap and give up if it missed, which
-    // assumes every move is a simple maximum reach. A punch aimed high has a
-    // hole at point-blank -- the hurtbox is an ellipse, so it is narrow up
-    // where the head is, and a fist can arrive past the edge of it. KIN 01's
-    // jab connected anywhere from 100 to 150 and was reported as 0.
-    let lo = 0;
-    for (let g = 60; g <= 340; g += 8) if (connects(id, slot, g)) { lo = g; break; }
-    let hi = 340;
-    if (!lo) { found[id][slot] = 0; continue; }
-    while (hi - lo > 2) {
-      const mid = (lo + hi) / 2;
-      if (connects(id, slot, mid)) lo = mid; else hi = mid;
+/** The furthest gap each move still connects from, measured not estimated. */
+export function measure(onRow = () => {}) {
+  const found = {};
+  for (const id of ids) {
+    found[id] = {};
+    for (const slot of ['light', 'heavy', 'special']) {
+      if (!DEFS[id].moves[slot]) continue;
+      // Find a gap that works before searching for the furthest one.
+      //
+      // This used to test the closest gap and give up if it missed, which
+      // assumes every move is a simple maximum reach. A punch aimed high has
+      // a hole at point-blank -- the hurtbox is an ellipse, so it is narrow
+      // up where the head is, and a fist can arrive past the edge of it. KIN
+      // 01's jab connected anywhere from 100 to 150 and was reported as 0.
+      let lo = 0;
+      for (let g = 60; g <= 340; g += 8) if (connects(id, slot, g)) { lo = g; break; }
+      let hi = 340;
+      if (!lo) { found[id][slot] = 0; continue; }
+      while (hi - lo > 2) {
+        const mid = (lo + hi) / 2;
+        if (connects(id, slot, mid)) lo = mid; else hi = mid;
+      }
+      found[id][slot] = Math.round(lo);
     }
-    found[id][slot] = Math.round(lo);
+    onRow(id, found[id]);
   }
-  console.log(`${id}  ` + Object.entries(found[id]).map(([s, v]) => `${s} ${v}`).join('  '));
+  return found;
+}
+
+/**
+ * Where a stored range disagrees with the measured one.
+ *
+ * The tolerance is the binary search's own resolution plus a little: it stops
+ * at a 2-unit bracket and rounds, so a re-measure of unchanged data can move
+ * by a unit or two without anything having changed.
+ */
+export function drift(found, tol = 4) {
+  const out = [];
+  for (const id of ids) {
+    for (const [slot, range] of Object.entries(found[id])) {
+      const stored = DEFS[id].moves[slot].range;
+      if (Math.abs(stored - range) > tol) out.push({ id, slot, stored, measured: range });
+    }
+  }
+  return out;
+}
+
+// Imported for measure() and drift(); everything below is the command line.
+if (!process.argv[1]?.endsWith('ranges.mjs')) { /* imported */ } else {
+const DRY = process.argv.includes('--dry');
+const CHECK = process.argv.includes('--check');
+const found = measure((id, row) => {
+  console.log(`${id}  ` + Object.entries(row).map(([s, v]) => `${s} ${v}`).join('  '));
+});
+
+if (CHECK) {
+  const bad = drift(found);
+  for (const d of bad) console.log(`  ! ${d.id} ${d.slot}: stored ${d.stored}, reaches ${d.measured}`);
+  console.log(`\n${bad.length ? `${bad.length} stored range(s) out of date` : 'every stored range matches'}`);
+  process.exit(bad.length ? 1 : 0);
 }
 
 let written = 0;
@@ -116,3 +159,4 @@ for (const id of ids) {
   if (!DRY) fs.writeFileSync(file, src);
 }
 console.log(`\n${written} move ranges ${DRY ? 'measured (dry run)' : 'written'}`);
+}
