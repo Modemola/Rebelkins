@@ -38,7 +38,7 @@ const MUTANTS = [
     file: 'src/render/rig.js',
     find: '  strikePoint(M, partName, facing = 1, lead = 0.88) {',
     with: '  strikePoint(M, partName, facing = 1, lead = 0) {',
-    expect: 'all 30 moves connect',
+    expect: 'every move connects',
   },
   {
     name: 'swing direction not measured',
@@ -46,7 +46,7 @@ const MUTANTS = [
     file: 'src/data/kit.js',
     find: '  return turn;',
     with: '  return turn * 0 + 1.2;',
-    expect: 'all 30 moves connect',
+    expect: 'every move connects',
   },
   {
     name: 'artwork facing ignored',
@@ -79,7 +79,7 @@ const MUTANTS = [
     file: 'src/fight/fighter.js',
     find: '      y: top + h * crouched * 0.52,',
     with: '      y: top + h * crouched * 1.0,',
-    expect: 'all 30 moves connect',
+    expect: 'every move connects',
   },
   {
     name: 'chip damage is lethal',
@@ -271,11 +271,38 @@ const MUTANTS = [
   },
   {
     name: 'poses keyed by character again',
-    why: 'two of the same character need a pose each, not one between them',
+    why: 'everything downstream reads a pose by pad, so keying by character '
+      + 'leaves both fighters with nothing to draw',
     file: 'src/main.js',
     find: '    poses[f.pad] = rig.solve(f.pose(), {',
     with: '    poses[f.def.id] = rig.solve(f.pose(), {',
-    expect: 'mirror match',
+    // Aimed at the mirror check until the suite was run against it: keying by
+    // character breaks EVERY match, not only a mirror one, so the page throws
+    // on the first frame it draws and the run never reaches the mirror check
+    // at all. The invariant check at the top catches it in the same turn the
+    // match is made, which is the earliest anything can. The mirror claim gets
+    // its own mutant below, one that an ordinary match cannot feel.
+    expect: 'poses before its first frame',
+  },
+  {
+    name: 'one solve shared between two of the same character',
+    why: 'a pose cache keyed by character collides in a mirror match, and both '
+      + 'corners are then drawn in whichever pose was solved first',
+    file: 'src/main.js',
+    find: `function solvePoses() {
+  for (const f of match.fighters) {
+    const rig = rigs[f.def.id];
+    poses[f.pad] = rig.solve(f.pose(), {`,
+    with: `function solvePoses() {
+  const seen = {};
+  for (const f of match.fighters) {
+    const rig = rigs[f.def.id];
+    poses[f.pad] = seen[f.def.id] ||= rig.solve(f.pose(), {`,
+    // Still keyed by pad, so nothing is undefined and a kin08-vs-kin06 match
+    // is untouched -- the two ids never collide. Only a mirror match notices,
+    // which is what makes this the mutant for that check rather than for the
+    // six others the destructive version trips.
+    expect: 'mirror match pose apart',
   },
   {
     name: 'punishing gated by the poke cooldown',
@@ -309,8 +336,24 @@ const MUTANTS = [
     name: 'punches that do not move the arm',
     why: 'the hitbox rides the limb, so a frozen limb is a move that only pretends to swing',
     file: 'src/data/kit.js',
-    find: '        return (sweepPast ? start + target * t : mix(start, target, t)) + settle * 0.07;',
-    with: '        return 0;',
+    // This used to zero the shoulder's rotation instead, which looked like the
+    // same thing and is not: the elbow is a separate channel two lines down
+    // and still whips, so the fist travels 44 to 83 and the limb genuinely
+    // does swing -- from a shoulder that never turns. That mutant was caught,
+    // correctly, by the reach and frame-advantage checks rather than by this
+    // one, and it left the frozen-limb check with nothing aimed at it at all.
+    // Leaving the striking limb out of the pose is the bug this check is
+    // about: KIN 06's jab, whose pose was still the leg pose he had before he
+    // was given arms.
+    find: `      [arm]: { rot: (() => {
+        const start = mix(self, -0.30 * swing, a);
+        const target = swing * (1 + power * 0.08);
+        const t = elbow ? reach : strike;
+        return (sweepPast ? start + target * t : mix(start, target, t)) + settle * 0.07;
+      })() },
+      // Folded at the chin through the wind-up, straight at full extension.
+      ...(elbow ? { [elbow]: { rot: mix(restElbow, FOLD * 1.3, a) * (1 - snap) } } : {}),`,
+    with: '      // MUTANT: the striking limb is left out of the pose entirely.',
     expect: 'swings the limb it strikes with',
   },
   {

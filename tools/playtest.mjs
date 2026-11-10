@@ -234,50 +234,68 @@ async function fightChecks() {
   // arm did not move at all, because his pose was still the leg pose he had
   // before he was given arms.
   //
-  // Comparing against the torso rather than against zero is what makes this
-  // honest: a frozen limb is still carried along by the body, so it travels
-  // some distance either way. What separates a strike from a passenger is
-  // moving further than the body does. Measured, the least a real move leads
-  // by is 26 (KIN 07's charge, where the striking part IS the torso) and the
-  // median is 56; a frozen limb leads by nothing.
+  // Two things this got wrong for a while, both of which let a genuinely
+  // frozen limb through, and both found by aiming a mutant at this check and
+  // watching it stay green while the limb sat still:
+  //
+  // It measured `strikePoint`, which is not a point. It returns whichever
+  // corner of the part's artwork the pose has carried furthest toward the
+  // opponent, recomputed from the world matrix every frame -- so as the body
+  // turns, the corner it picks hops from one end of the limb to the other and
+  // reports travel for a limb that has not moved at all. Track ONE corner,
+  // chosen once at frame 0 and then carried by the part's own matrix: that is
+  // a material point, and a limb that does not move does not move it.
+  //
+  // And it subtracted the torso's travel from the limb's, in world space,
+  // which is not comparing like with like: the torso contributes translation,
+  // while a limb hanging 90-odd pixels off that pivot turns the body's
+  // rotation into an arc several times wider. A frozen arm on a lunging body
+  // "led" the torso by 24 to 60 that way, clearing the old margin of 15
+  // comfortably. Measuring the point in the torso's OWN frame removes the
+  // passenger motion exactly instead of approximately.
+  //
+  // Measured on the live cast: every limb strike moves its point 77 or more,
+  // the six charges whose striking part IS the torso move 25 to 42 (those are
+  // measured in world, because for them the body is the weapon), and a limb
+  // left out of its pose moves it 0.0 -- not nearly zero, exactly zero. The
+  // margin sits at 12, half the weakest real move and above nothing at all.
   const frozen = [];
+  const inv = (m) => {
+    const d = m[0] * m[3] - m[1] * m[2];
+    return [m[3] / d, -m[1] / d, -m[2] / d, m[0] / d,
+      (m[2] * m[5] - m[3] * m[4]) / d, (m[1] * m[4] - m[0] * m[5]) / d];
+  };
+  const xf = (m, x, y) => ({ x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] });
   for (const id of IDS) {
     const def = DEFS[id];
     const rig = rigs[id];
     for (const [slot, m] of Object.entries(def.moves)) {
       const solve = (f) => rig.solve(m.pose(f, m), { x: 0, y: 0, scale: def.scale, facing: 1 });
-      // The limb's whole excursion across the move, against the body's.
-      //
-      // This used to compare frame 0 with the strike frame, which worked only
-      // while frame 0 was a neutral. Moves start from the fighter's guard now,
-      // so a limb that is already half raised at frame 0 measured as barely
-      // travelling even though it chambers and throws properly in between. The
-      // spread catches a frozen limb exactly as well -- a limb that never
-      // moves has no spread at all -- and does not care where the move starts.
+      // The corner that leads at frame 0, in the part's own coordinates. From
+      // here on it is just a point on the limb, wherever the pose takes it.
+      const [lx, ly] = rig.gripLocal(solve(0), m.strikePart, 1);
+      const ownBody = m.strikePart === 'torso';
       let lox = Infinity; let loy = Infinity; let hix = -Infinity; let hiy = -Infinity;
-      let tlox = Infinity; let tloy = Infinity; let thix = -Infinity; let thiy = -Infinity;
       for (let f = 0; f < totalFrames(m); f++) {
         const M = solve(f);
-        const p = rig.strikePoint(M, m.strikePart, 1);
+        const w = xf(M[m.strikePart], lx, ly);
+        const p = ownBody ? w : xf(inv(M.torso), w.x, w.y);
         lox = Math.min(lox, p.x); hix = Math.max(hix, p.x);
         loy = Math.min(loy, p.y); hiy = Math.max(hiy, p.y);
-        tlox = Math.min(tlox, M.torso[4]); thix = Math.max(thix, M.torso[4]);
-        tloy = Math.min(tloy, M.torso[5]); thiy = Math.max(thiy, M.torso[5]);
       }
-      const limb = Math.hypot(hix - lox, hiy - loy);
-      const body = Math.hypot(thix - tlox, thiy - tloy);
-      if (limb - body < 15) frozen.push(`${id} ${slot} (${m.strikePart}) leads by ${(limb - body).toFixed(0)}`);
+      const travel = Math.hypot(hix - lox, hiy - loy);
+      if (travel < 12) frozen.push(`${id} ${slot} (${m.strikePart}) travels ${travel.toFixed(1)}`);
     }
   }
   check('every move swings the limb it strikes with', frozen.length === 0,
-    frozen.length ? frozen.join(', ') : 'all 30 moves lead the body by 26 or more');
+    frozen.length ? frozen.join(', ') : `all ${IDS.length * 3} moves move their striking point 25 or more`);
 
   // `art` records which way an illustration was drawn facing, so that `facing`
   // can stay a plain "which way is the opponent" everywhere else. Six of the
   // original ten faced screen-left and the flag earned its keep every frame.
   // All ten have since been redrawn facing the same way, so nothing in the
-  // cast sets it any more -- which means the one check that covered it, "all
-  // 30 moves connect", now passes whether the flag is honoured or not.
+  // cast sets it any more -- which means the one check that covered it, the
+  // reach check, now passes whether the flag is honoured or not.
   //
   // Rather than keep a mutant that can no longer fail, or delete a code path
   // the next left-facing drawing will need, the case is made up: a rig built
@@ -308,7 +326,7 @@ async function fightChecks() {
     }
   }
   check('every move drives the part it strikes with', undriven.length === 0,
-    undriven.length ? undriven.slice(0, 3).join('; ') : 'all 30 poses name their own strike part');
+    undriven.length ? undriven.slice(0, 3).join('; ') : `all ${IDS.length * 3} poses name their own strike part`);
 
   // And where a limb has a joint, the move has to use it.
   //
@@ -972,8 +990,8 @@ try {
     }
     return bad;
   }, SLACK);
-  check(`all 30 moves connect with ${SLACK} units of reach to spare`, reachReport.length === 0,
-    reachReport.length ? reachReport.join(', ') : '30 of 30');
+  check(`every move connects with ${SLACK} units of reach to spare`, reachReport.length === 0,
+    reachReport.length ? reachReport.join(', ') : `${IDS.length * 3} of ${IDS.length * 3}`);
 
   console.log('\nevery character fights');
   // Each of the ten was rigged from its own illustration, so a bad polygon or a
@@ -1301,7 +1319,7 @@ try {
     `${meter.emptied.toFixed(2)} at the break -> ${meter.restored.toFixed(2)}`);
 
   // A move that stuns for longer than it takes to come round again loops into
-  // itself forever. This is pure frame data, so it is checked on all 30 moves
+  // itself forever. This is pure frame data, so it is checked on every move
   // rather than sampled.
   const loops = await page.evaluate(() => {
     const g = window.__REBELKIN__;
@@ -1314,7 +1332,7 @@ try {
     return bad;
   });
   check('no move stuns for longer than it leaves', loops.length === 0,
-    loops.length ? loops.join(', ') : 'all 30 moves leave the other fighter a turn');
+    loops.length ? loops.join(', ') : `all ${IDS.length * 3} moves leave the other fighter a turn`);
 
   // You could not swing out of a guard at all: the state machine read the
   // attack intent only when you were not blocking, so a player holding guard
