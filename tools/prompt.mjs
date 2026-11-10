@@ -18,6 +18,7 @@
  *   node tools/prompt.mjs kin01 kin02 kin03 --out NEXT.md
  *   node tools/prompt.mjs --rest --out NEXT.md     (every one not yet built)
  *   node tools/prompt.mjs --list
+ *   node tools/prompt.mjs --rest --check NEXT.md  (has it drifted?)
  */
 
 import fs from 'node:fs';
@@ -28,7 +29,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BRIEF = path.join(ROOT, 'ART-BRIEF-SIDE.md');
 const arg = (f, d) => (process.argv.includes(f) ? process.argv[process.argv.indexOf(f) + 1] : d);
 const OUT = arg('--out', null);
-const flagArgs = new Set(['--out']);
+const CHECK = arg('--check', null);
+const flagArgs = new Set(['--out', '--check']);
 const named = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !flagArgs.has(all[i - 1]));
 const REST = process.argv.includes('--rest');
 
@@ -172,6 +174,34 @@ back as a GIF of them actually moving.
 \`node tools/prompt.mjs ${REST ? '--rest' : ids.join(' ')}\`. Edit the brief, not this file.*
 `;
 
+/**
+ * The handout is derived, and derived files in this project have gone stale
+ * twice with nothing to say so -- the atlas rects a repack moved, the move
+ * ranges a formula change invalidated. Both were found by accident.
+ *
+ * This one has two ways to drift. A rule gets corrected in the brief and the
+ * handout keeps asking for the thing that was wrong; or a character gets
+ * built and `--rest` is one shorter than the file still listing them. The
+ * second is the likely one, because building a character is exactly when
+ * nobody is thinking about the handout.
+ */
+if (CHECK) {
+  const have = fs.existsSync(path.join(ROOT, CHECK)) ? fs.readFileSync(path.join(ROOT, CHECK), 'utf8') : null;
+  if (have === doc) {
+    console.log(`${CHECK} matches the brief (${ids.length}: ${ids.map((i) => cast[i].name).join(', ')}).`);
+    process.exit(0);
+  }
+  if (have === null) console.error(`${CHECK} does not exist.`);
+  else {
+    const a = have.split('\n'); const b = doc.split('\n');
+    const at = a.findIndex((l, i) => l !== b[i]);
+    console.error(`${CHECK} has drifted from the brief, from line ${at + 1}:`);
+    console.error(`  file:  ${JSON.stringify(a[at] ?? '(end of file)')}`);
+    console.error(`  brief: ${JSON.stringify(b[at] ?? '(end of file)')}`);
+  }
+  console.error(`regenerate it: node tools/prompt.mjs ${REST ? '--rest' : ids.join(' ')} --out ${CHECK}`);
+  process.exit(1);
+}
 if (OUT) {
   fs.writeFileSync(path.join(ROOT, OUT), doc);
   console.log(`wrote ${OUT} for ${ids.map((i) => cast[i].name).join(', ')}`);
