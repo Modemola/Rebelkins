@@ -419,6 +419,51 @@ if (!args.includes('--here')) {
   process.exit(process.exitCode ?? 0);
 }
 
+/**
+ * The labels of the checks a playtest run printed, red or green.
+ *
+ * `check` prints "  <mark> <label>  <detail>", so the label is everything up
+ * to the first double space. Nothing in the suite has a label containing one;
+ * if something ever does, it will show up here as a check nothing covers.
+ */
+const labelsOf = (out) => out.split('\n')
+  .filter((l) => /^\s*[\u2713\u2717] /.test(l))
+  .map((l) => l.trim().slice(2).split('  ')[0]);
+
+/**
+ * Which claims has nothing in this suite ever been seen to break?
+ *
+ * `--check` proves each mutant still has a line to break. This is the other
+ * half: each mutant names ONE check it expects to go red, but breaking the
+ * shoulder's rotation reddens the reach checks too, and a mutant's other reds
+ * were being read and discarded. Counting only the named check undercounts
+ * coverage badly -- a hand audit that way called 52 of 84 checks uncovered,
+ * most of which some mutant does in fact redden.
+ *
+ * A check nothing reddens is not automatically a decoration: much of the suite
+ * is smoke ("rigs loaded", "match started"), whose failure mode is the game
+ * not starting at all, and those go red often enough in real work. It is a
+ * list of claims this suite has never watched fail, which is worth knowing
+ * before trusting one of them.
+ */
+const everRed = new Set();
+let baseline = null;
+{
+  // Run even for a single mutant: a red HEAD makes a mutant's report
+  // meaningless either way. Only the coverage summary needs the whole suite.
+  process.stdout.write('baseline ... ');
+  try {
+    baseline = labelsOf(execFileSync('node', ['tools/playtest.mjs'], { encoding: 'utf8', timeout: 300000 }));
+    console.log(`${baseline.length} checks, all green`);
+  } catch (err) {
+    // A red baseline makes every mutant below report something, so the whole
+    // run would be an hour of measuring the wrong code.
+    console.error('\nthe playtest does not pass on HEAD, so no mutant below would mean anything:');
+    console.error(`${err.stdout ?? ''}`.split('\n').filter((l) => l.includes('\u2717')).join('\n'));
+    process.exit(1);
+  }
+}
+
 let survived = 0;
 for (const m of run) {
   const original = fs.readFileSync(m.file, 'utf8');
@@ -441,6 +486,7 @@ for (const m of run) {
 
   const lines = out.split('\n');
   const red = lines.filter((l) => l.includes('✗') || l.includes('runtime problem'));
+  for (const l of labelsOf(out.split('\n').filter((x) => x.includes('✗')).join('\n'))) everRed.add(l);
   const caught = red.some((l) => l.includes(m.expect));
   const anyRed = red.length > 0 || out.includes('FAILED');
   if (caught) {
@@ -461,4 +507,12 @@ for (const m of run) {
 }
 
 console.log(`\n${run.length - survived}/${run.length} mutants caught by the right check.`);
+if (baseline && !only) {
+  const bare = baseline.filter((l) => !everRed.has(l));
+  console.log(`\n${baseline.length - bare.length}/${baseline.length} checks were seen to go red by some mutant.`);
+  if (bare.length) {
+    console.log('nothing in this suite broke these:');
+    for (const l of bare) console.log(`  ${l}`);
+  }
+}
 if (survived) process.exitCode = 1;
