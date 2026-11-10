@@ -375,6 +375,90 @@ const MUTANTS = [
     with: "      strikePart: 'foreL', reach: 30, range: 240,",
     expect: 'stored range matches what the move reaches',
   },
+  {
+    name: 'a direction that does not move you',
+    why: 'the walk animation and the walk are two different things, and only '
+      + 'one of them closes the distance',
+    file: 'src/fight/fighter.js',
+    find: '      this.vx = intent.move * (toward ? this.def.walkSpeed : this.def.backSpeed);',
+    with: '      this.vx = 0;',
+    expect: 'walking moves the fighter',
+  },
+  {
+    name: 'a jump that barely leaves the floor',
+    why: 'a jump has to clear a sweep, or the button is decoration',
+    file: 'src/fight/fighter.js',
+    find: '      this.vy = -this.def.jumpVel;',
+    with: '      this.vy = -20;',
+    expect: 'jump leaves the floor',
+  },
+  {
+    name: 'nothing brings a jump down',
+    why: 'a fighter who goes up and stays there cannot be hit or hit back',
+    file: 'src/fight/fighter.js',
+    find: '      this.vy += GRAVITY * TICK;',
+    with: '      this.vy += 0;',
+    expect: 'jump lands',
+  },
+  {
+    name: 'hits that take no health',
+    why: 'the whole simulation can look right with the one number that ends a '
+      + 'round never moving',
+    file: 'src/fight/fighter.js',
+    find: '    this.health = Math.max(0, this.health - damage);',
+    with: '    this.health = Math.max(0, this.health - damage * 0);',
+    expect: 'a clean hit reduces health',
+  },
+  {
+    name: 'every hit scaled down to chip',
+    why: 'a hit that takes a point or two reads as a hit to everything that '
+      + 'asks whether health went down, and to nobody playing',
+    file: 'src/fight/fighter.js',
+    find: '    this.health = Math.max(0, this.health - damage);',
+    with: '    this.health = Math.max(0, this.health - damage * 0.08);',
+    expect: 'a real hit, not chip',
+  },
+  {
+    name: 'a KO that does not end the round',
+    why: 'the round ending on the last point of health is the end of the game '
+      + 'loop; without it a fighter stands at zero and the fight continues',
+    file: 'src/fight/match.js',
+    find: `    else if (!this.a.alive) this.endRound(1);
+    else if (!this.b.alive) this.endRound(0);`,
+    with: '    // MUTANT: a KO no longer ends the round.',
+    // This mutant is why the KO check was rewritten: it used to pass on
+    // `hp === 0` alone, so the health emptying counted as the round ending
+    // and nothing here could redden it.
+    expect: 'round ends on a KO',
+  },
+  {
+    name: 'a pose that slides the pelvis out from under the ribs',
+    why: 'this is the bug that happened: the lunge was translating the hips, '
+      + 'which hang off the torso, so the art came apart at the waist on '
+      + 'every punch, kick and charge in the game',
+    file: 'src/data/kit.js',
+    find: '      hips: { rot: 0.09 * a - 0.28 * strike + settle * 0.04 },',
+    with: '      hips: { rot: 0.09 * a - 0.28 * strike + settle * 0.04, x: -20 },',
+    expect: 'pulls a part off the one it hangs from',
+  },
+  {
+    name: 'a weapon that shortens the move it is held in',
+    why: 'picking something up must never make a swing worse than a fist, or '
+      + 'the pickup is a trap',
+    file: 'src/data/weapons.js',
+    find: '    reach: move.reach + weapon.reach,',
+    with: '    reach: move.reach - weapon.reach,',
+    expect: 'no weapon shortens a move',
+  },
+  {
+    name: 'a heavy safer on block than a light',
+    why: 'a big slow punch has to be the risky one, or there is no reason to '
+      + 'ever throw the small one',
+    file: 'src/data/kin01.js',
+    find: '      startup: 11, active: 4, recovery: 19,',
+    with: '      startup: 11, active: 4, recovery: 8,',
+    expect: 'a heavy is never safer on block',
+  },
 ];
 
 const args = process.argv.slice(2);

@@ -865,6 +865,7 @@ try {
     m.a.x = m.b.x - 100;
   });
   let koed = false;
+  let emptied = false;
   for (let i = 0; i < 20 && !koed; i++) {
     // Driven rather than typed. A heavy has ten startup frames and the CPU
     // keeps its spacing even with aggression zeroed, so it simply walks out of
@@ -879,10 +880,19 @@ try {
     });
     await page.waitForTimeout(220);
     const cur = await state();
-    koed = cur.b.hp === 0 || cur.phase === 'roundEnd' || cur.wins[0] > 0;
+    if (cur.b.hp === 0) emptied = true;
+    koed = cur.phase === 'roundEnd' || cur.wins[0] > 0;
   }
   s = await state();
-  check('round ends on a KO', koed, `phase ${s.phase} wins ${s.wins}`);
+  // `hp === 0` used to count as a pass here, which is the health going, not
+  // the round ending -- the one thing the check is named for. It would have
+  // passed on a fighter standing at zero in a fight that never ends, and no
+  // mutation of the round-end logic could redden it. The emptied health is
+  // the precondition now, and it is reported separately so a red says which
+  // half failed.
+  check('round ends on a KO', koed,
+    koed ? `phase ${s.phase} wins ${s.wins}`
+      : `${emptied ? 'health reached 0 and the round did not end' : 'health never reached 0'} -- phase ${s.phase} wins ${s.wins}`);
   await shot('4-ko');
 
   console.log('\naudio');
@@ -1387,6 +1397,13 @@ try {
       distinct: !!a && !!b && JSON.stringify(a.armL) !== JSON.stringify(b.armL),
     };
   });
+  // This one is documentation, not a guarantee, and the mutation suite says
+  // so: nothing in it reddens this line. It cannot. While poses are keyed by
+  // pad there are always two keys, and when they are not, the invariant check
+  // up at the top of the run fails in the same turn the match is made and the
+  // page throws on its first frame -- so the run never arrives here. It is
+  // kept because it names what the key is supposed to be; the claim with
+  // teeth is the next one.
   check('a mirror match solves a pose for each corner', mirror.keys.length === 2,
     `poses keyed ${mirror.keys.join(', ')}`);
   check('the two sides of a mirror match pose apart', mirror.distinct,
