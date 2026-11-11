@@ -1,0 +1,5 @@
+# Recordings and stills made by the tools, not inputs to the build.
+demo.mp4
+*.mp4
+posesheet.png
+fight.png
