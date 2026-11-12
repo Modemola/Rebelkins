@@ -145,6 +145,7 @@ function startMatch() {
   match.onEvent = onMatchEvent;
   el('select').hidden = true;
   el('hud').hidden = false;
+  if (padWanted) el('pad').hidden = false;
   input.clear('p1');
   input.clear('p2');
   paintNames();
@@ -572,15 +573,42 @@ function wireMenu() {
     paintMute();
   });
   paintMute();
-  addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && match) {
-      match = null;
-      el('select').hidden = false;
-      el('hud').hidden = true;
-      el('announce').hidden = true;
-    }
-  });
+  addEventListener('keydown', (e) => { if (e.code === 'Escape') leaveMatch(); });
+  wirePad();
 }
+
+function leaveMatch() {
+  if (!match) return;
+  match = null;
+  el('select').hidden = false;
+  el('hud').hidden = true;
+  el('announce').hidden = true;
+  el('pad').hidden = true;
+}
+
+/**
+ * The on-screen pad, for a device with no keyboard.
+ *
+ * Shown on a coarse pointer rather than on a narrow window: a small desktop
+ * window is still a keyboard, and a tablet is still a thumb. `?pad=1` forces
+ * it on, which is how it gets looked at on a machine that has a mouse.
+ *
+ * Every button goes through `input.bind`, so a thumb produces the same
+ * buffered press a key does and nothing downstream knows the difference.
+ */
+function wirePad() {
+  const forced = new URLSearchParams(location.search).get('pad');
+  const touch = forced === '1'
+    || (forced !== '0' && matchMedia('(pointer: coarse)').matches);
+  if (!touch) return;
+  document.body.classList.add('touch');
+  for (const b of document.querySelectorAll('#pad .pb')) {
+    input.bind(b, 'p1', b.dataset.act);
+  }
+  el('padExit').addEventListener('pointerdown', (e) => { e.preventDefault(); leaveMatch(); });
+  padWanted = true;
+}
+let padWanted = false;
 
 /* ------------------------------------------------------------------ boot */
 

@@ -172,3 +172,79 @@ button[aria-pressed="true"] span { color: rgba(26,21,5,.72); }
   .timer { font-size: 26px; }
   .nm { font-size: 12px; }
 }
+
+/* ---- the on-screen pad
+   A fighting game needs two thumbs at once, which rules out anything that
+   reads taps on the canvas: the left thumb holds a direction while the right
+   one presses, and both have to be down together. So these are real elements
+   with pointer capture, bound through the same press/release the keyboard
+   uses.
+
+   They sit over the fight rather than beside it. Shrinking the canvas to make
+   room costs the thing the game is for -- two readable figures -- and on a
+   phone there is not enough of it to give any away. The lower corners are
+   where thumbs already are and where the arena floor is emptiest, and the
+   buttons are translucent so the ground still reads underneath. */
+#pad {
+  position: absolute; inset: auto 0 0 0;
+  height: min(42vh, 260px);
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 calc(14px + env(safe-area-inset-left, 0px))
+           calc(16px + env(safe-area-inset-bottom, 0px))
+           calc(14px + env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  /* The browser must not take these gestures for scrolling, zooming or
+     text selection -- a double-tapped heavy would otherwise zoom the page. */
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.padSide { position: relative; width: 168px; height: 168px; pointer-events: auto; }
+.pb {
+  position: absolute; margin: 0; padding: 0;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-weight: 700; color: var(--fg);
+  background: rgba(20, 17, 27, .42);
+  border: 1px solid rgba(236, 231, 242, .22);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+/* 56px is the floor a thumb can hit without looking, which is the only way
+   anyone presses these while watching the fighters. */
+.pb.dir { width: 60px; height: 60px; border-radius: 14px; font-size: 19px; }
+.move .dir[data-act="left"]  { left: 0;    bottom: 62px; }
+.move .dir[data-act="right"] { left: 124px; bottom: 62px; }
+.move .dir.up                { left: 62px; bottom: 124px; }
+.move .dir.down              { left: 62px; bottom: 0; }
+.pb.atk { width: 64px; height: 64px; border-radius: 50%; font-size: 20px; }
+.hit .atk.l { right: 104px; bottom: 6px;  border-color: rgba(82, 216, 239, .55); }
+.hit .atk.h { right: 30px;  bottom: 46px; border-color: rgba(245, 197, 24, .6); }
+.hit .atk.s { right: 92px;  bottom: 104px; border-color: rgba(255, 77, 109, .6); }
+.pb.guard {
+  right: 0; bottom: 118px; width: 74px; height: 46px;
+  border-radius: 23px; font-size: 11px; letter-spacing: .09em;
+}
+.pb.on { background: rgba(245, 197, 24, .82); color: var(--ink); border-color: var(--coat); }
+
+/* Landscape on a phone is short, so the clusters tuck into the corners and
+   the HUD is the only thing allowed the top. */
+@media (max-height: 460px) {
+  #pad { height: min(64vh, 200px); }
+  .padSide { width: 152px; height: 152px; }
+  .pb.dir { width: 54px; height: 54px; }
+  .move .dir[data-act="right"] { left: 112px; }
+  .move .dir.up, .move .dir.down { left: 56px; }
+  .move .dir.up { bottom: 112px; }
+  .move .dir[data-act="left"], .move .dir[data-act="right"] { bottom: 56px; }
+  .pb.atk { width: 58px; height: 58px; }
+}
+
+#padExit { display: none; }
+body.touch #padExit {
+  display: grid; place-items: center; pointer-events: auto;
+  width: 34px; height: 34px; padding: 0; margin: 8px auto 0;
+  border-radius: 50%; font-size: 15px;
+  font-family: var(--mono); color: var(--dim);
+  background: rgba(20, 17, 27, .5); border: 1px solid rgba(236, 231, 242, .2);
+}
+/* The keyboard legend on the select screen is noise on a device that has no
+   keyboard, and it is the tallest block on that screen. */
+body.touch .keys { display: none; }

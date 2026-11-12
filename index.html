@@ -21,6 +21,12 @@
     <div class="middle">
       <div class="timer" id="timer">60</div>
       <div class="round" id="roundLabel">ROUND 1</div>
+      <!-- Escape is the only way out of a match on a keyboard, and a phone
+           has no Escape, so without this a tapped FIGHT is a dead end. It
+           lives in the HUD's own centre column rather than floating in a
+           corner: pinned to the top right it sat on top of P2's health bar
+           in both orientations. -->
+      <button id="padExit" aria-label="Leave the match">&#10005;</button>
     </div>
     <div class="side right">
       <div class="nameRow"><span class="sub" id="subB"></span><span class="nm" id="nameB"></span></div>
@@ -86,6 +92,23 @@
       </div>
       <button id="startBtn">FIGHT</button>
       <button id="muteBtn" class="mute" aria-pressed="false">SOUND ON</button>
+    </div>
+  </div>
+
+  <!-- The on-screen pad. Hidden unless the device has no keyboard; see
+       styles/game.css for why it sits where it does on a phone. -->
+  <div id="pad" hidden>
+    <div class="padSide move">
+      <button class="pb dir" data-act="left" aria-label="Move left">&#9664;</button>
+      <button class="pb dir" data-act="right" aria-label="Move right">&#9654;</button>
+      <button class="pb dir up" data-act="up" aria-label="Jump">&#9650;</button>
+      <button class="pb dir down" data-act="down" aria-label="Crouch">&#9660;</button>
+    </div>
+    <div class="padSide hit">
+      <button class="pb guard" data-act="guard" aria-label="Guard">GUARD</button>
+      <button class="pb atk l" data-act="light" aria-label="Light attack">L</button>
+      <button class="pb atk h" data-act="heavy" aria-label="Heavy attack">H</button>
+      <button class="pb atk s" data-act="special" aria-label="Special attack">S</button>
     </div>
   </div>
 
