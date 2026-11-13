@@ -1098,6 +1098,39 @@ try {
   check(`every move connects with ${SLACK} units of reach to spare`, reachReport.length === 0,
     reachReport.length ? reachReport.join(', ') : `${IDS.length * 3} of ${IDS.length * 3}`);
 
+  console.log('\ndraw order');
+  // The fighters used to be sorted on x, a depth cue from a plane this game
+  // does not have: both stand on the same line. All it did was put whoever
+  // stood on the right permanently in front, so every strike thrown
+  // left-to-right had its arm drawn behind the defender -- the hit landed,
+  // the sparks came out, and the limb that threw it vanished into the other
+  // body. It reads as the pair occupying the same space, and it is the thing
+  // people actually point at when they say the fighters overlap.
+  const zOrder = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    g.start('kin06s', 'ai', 'kin09s');
+    await new Promise((r) => setTimeout(r, 300));
+    const m = g.match;
+    m.phase = 'fight';
+    g.ai.set('still');
+    const settle = async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)); };
+    const pin = () => { m.a.x = -60; m.b.x = 60; };   // a is the left corner
+    pin(); await settle(2);
+    const calm = g.drawOrder.slice();
+    m.a.startMove('heavy');
+    const mv = m.a.def.moves.heavy;
+    pin(); await settle(mv.startup + 1);
+    const leftSwinging = g.drawOrder.slice();
+    return { calm, leftSwinging, aAttacking: m.a.state === 'attack' };
+  });
+  check('the fighter who is swinging is drawn in front',
+    zOrder.aAttacking && zOrder.leftSwinging[zOrder.leftSwinging.length - 1] === 'p1',
+    zOrder.aAttacking
+      ? `left corner swinging, order ${zOrder.leftSwinging.join(' then ')}`
+      : 'the attacker never entered its move, so nothing was measured');
+  check('with nobody swinging the order is stable left to right',
+    zOrder.calm.join() === 'p1,p2', zOrder.calm.join(' then '));
+
   console.log('\nevery character fights');
   // Each of the ten was rigged from its own illustration, so a bad polygon or a
   // pose naming a part that character does not have would only ever show up on

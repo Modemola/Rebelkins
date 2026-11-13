@@ -214,6 +214,15 @@ const MUTANTS = [
     expect: 'reaches the mixer',
   },
   {
+    name: 'fighters drawn by position instead of by who is swinging',
+    why: 'a strike thrown left to right is drawn behind the defender, so the '
+      + 'limb doing the work is the one thing covered up',
+    file: 'src/main.js',
+    find: '      return pa === qa ? byX(p, q) : (pa ? 1 : -1);',
+    with: '      return byX(p, q);',
+    expect: 'swinging is drawn in front',
+  },
+  {
     name: 'impacts throw no sparks',
     why: 'the burst at the contact point is how a player sees where a hit landed',
     file: 'src/render/fx.js',

@@ -133,6 +133,7 @@ let p1Kin = 'kin08';
 let p2Kin = 'kin06';
 let arenaId = 'towers';
 let awarded = false;   // one rank-up per match, however many times roundEnd fires
+let drawOrder = [];    // back to front, as the last render decided it
 let p1Weapon = 'bare';
 let p2Weapon = 'bare';
 let slowCounter = 0;
@@ -338,8 +339,31 @@ function render(alpha, dt) {
     ctx.fill();
   }
 
-  // fighters, far one first so the near one overlaps correctly
-  const order = debugDraw.hideFighters ? [] : match.fighters.slice().sort((p, q) => p.x - q.x);
+  // Fighters, attacker last.
+  //
+  // This sorted on x, which is a depth cue borrowed from a plane that does not
+  // exist here: both fighters stand on the same line, so "nearer" is meaningless
+  // and all the sort did was put whoever stood on the right permanently in
+  // front. Every strike thrown left-to-right then had its arm drawn behind the
+  // defender -- the hit registered, the sparks came out, and the limb that
+  // threw it disappeared into the other body. It reads as the two of them
+  // occupying the same space.
+  //
+  // Whoever is swinging goes on top instead, for the whole move, so the limb
+  // doing the work is never the thing that gets covered. With both swinging or
+  // neither, the old x order stands: it is arbitrary either way, but it is
+  // stable, and a draw order that flickers between frames is worse than one
+  // that is merely arbitrary.
+  const byX = (p, q) => p.x - q.x;
+  const order = debugDraw.hideFighters ? []
+    : match.fighters.slice().sort((p, q) => {
+      const pa = p.state === STATE.ATTACK;
+      const qa = q.state === STATE.ATTACK;
+      return pa === qa ? byX(p, q) : (pa ? 1 : -1);
+    });
+  // Published for the suite: the order is decided here and spent immediately,
+  // so without this there is nothing for a check to read but pixels.
+  drawOrder = order.map((f) => f.pad);
   // Block glows first, then both bodies in one pass, then weapons. Compositing
   // the skinned canvas is the expensive part of that renderer, so it happens
   // once for the pair rather than once each.
@@ -619,6 +643,7 @@ loadRigs().then(() => {
   loop.start();
   window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
     ROSTER, ARENAS, arena, debugDraw, STAGE, WEAPONS, progress, skinner, meshes,
+    get drawOrder() { return drawOrder; },
     setWeapon: (id) => { p1Weapon = id; p2Weapon = id; repaintLoadout(); },
     poses,
     // One frame, on demand. The legibility and gradient checks need two frames
