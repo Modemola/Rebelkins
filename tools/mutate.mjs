@@ -589,8 +589,13 @@ if (args.includes('--check')) {
   console.log(`\n${MUTANTS.length - broken}/${MUTANTS.length} anchors land exactly once.`);
   process.exit(broken ? 1 : 0);
 }
-const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
-const run = MUTANTS.filter((m) => !only || m.name.includes(only));
+// `--only a,b` runs several named mutants under one baseline. The baseline is
+// a full playtest run, so diagnosing six survivors one at a time spent six of
+// them on code nobody was asking about.
+const only = args.includes('--only')
+  ? args[args.indexOf('--only') + 1].split(',').map((s) => s.trim()).filter(Boolean)
+  : null;
+const run = MUTANTS.filter((m) => !only || only.some((o) => m.name.includes(o)));
 
 if (!args.includes('--here')) {
   const git = (...a) => execFileSync('git', a, { encoding: 'utf8' }).trim();
