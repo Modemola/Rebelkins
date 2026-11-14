@@ -36,7 +36,7 @@
  *
  *   node tools/demo.mjs [--out demo.mp4] [--fps 60] [--quick] [--silent]
  *                       [--width 1280] [--height 720] [--keep-frames]
- *                       [--gain <x>]
+ *                       [--gain <x>] [--pair a:b] [--seconds 30] [--arena id]
  *
  * `--quick` cuts every scene short, for checking the thing runs before
  * spending the full render on it.
@@ -60,6 +60,8 @@ const QUICK = flag('--quick');
 const SILENT = flag('--silent');
 const KEEP = flag('--keep-frames');
 const GAIN = arg('--gain', null) === null ? null : Number(arg('--gain'));
+/** `--pair kin06s:kin09s` records that one matchup and nothing else. */
+const PAIR = arg('--pair', null) ? arg('--pair').split(':') : null;
 const SR = 48000;
 
 /**
@@ -72,7 +74,12 @@ const SR = 48000;
  * swings in the cast. The front-facing pairs follow so the video is the game
  * as it stands rather than only its best corner.
  */
-const SCENES = [
+const SCENES = PAIR ? [
+  // One matchup, no select screen: a clip for a post opens on the fight or it
+  // loses the viewer before anything happens.
+  { kind: 'fight', a: PAIR[0], b: PAIR[1], arena: arg('--arena', 'towers'),
+    frames: Math.round(Number(arg('--seconds', 30)) * FPS), finish: 320 },
+] : [
   { kind: 'select', frames: 96 },
   { kind: 'fight', a: 'kin06s', b: 'kin09s', arena: 'towers', frames: 660 },
   { kind: 'fight', a: 'kin01', b: 'kin08', arena: 'cut', frames: 600 },
@@ -130,6 +137,25 @@ await page.evaluate(async () => {
   const { AI } = await import('/src/fight/ai.js');
   const d = { p1: new AI('mean'), held: new Set(), sound: [], frame: 0 };
   window.__DEMO__ = d;
+
+  // What actually landed, and when. A reel is made to show particular moves
+  // off; without this there is no way to know whether the one you cut the
+  // clip for was ever thrown.
+  d.landed = [];
+  // Attached per match, not once here: each scene builds a new Match and the
+  // old object's handler goes with it.
+  d.hookMatch = () => {
+    const m = g.match;
+    if (!m || m.__logged) return;
+    m.__logged = true;
+    const prev = m.onEvent;
+    m.onEvent = (kind, data) => {
+      prev(kind, data);
+      if ((kind === 'hit' || kind === 'block') && data && data.move) {
+        d.landed.push({ kind, move: data.move.label, by: data.attacker.pad, frame: d.frame });
+      }
+    };
+  };
 
   // Every way the game makes a noise, wrapped where it is called rather than
   // where it is decided, so the log is what the mixer was actually asked for.
@@ -222,6 +248,7 @@ for (const scene of SCENES) {
       window.__DEMO__.release();
       g.setArena(arena);
       g.start(a, 'ai', b);
+      window.__DEMO__.hookMatch();
     }, scene);
   }
   for (let i = 0; i < frames; i++) {
@@ -259,6 +286,16 @@ for (const scene of SCENES) {
   }
 }
 process.stdout.write(`\r  ${n} frames captured in ${((Date.now() - started) / 1000).toFixed(0)}s\n`);
+const landed = await page.evaluate(() => window.__DEMO__.landed);
+const tally = {};
+for (const e of landed) tally[e.move] = (tally[e.move] || 0) + 1;
+console.log(`  ${landed.length} contacts: ${Object.entries(tally)
+  .map(([m, c]) => `${m} x${c}`).join(', ') || 'none'}`);
+for (const e of landed) {
+  if (/stomp|lunge/i.test(e.move)) {
+    console.log(`  ${e.move} at ${(e.frame / FPS).toFixed(1)}s (${e.kind})`);
+  }
+}
 
 // ---- the soundtrack, rendered offline from the log
 let wav = null;
