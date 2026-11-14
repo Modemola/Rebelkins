@@ -303,7 +303,26 @@ const debugDraw = { hideFighters: false };
 
 /* ---------------------------------------------------------------- render */
 
+/**
+ * Rendered time, in seconds, accumulated from dt rather than read off the
+ * wall clock.
+ *
+ * Everything else on screen is driven by the frame counter, and anything
+ * reading `performance.now()` instead drifts away from it the moment frames
+ * are not arriving in real time. In a recording they never are: the demo
+ * recorder steps the game by hand and takes about 35ms per frame, so an idle
+ * animation on the wall clock ran roughly twice too fast and, because that
+ * 35ms varies, it juddered -- a figure cycling its whole breathing loop
+ * inside a fifth of a second of finished video. It read as the characters
+ * glitching, and it was.
+ *
+ * For a player this is the same number it always was, because dt is real
+ * frame time. For a capture it is the only one that is right.
+ */
+let clock = 0;
+
 function render(alpha, dt) {
+  clock += dt;
   if (!match) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, view.w, view.h);
@@ -316,7 +335,7 @@ function render(alpha, dt) {
       cam.x = 0;
       cam.y = -150;
       cam.zoom = 0.78;
-      drawStage(ctx, view, cam, performance.now() / 1000, dpr);
+      drawStage(ctx, view, cam, clock, dpr);
       cam.apply(ctx, view, dpr);
       drawFloor(ctx, cam, view);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -329,7 +348,7 @@ function render(alpha, dt) {
   arena().update(dt);
   cam.follow(match.a, match.b, view, dt);
 
-  drawStage(ctx, view, cam, performance.now() / 1000, dpr);
+  drawStage(ctx, view, cam, clock, dpr);
 
   cam.apply(ctx, view, dpr);
   drawFloor(ctx, cam, view);
@@ -485,7 +504,7 @@ function drawHeroes() {
     if (!cv || !rig) continue;
     const c = cv.getContext('2d');
     c.clearRect(0, 0, cv.width, cv.height);
-    const t = performance.now() / 1000;
+    const t = clock;
     // Scaled to the canvas rather than to the world: the menu figure wants to
     // fill its slot, and the fight's own scale is set against the arena.
     const scale = (cv.height * 0.86) / def.bodyHeight;
