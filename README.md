@@ -12,6 +12,20 @@ node tools/playtest.mjs          # drives a real browser and asserts the fight w
 **P1** A/D move · W jump · S crouch · J light · K heavy · L special · Space guard
 **P2** arrows · `,` `.` `/` attacks · RShift guard
 
+## Running it
+
+Nothing to build. It is a static site: every file is served as it sits in the
+repository, and the only dependency is a browser.
+
+    npm start          # http-server on :8080
+    npm run playtest   # the suite, in a headless browser
+
+Deploying is the same story. `vercel.json` says what that means in Vercel's
+own terms -- no framework, no install step, no build step, serve the
+repository root. If a dashboard ever disagrees with the file, the settings
+that match it are Framework Preset "Other" with the build and install
+commands left empty.
+
 ## The constraint everything else follows from
 
 The characters arrive as **one finished illustration each** — rendered on a flat
