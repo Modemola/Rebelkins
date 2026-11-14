@@ -710,7 +710,7 @@ wireMenu();
 loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
-  window.__KINWAR__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
+  window.__KINWAR__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx, input,
     ROSTER, ARENAS, arena, debugDraw, STAGE, WEAPONS, progress, skinner, meshes,
     get drawOrder() { return drawOrder; },
     setWeapon: (id) => { p1Weapon = id; p2Weapon = id; repaintLoadout(); },

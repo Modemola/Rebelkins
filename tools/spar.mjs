@@ -95,7 +95,7 @@ function seedRandom(seed) {
 }
 
 export const blankStats = () => ({
-  swings: 0, opens: 0, windows: 0, hits: 0, blocked: 0, punished: 0, punishes: 0, counters: 0,
+  swings: 0, opens: 0, windows: 0, quick: 0, hits: 0, blocked: 0, punished: 0, punishes: 0, counters: 0,
   breaks: 0, broken: 0, dealt: 0, chip: 0, by: {},
 });
 
@@ -150,6 +150,31 @@ function round(defA, defB, rigs, aiA, aiB, stats, weapon) {
   const wasAttacking = [false, false];
   const wasSlot = [null, null];
   const wasRecovering = [false, false];
+  /**
+   * The frame a window was handed to each side, until something is taken
+   * from it.
+   *
+   * `punishes` -- hits that happen to land while the other is recovering --
+   * turned out not to measure punishing at all. Against a fixture that
+   * spends most of its life in recovery, moves thrown for their own reasons
+   * land inside a window often enough on their own: with the AI's punish
+   * branch deleted outright the conversion rate was still 32.8%, against
+   * 69.6% with it, and the check that guards this claim has a floor at 25%.
+   * So a whole branch could go and nothing would say a word.
+   *
+   * What separates punishing from poking is not whether a hit arrives, it is
+   * WHEN the swing starts. A punish is a swing thrown because the window
+   * opened, inside the first few frames of it. A poke that wanders in later
+   * is the fixture being unlucky. Two frames, because the AI sees the
+   * window on the frame after it opens and a swing starting then shows up
+   * here on the frame after that, so one frame is the fastest possible and
+   * two allows a frame of slip. Swept: at two frames a healthy AI takes
+   * 31.7-32.5% of windows across six seeds and one with the punish branch
+   * deleted takes 8.6-10.7%. Widening it to twenty swallows the difference,
+   * because by twenty frames the AI has walked in and poked anyway.
+   */
+  const QUICK = 2;
+  const handedAt = [null, null];
   for (let frame = 0; frame < 20000; frame++) {
     for (const f of m.fighters) {
       const i = side(f);
@@ -173,11 +198,18 @@ function round(defA, defB, rigs, aiA, aiB, stats, weapon) {
         const them = m.fighters[1 - i];
         const free = them.state !== STATE.ATTACK && them.state !== STATE.HURT
           && them.state !== STATE.KO;
-        if (free) stats[1 - i].windows++;
+        if (free) { stats[1 - i].windows++; handedAt[1 - i] = frame; }
       }
+      // The window shut -- they recovered, or someone hit them. Anything
+      // swung after this is not a punish however soon it lands.
+      if (!inRecovery && wasRecovering[i]) handedAt[1 - i] = null;
       wasRecovering[i] = inRecovery;
       if (fresh) {
         stats[i].swings++;
+        if (handedAt[i] !== null && frame - handedAt[i] <= QUICK) {
+          stats[i].quick++;
+          handedAt[i] = null;        // one window, one punish
+        }
         const why = f._aiReason || 'other';
         // An opening swing is one the AI chose from neutral. A chain
         // continuation is not a decision about whether to attack -- it is a
@@ -258,6 +290,7 @@ export const line = (name, s) => `  ${name.padEnd(5)} `
   + `broke ${pct(s.breaks, s.swings).padStart(6)}  `
   + `whiff ${pct(s.swings - s.hits - s.blocked - s.breaks, s.swings).padStart(6)}  `
   + `punishes ${String(s.punishes).padStart(4)}  `
+  + `onwindow ${pct(s.quick, s.windows).padStart(6)}  `
   + `counters ${String(s.counters).padStart(4)}  `
   + `punished ${String(s.punished).padStart(4)}  `
   + `broken ${String(s.broken).padStart(3)}  `

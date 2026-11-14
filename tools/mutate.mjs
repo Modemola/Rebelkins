@@ -413,15 +413,24 @@ const MUTANTS = [
     expect: 'mirror match pose apart',
   },
   {
-    name: 'punishing gated by the poke cooldown',
-    why: 'a recovery window is exactly when swinging is right',
+    name: 'a recovery window that never opens',
+    why: 'a recovery window is exactly when swinging is right, and the AI '
+      + 'has one branch whose whole job is to notice one',
     file: 'src/fight/ai.js',
-    find: `      if (pick && Math.random() < this.cfg.punish) {
-        intent.attack = pick.slot;
-        me._aiReason = 'punish';`,
-    with: `      if (pick && this.cool <= 0 && Math.random() < this.cfg.punish) {
-        intent.attack = pick.slot;
-        me._aiReason = 'punish';`,
+    // This replaced a mutant that gated the punish branch behind the poke
+    // cooldown, which turned out not to be a break at all. Measured against
+    // the same fixture: the AI still took 31.9% of its windows inside two
+    // frames against 31.8% healthy, won the same 90 of 90 rounds and dealt
+    // the same damage, because by the time a window opens its cooldown has
+    // almost always already expired. All the gate costs is the second and
+    // third swing inside a long window -- conversion fell from 69.6% to
+    // 47.8% -- and nothing about "punishes a recovery" is false there.
+    //
+    // Pushing the window itself out of reach is the break: the branch can
+    // never fire, and the "close in while it lasts" fallback under it goes
+    // with it. That drops windows taken to 8.6-10.7% across seeds.
+    find: '      && foe.moveFrame >= foe.move.startup + foe.move.active;',
+    with: '      && foe.moveFrame >= foe.move.startup + foe.move.active + 1000;',
     expect: 'punishes a recovery',
   },
   {
@@ -436,9 +445,28 @@ const MUTANTS = [
     name: 'the hardest tier sees swings last',
     why: 'the difficulty dials have to point the same way as the difficulty',
     file: 'src/fight/ai.js',
+    // Aimed at the win-rate ladder for a long time, and it survived there:
+    // mean keeps winning 94% and 70% of its two bouts with its sight cut to
+    // 2, because its other dials decide those fights. Win rate cannot see
+    // this dial at all. It is aimed at the guard rate now, which is what
+    // sight actually decides -- 1.86x and 1.50x healthy, 1.01x and 1.09x
+    // with the dial cut.
     find: '  mean: { sight: 24, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95, chain: 0.92 },',
     with: '  mean: { sight: 2, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95, chain: 0.92 },',
-    expect: 'difficulty tiers are in order',
+    expect: 'the hardest tier guards what it sees coming',
+  },
+  {
+    name: 'the sight dial read backwards',
+    why: 'this is the bug the tier ladder was written for: the comparison '
+      + 'inverted, so the tier with the longest sight is the one that only '
+      + 'reacts to swings too far out to matter',
+    file: 'src/fight/ai.js',
+    // Measured: every tier's guard rate collapses to 6-8% and mean ends up
+    // guarding LESS than calm (0.40x), while still winning 86% and 74% of
+    // its bouts -- so the win-rate ladder cannot see this either.
+    find: '        const visible = foe.move.startup - foe.moveFrame <= this.cfg.sight;',
+    with: '        const visible = foe.move.startup - foe.moveFrame >= this.cfg.sight;',
+    expect: 'the hardest tier guards what it sees coming',
   },
   {
     name: 'a hitbox that goes live before the swing arrives',
@@ -532,12 +560,18 @@ const MUTANTS = [
   },
   {
     name: 'a pose that slides the pelvis out from under the ribs',
-    why: 'this is the bug that happened: the lunge was translating the hips, '
-      + 'which hang off the torso, so the art came apart at the waist on '
-      + 'every punch, kick and charge in the game',
-    file: 'src/data/kit.js',
-    find: '      hips: { rot: 0.09 * a - 0.28 * strike + settle * 0.04 },',
-    with: '      hips: { rot: 0.09 * a - 0.28 * strike + settle * 0.04, x: -20 },',
+    why: 'this is the bug that happened: the drop was written on the hips, '
+      + 'which hang off the torso, so the art came apart at the waist',
+    // Anchored in kit.js's punchPose until the full gate caught it
+    // surviving. That is the fourth mutant found sitting in the pose
+    // generator, which `...spec` overrides on every move both remaining
+    // characters have -- so it is computed and discarded, and a mutation of
+    // it cannot change anything the suite can see. The same break on a pose
+    // the roster does run is KIN 06's crouch, which is where the bug
+    // actually shipped: the drop belongs on the torso, which is the root.
+    file: 'src/data/kin06s.js',
+    find: '      return { torso: { rot: 0.12, y: 96 }, hips: { rot: -0.07 }, head: { rot: 0.13 },',
+    with: '      return { torso: { rot: 0.12 }, hips: { rot: -0.07, y: 96 }, head: { rot: 0.13 },',
     expect: 'pulls a part off the one it hangs from',
   },
   {

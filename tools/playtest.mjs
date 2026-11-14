@@ -672,10 +672,28 @@ async function fightChecks() {
   // so the proxy went and the thing the check is named after is measured
   // directly: a recovery window is a span where the opponent cannot answer,
   // counted whether or not anyone swung into it.
-  const punishRate = vsSlow.stats[0].punishes / Math.max(1, vsSlow.stats[0].windows);
-  check('the AI punishes a recovery', punishRate > 0.25,
-    `${vsSlow.stats[0].punishes} of ${vsSlow.stats[0].windows} recovery windows taken `
-    + `(${pct(vsSlow.stats[0].punishes, vsSlow.stats[0].windows)})`);
+  // And then the conversion rate went too, because it does not measure
+  // punishing either. `punishes` counts hits that land while the other is
+  // recovering, whoever threw them and whyever -- and this fixture spends
+  // most of its life in recovery, so moves thrown for their own reasons land
+  // inside a window often enough to carry the number alone. Measured: with
+  // the AI's punish branch deleted outright the conversion rate was still
+  // 32.8% against a floor of 25%. A whole branch could go and this said
+  // nothing, which is the third time a check in this suite has been found
+  // measuring an outcome that arrives whether or not the thing it names
+  // happened.
+  //
+  // What separates punishing from poking is WHEN the swing starts, so that
+  // is what is measured: the share of windows the AI starts a swing inside,
+  // within two frames of the window opening. 31.7-32.5% across six seeds
+  // healthy, 8.6-10.7% with the branch gone, and 2.3% for the regression
+  // this check was written for. The floor sits at 22%, between the two by a
+  // wide margin either way.
+  const slow = vsSlow.stats[0];
+  const punishRate = slow.quick / Math.max(1, slow.windows);
+  check('the AI punishes a recovery', punishRate > 0.22,
+    `${slow.quick} of ${slow.windows} windows taken within two frames `
+    + `(${pct(slow.quick, slow.windows)}), ${pct(slow.punishes, slow.windows)} converted eventually`);
 
   // The ladder has to be a ladder. `sight` was inverted for a while and the
   // hardest tier was the one that spotted heavies last, which no amount of
@@ -683,10 +701,40 @@ async function fightChecks() {
   const ladder = [['mean', 'calm'], ['brisk', 'calm'], ['mean', 'brisk']]
     .map(([a, b]) => {
       const r = spar({ AiA: AI, AiB: AI, DEFS, rigs, rounds: 1, pairs: 90, levelA: a, levelB: b, seed: 3 });
-      return { a, b, rate: r.winsA / r.total };
+      // stats[0].blocked is A's swings that B guarded, so each side's guard
+      // rate is the OTHER side's blocked count over its swings.
+      const guards = (mine, theirs) => theirs.blocked / Math.max(1, theirs.swings);
+      return { a, b, rate: r.winsA / r.total,
+        guardA: guards(r.stats[0], r.stats[1]), guardB: guards(r.stats[1], r.stats[0]) };
     });
   check('the difficulty tiers are in order', ladder.every((r) => r.rate > 0.52),
     ladder.map((r) => `${r.a} over ${r.b} ${(r.rate * 100).toFixed(0)}%`).join(', '));
+
+  // Win rate alone cannot see `sight`, and `sight` is the dial the comment
+  // above is about. Measured: dropping mean's sight from 24 to 2 leaves it
+  // winning 94% and 70% of the two bouts, and inverting the comparison it is
+  // used in -- the literal bug described above, where the hardest tier is
+  // the one that spots a swing last -- leaves it at 86% and 74%. Everything
+  // stays above the 52% floor, because mean's aggression, punish and chain
+  // dials decide those fights whether or not it ever blocks.
+  //
+  // What sight decides is whether a swing coming at you gets guarded, so
+  // that is the measurement: the share of what is thrown at it that each
+  // tier guards. Healthy, mean guards 1.86-2.02x what calm does and
+  // 1.50-1.67x what brisk does across four seeds; with sight at 2 those
+  // fall to 1.01 and 1.09, and with the comparison inverted to 0.40 and
+  // 0.96. The floor is 1.3.
+  //
+  // Only the bouts mean is in. Brisk guards 1.01x what calm does, not
+  // because its dials are wrong but because the aggression it gained spends
+  // the frames calm spends holding a guard -- so there is no ordering to
+  // assert there, and asserting one anyway would be a check that fails for
+  // being true.
+  const guardLadder = ladder.filter((r) => r.a === 'mean');
+  check('the hardest tier guards what it sees coming',
+    guardLadder.every((r) => r.guardA / Math.max(1e-6, r.guardB) > 1.3),
+    guardLadder.map((r) => `${r.a} guards ${pct(r.guardA, 1)} against ${r.b}'s `
+      + `${pct(r.guardB, 1)} (${(r.guardA / r.guardB).toFixed(2)}x)`).join(', '));
 
   // Two equal AIs should be an even fight that actually happens: swings that
   // mostly connect, few that touch nothing, and punishes landed by both. The
@@ -1139,42 +1187,65 @@ try {
   // and the guard that stops the low does not also stop everything -- if any
   // one of those is false there is no guess to make and the guard goes back
   // to being a button you hold.
-  const mix = await page.evaluate(async () => {
-    const g = window.__KINWAR__;
-    const out = {};
-    const bout = async (slot, crouchBlock) => {
-      g.start('kin06s', 'ai', 'kin09s');
-      await new Promise((r) => setTimeout(r, 200));
+  // Through P2's own keys, like the guard section above. This used to write
+  // `blockLow` and `setState('block')` onto the defender every frame, which
+  // reads like holding the guard and is not: the fighter derives both from
+  // its intent in its own step, so the line that does the deriving could be
+  // broken -- a crouch that never registers as low, every sweep unblockable
+  // -- and all three of these claims still came back green. The mutant aimed
+  // at that line survived, which is how it was found.
+  const bout = async (slot, crouchBlock) => {
+    // The match first, then the keys: a key held across a restart survives
+    // it, but relying on that is relying on `clear` not clearing the held
+    // set, which is not this check's business.
+    await page.evaluate(() => window.__KINWAR__.start('kin06s', '2p', 'kin09s'));
+    await page.waitForTimeout(200);
+    await page.keyboard.down('ShiftRight');
+    if (crouchBlock) await page.keyboard.down('ArrowDown');
+    const r = await page.evaluate(async (s) => {
+      const g = window.__KINWAR__;
       const m = g.match;
       m.phase = 'fight';
-      g.ai.set('still');
       let kind = null;
       const prev = m.onEvent;
       m.onEvent = (k, d) => { prev(k, d); if (!kind && (k === 'hit' || k === 'block')) kind = k; };
-      const mv = m.a.def.moves[slot];
-      m.a.x = m.b.x - ((mv.range ?? 140) - 20);
-      m.a.startMove(slot);
-      for (let i = 0; i < 50 && !kind; i++) {
-        // the defender holds the guard at the height being tested
-        m.b.blockLow = crouchBlock;
-        m.b.setState('block');
-        m.b.blockFrames = 2;
-        await new Promise((r) => requestAnimationFrame(r));
+      // Wait for the guard to come up through P2's own step rather than
+      // assuming it: if the keys are not reaching the fighter there is no
+      // defender here and the answer would be meaningless.
+      let guarding = false;
+      for (let i = 0; i < 90 && !guarding; i++) {
+        await new Promise((done) => requestAnimationFrame(done));
+        guarding = m.b.state === 'block';
       }
+      const low = m.b.blockLow;
+      const mv = m.a.def.moves[s];
+      m.a.x = m.b.x - ((mv.range ?? 140) - 20);
+      m.a.startMove(s);
+      for (let i = 0; i < 50 && !kind; i++) await new Promise((done) => requestAnimationFrame(done));
       m.onEvent = prev;
-      return kind;
-    };
-    out.lowVsHigh = await bout('low', false);
-    out.lowVsCrouch = await bout('low', true);
-    out.heavyVsCrouch = await bout('heavy', true);
-    return out;
-  });
-  check('a low beats a standing guard', mix.lowVsHigh === 'hit',
-    `standing guard against the sweep: ${mix.lowVsHigh || 'nothing happened'}`);
-  check('a crouching guard stops a low', mix.lowVsCrouch === 'block',
-    `crouching guard against the sweep: ${mix.lowVsCrouch || 'nothing happened'}`);
-  check('crouching does not block everything', mix.heavyVsCrouch === 'block',
-    `crouching guard against the heavy: ${mix.heavyVsCrouch || 'nothing happened'}`);
+      return { kind, guarding, low };
+    }, slot);
+    await page.keyboard.up('ShiftRight');
+    if (crouchBlock) await page.keyboard.up('ArrowDown');
+    return r;
+  };
+  const mix = {
+    lowVsHigh: await bout('low', false),
+    lowVsCrouch: await bout('low', true),
+    heavyVsCrouch: await bout('heavy', true),
+  };
+  check('the guard height follows the crouch key',
+    mix.lowVsHigh.guarding && mix.lowVsCrouch.guarding && mix.heavyVsCrouch.guarding
+    && mix.lowVsHigh.low === false && mix.lowVsCrouch.low === true,
+    mix.lowVsCrouch.guarding
+      ? `standing guard low=${mix.lowVsHigh.low}, crouching guard low=${mix.lowVsCrouch.low}`
+      : 'P2 never entered block, so nothing below was measured against a guard');
+  check('a low beats a standing guard', mix.lowVsHigh.kind === 'hit',
+    `standing guard against the sweep: ${mix.lowVsHigh.kind || 'nothing happened'}`);
+  check('a crouching guard stops a low', mix.lowVsCrouch.kind === 'block',
+    `crouching guard against the sweep: ${mix.lowVsCrouch.kind || 'nothing happened'}`);
+  check('crouching does not block everything', mix.heavyVsCrouch.kind === 'block',
+    `crouching guard against the heavy: ${mix.heavyVsCrouch.kind || 'nothing happened'}`);
 
   console.log('\ndashing');
   // Through the keyboard, not by calling startDash: the double tap has to
@@ -1200,10 +1271,26 @@ try {
     const run = async (doubleTap) => {
       m.a.x = -200; m.b.x = 260; m.a.vx = 0;
       m.a.setState('idle');
-      const from = m.a.x;
-      if (doubleTap) { tap('KeyD'); tap('KeyD'); } else {
-        dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', bubbles: true }));
+      let gap = 0;
+      if (doubleTap) {
+        // Two taps with frames between them, which is what a double tap is.
+        // Both in the same task is not: the window is tested as
+        // `frame - last <= DOUBLE_TAP_FRAMES`, two presses in one task share
+        // a frame number, and zero satisfies any window including one of
+        // zero frames. So a window shrunk to nothing -- no dash input left in
+        // the game at all -- passed this, and the mutant aimed at it
+        // survived.
+        //
+        // A tap is a press and a release in the same task, so the first one
+        // moves the fighter nowhere and the gap costs no ground.
+        tap('KeyD');
+        const at = g.input.frame;
+        await frames(3);
+        gap = g.input.frame - at;
+        tap('KeyD');
       }
+      const from = m.a.x;
+      if (!doubleTap) dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', bubbles: true }));
       let sawDash = false;
       for (let i = 0; i < 12; i++) {
         await frames(1);
@@ -1212,15 +1299,19 @@ try {
       const moved = m.a.x - from;
       dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyD', bubbles: true }));
       await frames(14);
-      return { moved, sawDash };
+      return { moved, sawDash, gap };
     };
     const dashed = await run(true);
     const walked = await run(false);
     return { dashed, walked };
   });
+  // The gap is reported because it is the thing that makes this a double tap
+  // rather than one press counted twice, and because a gap that drifted past
+  // the window would fail the check for a reason that has nothing to do with
+  // dashing.
   check('a double tap dashes', dash.dashed.sawDash && dash.dashed.moved > dash.walked.moved * 1.5,
     `${dash.dashed.moved.toFixed(0)}px dashing against ${dash.walked.moved.toFixed(0)}px walking `
-    + `over the same twelve frames`);
+    + `over the same twelve frames, ${dash.dashed.gap} frames between the taps`);
 
   console.log('\nchains');
   // The whole reason pressing buttons in order is worth anything. Three
@@ -1520,6 +1611,22 @@ try {
   // fighter's own step runs every frame and writes that field back, so a test
   // that sets it directly is testing nothing. Two players, and P2 holds the
   // guard key the way a person would.
+  //
+  // Two things in here were wrong for as long as it existed, and the mutant
+  // aimed at the Math.max is what found them. It survived: the suite passed
+  // with chip able to kill.
+  //
+  // First, the wait only waited for the DEFENDER. The attacker was still in
+  // the recovery of the previous swing, so `startMove` returned false and the
+  // third measurement -- the one at 1hp, the whole point of the section --
+  // threw nothing at all. Second, nothing noticed: with no swing there is no
+  // damage, so `hp >= 1` held and the check went green over a fight that
+  // never happened.
+  //
+  // So the swing now waits for both, and reports whether the hit actually
+  // arrived. At 1hp behind a guard the floor means NO health is lost, so a
+  // health delta cannot be the proof -- the event is. A measurement that can
+  // pass while nothing happens is not a measurement.
   const swing = async (holdGuard, startHp) => {
     if (holdGuard) await page.keyboard.down('ShiftRight');
     const dealt = await page.evaluate(async (hp) => {
@@ -1532,21 +1639,31 @@ try {
       m.a.x = m.b.x - 118;
       // Let the defender come out of the previous swing's hitstun first. A
       // fighter in hurt ignores the guard intent, so measuring straight after
-      // the last hit measures an unguarded one and calls it guarded.
-      for (let i = 0; i < 90; i++) {
-        if (m.b.state === 'idle' || m.b.state === 'block') break;
+      // the last hit measures an unguarded one and calls it guarded. And let
+      // the attacker finish its own move, or the next one never starts.
+      for (let i = 0; i < 150; i++) {
+        const ready = (m.b.state === 'idle' || m.b.state === 'block')
+          && (m.a.state === 'idle' || m.a.state === 'walk');
+        if (ready) break;
         await new Promise((r) => requestAnimationFrame(r));
       }
       m.a.x = m.b.x - 118;
       const before = m.b.health;
       let guarded = false;
-      m.a.startMove('heavy');
-      for (let i = 0; i < 70; i++) {
+      let landed = null;
+      const prev = m.onEvent;
+      m.onEvent = (k, d) => {
+        prev(k, d);
+        if (!landed && (k === 'hit' || k === 'block' || k === 'guardBreak')) landed = k;
+      };
+      const started = m.a.startMove('heavy');
+      for (let i = 0; i < 70 && !landed; i++) {
         await new Promise((r) => requestAnimationFrame(r));
         if (m.b.state === 'block') guarded = true;
-        if (m.b.health < before) break;
       }
-      return { dealt: before - m.b.health, guarded, hp: m.b.health, phase: m.phase };
+      m.onEvent = prev;
+      return { dealt: before - m.b.health, guarded, landed, started,
+        hp: m.b.health, phase: m.phase };
     }, startHp);
     if (holdGuard) await page.keyboard.up('ShiftRight');
     return dealt;
@@ -1561,14 +1678,18 @@ try {
     clean: clean.dealt,
     blocked: blocked.dealt,
     heldGuard: blocked.guarded,
-    survived: lastPoint.hp >= 1 && lastPoint.phase === 'fight',
+    // The hit has to have landed for surviving it to mean anything.
+    landed: lastPoint.landed,
+    survived: !!lastPoint.landed && lastPoint.hp >= 1 && lastPoint.phase === 'fight',
   };
   check('the guard key actually guards', guard.heldGuard,
     guard.heldGuard ? 'P2 held block through the swing' : 'never entered block');
   check('a guarded hit is cut to chip', guard.blocked > 0 && guard.blocked < guard.clean * 0.35,
     `${guard.clean.toFixed(0)} clean vs ${guard.blocked.toFixed(0)} guarded`);
   check('chip damage can never finish a round', guard.survived,
-    guard.survived ? 'survives on 1hp behind guard' : 'died through its own guard');
+    guard.survived ? `survives on 1hp behind guard (${guard.landed} at ${lastPoint.hp.toFixed(0)}hp)`
+      : guard.landed ? `died through its own guard: ${lastPoint.hp.toFixed(1)}hp, ${lastPoint.phase}`
+        : `nothing was thrown at it (startMove ${lastPoint.started})`);
 
   console.log('\nthe guard meter');
   // The meter is what stops a perfect turtle being unbeatable, and the frame
