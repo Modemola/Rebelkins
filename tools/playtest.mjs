@@ -885,11 +885,19 @@ try {
   // what this needs too: blocked chip damage is clamped so it can never finish
   // anyone, so a guarded trade proves nothing about hitting.
   const hpBefore = (await state()).b.hp;
+  // Against the attacker's own reach, not a literal. This walked in until the
+  // gap was under 130, which was fine while fighters could stand 118 apart;
+  // once the walking floor moved to 150 the condition could never be met, so
+  // the loop walked twenty-six times and never threw a punch.
+  const swingFrom = await page.evaluate(() => {
+    const m = window.__REBELKIN__.match;
+    return Math.max(m.a.def.moves.light.range, m.a.def.moves.heavy.range) - 16;
+  });
   let landed = false;
   for (let i = 0; i < 26 && !landed; i++) {
     const cur = await state();
     const gap = Math.abs(cur.b.x - cur.a.x);
-    if (gap > 130) {
+    if (gap > swingFrom) {
       const key = cur.b.x > cur.a.x ? 'KeyD' : 'KeyA';
       await page.keyboard.down(key);
       await page.waitForTimeout(150);

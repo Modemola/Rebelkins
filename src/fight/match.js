@@ -30,15 +30,56 @@ export function fitStage(view) {
 }
 const ROUND_SECONDS = 60;
 const ROUNDS_TO_WIN = 2;
-// Two 300px-tall figures at 76px apart read as one silhouette. Spacing is
-// information in a fighter -- you have to be able to see the gap you are
-// trying to close.
-const MIN_GAP = 118;
-// ...but a swing has to be able to crowd in, or spacing becomes a wall. At
-// this art scale a limb reaches 60-110px past its joint, so holding every
-// fighter 118px apart means half the cast's moves can never touch anyone. An
-// attacker may close to this instead, and is pushed back out on recovery.
-const ATTACK_GAP = 84;
+/**
+ * How close the two of them may get, walking and swinging.
+ *
+ * Both numbers are derived from the bodies rather than chosen. Measured off
+ * the rendered alpha of the torso, hips and head over idle, walk and guard:
+ * KIN 06's mass reaches 64 units ahead of his root and KIN 09's 59, so their
+ * chests meet at 123 and a mirror match of the wider one at 128. The old
+ * attacking floor of 84 put them 44 units inside each other, which is why a
+ * close exchange turned into one silhouette with sparks coming out of it --
+ * you could not see what had connected.
+ *
+ * The attacking floor is the widest touch distance plus a little air, so the
+ * strike lands in a gap you can see rather than inside the other fighter.
+ * Nothing is lost by it: their strikes reach 192 and 195 units measured to
+ * the tip, against a floor of 140, and all four pairings keep every move.
+ *
+ * The walking floor sits above it so closing the distance still costs
+ * something, and close to where the opponent AI already chooses to stand, so
+ * it rarely binds and the spacing stays the AI's decision rather than the
+ * physics'.
+ *
+ * One floor cannot serve every move, though, and trying it broke all six
+ * chains. The six moves reach 106, 132, 149, 170, 232 and 232. A floor of 140
+ * is further than KIN 09's Lash can reach, so her heavy could never connect
+ * again -- and a move that cannot touch anyone is worse than one that lands
+ * too close. So an attacker may close to what its own move needs, no further
+ * than ATTACK_GAP and never inside CLINCH_GAP:
+ *
+ *   both kicks, the Jab, the Point   stop at 128, where the chests just meet
+ *   the Cross                        112
+ *   the Lash                          96, a body hook thrown from inside
+ *
+ * Both are set for a cast of two side-on characters of almost the same build.
+ * The ten front-facing ones are narrower and were the reason this used to be
+ * a compromise; if they come back, measure again rather than assuming these
+ * carry over.
+ */
+const MIN_GAP = 150;
+const ATTACK_GAP = 128;
+/** No move closes past this, however short its reach. */
+const CLINCH_GAP = 96;
+/**
+ * How far inside its own measured range a move must arrive.
+ *
+ * `range` is the furthest gap a move still connects from, so stopping an
+ * attacker exactly there leaves it nothing: the playtest asks every move to
+ * connect with twelve units of reach to spare, and at a margin of 8 the Cross
+ * stopped at 124 against a range of 132 and failed that by four.
+ */
+const RANGE_MARGIN = 20;
 
 /**
  * What each successive hit of a chain is worth.
@@ -129,8 +170,12 @@ export class Match {
   separate() {
     const d = this.b.x - this.a.x;
     const gap = Math.abs(d);
-    const swinging = this.a.state === STATE.ATTACK || this.b.state === STATE.ATTACK;
-    const floor = swinging ? ATTACK_GAP : MIN_GAP;
+    let floor = MIN_GAP;
+    for (const f of this.fighters) {
+      if (f.state !== STATE.ATTACK || !f.move) continue;
+      const needs = Math.max(CLINCH_GAP, Math.min(ATTACK_GAP, f.move.range - RANGE_MARGIN));
+      floor = Math.min(floor, needs);
+    }
     if (gap >= floor) return;
     const push = (floor - gap) / 2 * Math.sign(d || 1);
     this.a.x -= push;

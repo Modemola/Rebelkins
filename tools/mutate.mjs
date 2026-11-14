@@ -65,8 +65,8 @@ const MUTANTS = [
     name: 'attacker cannot crowd in',
     why: 'a swing has to be able to close inside the walking separation',
     file: 'src/fight/match.js',
-    find: 'const ATTACK_GAP = 84;',
-    with: 'const ATTACK_GAP = 118;',
+    find: 'const ATTACK_GAP = 128;',
+    with: 'const ATTACK_GAP = 150;',
     // Was 'all 30 moves connect', which covered this only while half the cast
     // could not reach from the walking distance. Since the poses were given
     // bodies they all can, so that check went green with the attacking floor

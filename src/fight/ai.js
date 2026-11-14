@@ -54,7 +54,18 @@ const DIFFICULTY = {
   // back down to 49 of 90 -- a masher winning a little under half, which is
   // what the easiest tier is for.
   calm: { sight: 4, aggression: 0.42, block: 0.32, punish: 0.10, poise: 0.35, chain: 0.15 },
-  brisk: { sight: 13, aggression: 0.68, block: 0.76, punish: 0.6, poise: 0.7, chain: 0.6 },
+  // Eased with calm, and for the same reason. Against a cast of two side-on
+  // characters with chains, brisk sat so close to mean that the ladder
+  // stopped being one: mean beat it in 51, 54 and 54 per cent of rounds
+  // across three seeds, which is a coin flip dressed as a difficulty. These
+  // dials put mean over brisk at 80% and brisk over calm at 97%.
+  //
+  // `sight` stayed at 13 after a detour: easing it to 8 along with everything
+  // else took the share of swings that touch anything from 85% to 78%, which
+  // is a tier that mostly swings at air. Of the five dials it is the one that
+  // decides whether a swing was worth throwing, so it is the one to leave
+  // alone when making a tier worse at winning.
+  brisk: { sight: 13, aggression: 0.55, block: 0.50, punish: 0.28, poise: 0.72, chain: 0.30 },
   mean: { sight: 24, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95, chain: 0.92 },
   // An opponent that does nothing, for measuring against. Zeroing the dials by
   // hand no longer produces one: a punish, an interrupt and a stun conversion
