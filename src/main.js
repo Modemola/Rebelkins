@@ -17,8 +17,6 @@ import { FX } from './render/fx.js';
 import { Match, PHASE, STAGE, fitStage } from './fight/match.js';
 import { AI } from './fight/ai.js';
 import { STATE } from './fight/fighter.js';
-import { KIN06 } from './data/kin06.js';
-import { KIN09 } from './data/kin09.js';
 import { KIN06S } from './data/kin06s.js';
 import { KIN09S } from './data/kin09s.js';
 import { Sfx } from './audio/sfx.js';
