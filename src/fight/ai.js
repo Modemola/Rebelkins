@@ -137,7 +137,7 @@ export class AI {
   set(level) { this.level = level; this.cfg = DIFFICULTY[level] || DIFFICULTY.brisk; }
 
   think(me, foe, frame) {
-    const intent = { move: 0, crouch: false, jump: false, guard: false, attack: null };
+    const intent = { move: 0, dash: 0, crouch: false, jump: false, guard: false, attack: null };
     if (this.level === 'still') return intent;
 
     // Bookkeeping first, because every branch below can return early and this
@@ -170,6 +170,28 @@ export class AI {
     const dir = Math.sign(dx) || 1;
     const mine = profile(me);
     const theirs = profile(foe);
+
+    /* ---- movement: a dash is for the distances walking is bad at. Closing
+       from well outside everything it owns, or giving ground the moment a
+       committed swing is spotted and it has already decided not to block.
+       Gated behind the same cooldown as attacking, so it cannot be held
+       down, and behind `poise` so the careless tiers do it less. */
+    if (me.state !== STATE.ATTACK && me.state !== STATE.DASH && this.cool <= 0) {
+      const far = dist > mine.longest.range * 1.45;
+      if (far && Math.random() < this.cfg.aggression * 0.22) {
+        intent.dash = dir;
+        this.cool = 16;
+        me._aiReason = 'close in';
+        return intent;
+      }
+      const crowded = dist < mine.fastest.range * 0.62;
+      if (crowded && Math.random() < this.cfg.poise * 0.12) {
+        intent.dash = -dir;
+        this.cool = 18;
+        me._aiReason = 'make room';
+        return intent;
+      }
+    }
 
     /* ---- defence: one decision per swing, held until the swing stops being
        one. Not to the end of the animation: once the active frames are over

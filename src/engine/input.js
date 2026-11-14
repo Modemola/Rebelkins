@@ -15,6 +15,15 @@
  */
 
 const BUFFER_FRAMES = 6;
+/**
+ * How close two taps of the same direction must be to count as a dash.
+ *
+ * Twelve frames is a fifth of a second. Shorter and it will not fire for
+ * anyone using a phone, where a tap is a finger landing and lifting rather
+ * than a key going down; longer and walking back and forth turns into
+ * dashing you did not ask for.
+ */
+const DOUBLE_TAP_FRAMES = 12;
 
 export const ACTIONS = ['left', 'right', 'up', 'down', 'light', 'heavy', 'special', 'guard'];
 
@@ -34,6 +43,8 @@ export class Input {
   constructor() {
     this.down = { p1: new Set(), p2: new Set() };
     this.buffer = { p1: [], p2: [] };
+    this.lastPress = { p1: {}, p2: {} };
+    this.doubled = { p1: {}, p2: {} };
     this.frame = 0;
     this.enabled = true;
 
@@ -61,8 +72,27 @@ export class Input {
   /** A button went down, from whatever pressed it. */
   press(pad, action) {
     if (!this.enabled) return;
+    // A second press of the same direction inside the window is a dash. Held
+    // separately from the buffer, which expires in six frames and is emptied
+    // by whoever claims it first -- a dash has to survive both.
+    const last = this.lastPress[pad][action];
+    if (last !== undefined && this.frame - last <= DOUBLE_TAP_FRAMES) {
+      this.doubled[pad][action] = this.frame;
+    }
+    this.lastPress[pad][action] = this.frame;
     this.down[pad].add(action);
     this.buffer[pad].push({ action, frame: this.frame });
+  }
+
+  /**
+   * Claim a double tap. Claiming removes it, so one flick of the stick
+   * cannot start two dashes.
+   */
+  takeDouble(pad, action) {
+    const at = this.doubled[pad][action];
+    if (at === undefined || this.frame - at > BUFFER_FRAMES) return false;
+    delete this.doubled[pad][action];
+    return true;
   }
 
   /**
@@ -118,5 +148,9 @@ export class Input {
     return (this.held(pad, 'right') ? 1 : 0) - (this.held(pad, 'left') ? 1 : 0);
   }
 
-  clear(pad) { this.buffer[pad].length = 0; }
+  clear(pad) {
+    this.buffer[pad].length = 0;
+    this.lastPress[pad] = {};
+    this.doubled[pad] = {};
+  }
 }

@@ -257,5 +257,5 @@ export class Match {
   }
 }
 
-const IDLE_INTENT = { move: 0, crouch: false, jump: false, guard: false, attack: null };
+const IDLE_INTENT = { move: 0, dash: 0, crouch: false, jump: false, guard: false, attack: null };
 export { IDLE_INTENT };

@@ -214,6 +214,24 @@ const MUTANTS = [
     expect: 'reaches the mixer',
   },
   {
+    name: 'a dash that covers no more ground than a walk',
+    why: 'a dash exists to do the distance walking is bad at; at walking '
+      + 'speed it is a walk with a different name and a recovery attached',
+    file: 'src/fight/fighter.js',
+    find: '  forward: { frames: 11, recover: 5, speed: 2.35 },',
+    with: '  forward: { frames: 11, recover: 5, speed: 1.0 },',
+    expect: 'a double tap dashes',
+  },
+  {
+    name: 'a second tap that does not register',
+    why: 'the double tap is the only way to dash, so a window that never '
+      + 'matches removes the input entirely while the state still exists',
+    file: 'src/engine/input.js',
+    find: 'const DOUBLE_TAP_FRAMES = 12;',
+    with: 'const DOUBLE_TAP_FRAMES = 0;',
+    expect: 'a double tap dashes',
+  },
+  {
     name: 'moves that cannot be cancelled into each other',
     why: 'the chain is the whole reason pressing buttons in order is worth '
       + 'anything; without it every swing is an isolated event',

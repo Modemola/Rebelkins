@@ -33,6 +33,25 @@ export const GROUND = 0;
 export const STATE = {
   IDLE: 'idle', WALK: 'walk', CROUCH: 'crouch', AIR: 'air',
   ATTACK: 'attack', BLOCK: 'block', HURT: 'hurt', KO: 'ko',
+  DASH: 'dash',
+};
+
+/**
+ * A dash, from a double tap.
+ *
+ * Walking was the whole movement game, which makes spacing something that
+ * happens to you rather than something you do. A dash is the cheapest way to
+ * give it back: it costs no artwork, and the decision it creates -- commit to
+ * closing, or give ground fast and make them come again -- is most of what
+ * neutral is for.
+ *
+ * Forward goes further and recovers slower, because walking away from a
+ * committed approach has to stay possible. Neither is invincible: that is a
+ * separate decision about reversals, not one to smuggle in with movement.
+ */
+const DASH = {
+  forward: { frames: 11, recover: 5, speed: 2.35 },
+  back: { frames: 9, recover: 7, speed: 2.05 },
 };
 
 /** The chain. A move cancels only into a strictly higher rank. */
@@ -57,6 +76,9 @@ export class Fighter {
     this.hitConnected = false;
     this.clock = 0;          // free-running, for idle breathing
     this.walkDir = 0;
+    this.dashDir = 0;
+    this.dashFrames = 0;
+    this.dashRecover = 0;
     this.comboCount = 0;
     /**
      * Guard, 0..1. A block here reduces a hit to chip and chip is clamped so
@@ -127,6 +149,16 @@ export class Fighter {
     // react to a heavy they cannot yet see landing
     this.sounds.push({ t: 'whiff', weight: Math.min(1, m.damage / 120) });
     return true;
+  }
+
+  /** Begin a dash. `dir` is -1 or 1 in world space, not relative to facing. */
+  startDash(dir) {
+    const kind = dir === this.facing ? DASH.forward : DASH.back;
+    this.dashDir = dir;
+    this.dashFrames = kind.frames;
+    this.dashRecover = kind.recover;
+    this.setState(STATE.DASH);
+    this.sounds.push({ t: 'step' });
   }
 
   hurt(damage, hitstun, knockback, lift) {
@@ -268,6 +300,22 @@ export class Fighter {
         return;
       }
 
+      case STATE.DASH: {
+        if (this.dashFrames > 0) {
+          this.dashFrames--;
+          this.vx = this.dashDir * this.def.walkSpeed
+            * (this.dashDir === this.facing ? DASH.forward.speed : DASH.back.speed);
+          this.physics(1);
+          return;
+        }
+        // The recovery is the price. Without it a dash is a free reposition
+        // and there is no reason to ever walk.
+        this.vx = 0;
+        this.physics(0.6);
+        if (--this.dashRecover <= 0) this.setState(STATE.IDLE);
+        return;
+      }
+
       case STATE.AIR:
         this.physics(0.999);
         if (this.y >= GROUND) {
@@ -284,6 +332,8 @@ export class Fighter {
 
     // ---- grounded and free
     if (intent.attack && this.startMove(intent.attack)) return;
+
+    if (intent.dash) { this.startDash(intent.dash); this.physics(1); return; }
 
     if (intent.guard) { this.setState(STATE.BLOCK); this.blockFrames = 0; this.physics(0.7); return; }
 
@@ -398,6 +448,12 @@ export class Fighter {
       case STATE.BLOCK: return s.block(this.clock);
       case STATE.CROUCH: return s.crouch();
       case STATE.AIR: return s.air(this.vy);
+      case STATE.DASH:
+        // A dash that looks like a walk is a walk. A character that describes
+        // one gets it; otherwise its walk is run at the speed the dash
+        // implies, which at least moves the legs faster than the ground does.
+        return s.dash ? s.dash(this.clock, this.dashDir === this.facing ? 1 : -1)
+          : s.walk(this.clock * 2.2, this.dashDir === this.facing ? 1 : -1);
       case STATE.WALK: return s.walk(this.clock, this.walkDir);
       default: return s.idle(this.clock);
     }

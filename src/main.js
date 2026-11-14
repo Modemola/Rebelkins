@@ -226,6 +226,9 @@ function announce(text, ms, voice) {
 function readIntent(pad) {
   return {
     move: input.axis(pad),
+    // Right is claimed first, so a player mashing both directions dashes
+    // forward rather than nowhere. Claiming consumes the tap either way.
+    dash: input.takeDouble(pad, 'right') ? 1 : input.takeDouble(pad, 'left') ? -1 : 0,
     crouch: input.held(pad, 'down'),
     jump: input.take(pad, 'up'),
     guard: input.held(pad, 'guard'),

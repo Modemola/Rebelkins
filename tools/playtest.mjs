@@ -1134,6 +1134,52 @@ try {
   check(`every move connects with ${SLACK} units of reach to spare`, reachReport.length === 0,
     reachReport.length ? reachReport.join(', ') : `${IDS.length * 3} of ${IDS.length * 3}`);
 
+  console.log('\ndashing');
+  // Through the keyboard, not by calling startDash: the double tap has to
+  // survive the input buffer, and a dash nobody can actually input is not a
+  // movement option. Walking the same number of frames is the control -- a
+  // dash that covers the same ground is a walk with a different name.
+  const dash = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    g.start('kin06s', 'ai', 'kin09s');
+    await new Promise((r) => setTimeout(r, 300));
+    const m = g.match;
+    m.phase = 'fight';
+    g.ai.set('still');
+    const tap = (code) => {
+      dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
+      dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true }));
+    };
+    const frames = (n) => new Promise((done) => {
+      let i = 0;
+      const go = () => (++i >= n ? done() : requestAnimationFrame(go));
+      requestAnimationFrame(go);
+    });
+    const run = async (doubleTap) => {
+      m.a.x = -200; m.b.x = 260; m.a.vx = 0;
+      m.a.setState('idle');
+      const from = m.a.x;
+      if (doubleTap) { tap('KeyD'); tap('KeyD'); } else {
+        dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', bubbles: true }));
+      }
+      let sawDash = false;
+      for (let i = 0; i < 12; i++) {
+        await frames(1);
+        if (m.a.state === 'dash') sawDash = true;
+      }
+      const moved = m.a.x - from;
+      dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyD', bubbles: true }));
+      await frames(14);
+      return { moved, sawDash };
+    };
+    const dashed = await run(true);
+    const walked = await run(false);
+    return { dashed, walked };
+  });
+  check('a double tap dashes', dash.dashed.sawDash && dash.dashed.moved > dash.walked.moved * 1.5,
+    `${dash.dashed.moved.toFixed(0)}px dashing against ${dash.walked.moved.toFixed(0)}px walking `
+    + `over the same twelve frames`);
+
   console.log('\nchains');
   // The whole reason pressing buttons in order is worth anything. Three
   // separate claims, because they fail separately: that the cancel is
