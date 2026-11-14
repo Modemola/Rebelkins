@@ -67,7 +67,7 @@ await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle' });
 // Against the roster, not a literal: this read 10 and hung for thirty
 // seconds the first time a character was added.
 const { IDS } = await import('./spar.mjs');
-await page.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+await page.waitForFunction((n) => window.__KINWAR__ && Object.keys(window.__KINWAR__.rigs).length === n,
   IDS.length, { timeout: 30000 });
 
 // Both corners driven by the AI, so it is the game playing itself rather than
@@ -79,10 +79,10 @@ const PAIRS = process.argv.includes('--pairs')
 
 const frames = [];
 for (const [a, b] of PAIRS) {
-  await page.evaluate(({ a: x, b: y }) => { window.__REBELKIN__.start(x, 'ai', y); }, { a, b });
+  await page.evaluate(({ a: x, b: y }) => { window.__KINWAR__.start(x, 'ai', y); }, { a, b });
   await page.waitForTimeout(1800);
   const got = await page.evaluate(async ({ shots }) => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const { AI } = await import('/src/fight/ai.js');
     const p1 = new AI('mean');
     const cv = document.getElementById('stage');
@@ -169,7 +169,7 @@ const sheet = await page.evaluate(async ({ frames, wide }) => {
   ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.font = '700 15px ui-sans-serif, system-ui, sans-serif';
   ctx.fillStyle = '#efeaf7';
-  ctx.fillText('REBELKIN', 16, 24);
+  ctx.fillText('KIN WAR', 16, 24);
   imgs.forEach((im, i) => {
     const x = (i % cols) * W;
     const y = 34 + Math.floor(i / cols) * (H + pad);

@@ -89,7 +89,7 @@ const png = await page.evaluate(async (rows) => {
 
   ctx.fillStyle = '#efeaf7';
   ctx.font = '700 25px ui-sans-serif, system-ui, sans-serif';
-  ctx.fillText('REBELKIN — one picture per character', PAD, 46);
+  ctx.fillText('KIN WAR — one picture per character', PAD, 46);
   ctx.font = '13px ui-sans-serif, system-ui, sans-serif';
   ctx.fillStyle = '#9b94ab';
   ctx.fillText('Same character, same outfit, same lighting. One arm punched straight out SIDEWAYS (not toward camera), fist past the body outline,', PAD, 72);

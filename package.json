@@ -1,8 +1,8 @@
 {
-  "name": "rebelkin-fighter",
+  "name": "kin-war",
   "version": "0.1.0",
   "private": true,
-  "description": "A RebelKin fighting game. Characters are rigged from single illustrations.",
+  "description": "KIN WAR. Characters are rigged from single illustrations.",
   "type": "module",
   "scripts": {
     "start": "npx --yes http-server . -p 8080 -c-1",

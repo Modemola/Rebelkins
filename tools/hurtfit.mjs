@@ -69,11 +69,11 @@ await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle' });
 // Against the roster, not a literal: a count of 10 here hung for thirty
 // seconds the first time a character was added.
 const { IDS, SIDE_IDS } = await import('./spar.mjs');
-await page.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+await page.waitForFunction((n) => window.__KINWAR__ && Object.keys(window.__KINWAR__.rigs).length === n,
   IDS.length, { timeout: 30000 });
 
 const rows = await page.evaluate(({ ids }) => {
-  const g = window.__REBELKIN__;
+  const g = window.__KINWAR__;
   const W = 1000; const H = 760; const BASE = 700;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;

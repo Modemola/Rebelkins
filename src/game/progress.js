@@ -11,7 +11,7 @@
  * your rank is worse than one that forgets it.
  */
 
-const KEY = 'rebelkin.progress';
+const KEY = 'kinwar.progress';
 
 /** Wins needed to reach each rank. Index is the rank. */
 const LADDER = [0, 1, 3, 6, 10];

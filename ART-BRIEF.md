@@ -1,4 +1,4 @@
-# REBELKIN — character sheet brief
+# KIN WAR — character sheet brief
 
 What to generate, and why each line is in there. The *why* matters: if a
 constraint looks arbitrary, it is probably load-bearing for the rigger, and

@@ -715,7 +715,7 @@ const check = (label, ok, detail = '') => {
 };
 const shot = async (n) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `fight-${n}.png`) }); };
 const state = () => page.evaluate(() => {
-  const g = window.__REBELKIN__;
+  const g = window.__KINWAR__;
   const m = g?.match;
   if (!m) return { match: false };
   const f = (x) => ({ x: Math.round(x.x), y: Math.round(x.y), hp: Math.round(x.health),
@@ -729,15 +729,15 @@ const WEAPON_COUNT = 6;
 // destructures spar.mjs, so the roster size is imported separately rather
 // than written out as a literal that goes stale when a character is added.
 const { IDS } = await import('./spar.mjs');
-const arenaIdsForLook = () => page.evaluate(() => window.__REBELKIN__.ARENAS.map((a) => a.id));
+const arenaIdsForLook = () => page.evaluate(() => window.__KINWAR__.ARENAS.map((a) => a.id));
 
 try {
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => !!window.__REBELKIN__, { timeout: 15000 });
+  await page.waitForFunction(() => !!window.__KINWAR__, { timeout: 15000 });
   console.log('\nboot');
   // Counted against IDS rather than a literal, because the roster grows: the
   // two side-view characters joined it and this read "12 of 10".
-  const loaded = await page.evaluate(() => Object.keys(window.__REBELKIN__.rigs).length);
+  const loaded = await page.evaluate(() => Object.keys(window.__KINWAR__.rigs).length);
   check('rigs loaded', loaded === IDS.length, `${loaded} of ${IDS.length}`);
   const tiles = await page.evaluate(() => [
     document.querySelectorAll('#rosterA .face').length,
@@ -753,7 +753,7 @@ try {
   // invariant instead: a live match always has a pose to draw, checked in the
   // same turn the match is made, before any frame can have run.
   const posesReady = await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.start('kin06s', 'ai', 'kin09s');
     return {
       solved: Object.keys(g.poses).length,
@@ -771,7 +771,7 @@ try {
 
 
   await page.click('#startBtn');
-  await page.evaluate(() => { window.__REBELKIN__.ai.set('still'); });
+  await page.evaluate(() => { window.__KINWAR__.ai.set('still'); });
   await page.waitForTimeout(1600);               // intro
   let s = await state();
   check('match started', s.match && s.phase === 'fight', s.phase);
@@ -779,7 +779,7 @@ try {
   // which were whoever happened to be the default pair, and broke the moment
   // the roster changed without anything being wrong.
   const startHp = await page.evaluate(() => {
-    const m = window.__REBELKIN__.match;
+    const m = window.__KINWAR__.match;
     return { a: m.a.def.health, b: m.b.def.health };
   });
   check('both fighters at full health', s.a.hp === startHp.a && s.b.hp === startHp.b,
@@ -799,10 +799,10 @@ try {
     const errs = [];
     p2.on('pageerror', (e) => errs.push(e.message));
     await p2.goto(`http://localhost:${port}/?skin=force`, { waitUntil: 'networkidle' });
-    await p2.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+    await p2.waitForFunction((n) => window.__KINWAR__ && Object.keys(window.__KINWAR__.rigs).length === n,
       IDS.length, { timeout: 15000 });
     const out = await p2.evaluate(async () => {
-      const g = window.__REBELKIN__;
+      const g = window.__KINWAR__;
       g.start('kin06s', 'ai', 'kin09s');
       await new Promise((r) => setTimeout(r, 1200));
       g.match.phase = 'fight';
@@ -856,7 +856,7 @@ try {
   // something else -- once for a mutant being caught, once for a flake I
   // "fixed" by sampling the jump's peak instead of one frame, which measured
   // the same nothing more carefully.
-  await page.evaluate(() => { window.__REBELKIN__.ai.set('still'); });
+  await page.evaluate(() => { window.__KINWAR__.ai.set('still'); });
   const x0 = (await state()).a.x;
   await page.keyboard.down('KeyD');
   await page.waitForTimeout(500);
@@ -890,7 +890,7 @@ try {
   // once the walking floor moved to 150 the condition could never be met, so
   // the loop walked twenty-six times and never threw a punch.
   const swingFrom = await page.evaluate(() => {
-    const m = window.__REBELKIN__.match;
+    const m = window.__KINWAR__.match;
     return Math.max(m.a.def.moves.light.range, m.a.def.moves.heavy.range) - 16;
   });
   let landed = false;
@@ -918,11 +918,11 @@ try {
   // CPU can reach back -- and a counter-hit cancels the move this check is
   // trying to time. Stand it down for the probes that need one clean swing.
   const quietCpu = () => page.evaluate(() => {
-    window.__REBELKIN__.ai.set('still');   // an opponent that holds still
+    window.__KINWAR__.ai.set('still');   // an opponent that holds still
   });
   await quietCpu();
   const probe = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const a = g.match.a;
     a.x = g.match.b.x - 110;                       // put them in range
     a.health = a.def.health;
@@ -941,7 +941,7 @@ try {
 
   console.log('\nhitstop and effects fire');
   const fxProbe = await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const before = g.fx.sparks.length;
     g.match.onEvent('hit', { contact: { x: g.match.a.x, y: -120 },
       move: g.match.a.def.moves.heavy, attacker: g.match.a, defender: g.match.b, ko: false });
@@ -975,7 +975,7 @@ try {
   console.log('\nKO ends the round');
   await quietCpu();
   await page.evaluate(() => {
-    const m = window.__REBELKIN__.match;
+    const m = window.__KINWAR__.match;
     m.b.health = 1;
     m.a.health = m.a.def.health;
     m.a.x = m.b.x - 100;
@@ -988,7 +988,7 @@ try {
     // range before the active frames arrive. What this check is about is the
     // round ending when the last point of health goes, not the keyboard.
     await page.evaluate(() => {
-      const m = window.__REBELKIN__.match;
+      const m = window.__KINWAR__.match;
       if (!m || m.phase !== 'fight') return;
       m.b.health = 1;
       m.a.x = m.b.x - 100;
@@ -1013,7 +1013,7 @@ try {
 
   console.log('\naudio');
   const au = await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     return { ready: g.sfx.ready, state: g.sfx.ctx ? g.sfx.ctx.state : 'none', ...window.__AUDIO__ };
   });
   check('audio context opened on the first gesture', au.ctxs >= 1 && au.ready, `state ${au.state}`);
@@ -1025,12 +1025,12 @@ try {
   // ever calls it. Disabling the one line that does was invisible here, because
   // this check reaches past that line and rings the bell itself.
   const before = await page.evaluate(() => window.__AUDIO__.osc + window.__AUDIO__.buf);
-  await page.evaluate(() => { window.__REBELKIN__.sfx.hit(98, false); window.__REBELKIN__.sfx.block(); });
+  await page.evaluate(() => { window.__KINWAR__.sfx.hit(98, false); window.__KINWAR__.sfx.block(); });
   const after = await page.evaluate(() => window.__AUDIO__.osc + window.__AUDIO__.buf);
   check('the impact voice builds its layers', after - before >= 3, `${before} -> ${after}`);
 
   const wired = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const real = g.sfx.hit.bind(g.sfx);
     let calls = 0;
     g.sfx.hit = (...a) => { calls++; return real(...a); };
@@ -1059,7 +1059,7 @@ try {
   // which it was measured doing. What mutes the game is the master gain, so
   // that is what gets read, after waiting out the ramp setMuted schedules.
   const muteCheck = await page.evaluate(async () => {
-    const g = window.__REBELKIN__.sfx;
+    const g = window.__KINWAR__.sfx;
     const settle = () => new Promise((r) => setTimeout(r, 220));   // ~10 time constants
     const gain = () => (g.master ? g.master.gain.value : null);
     g.setMuted(true);
@@ -1091,7 +1091,7 @@ try {
   // time as asking whether it connects at all.
   const SLACK = 12;
   const reachReport = await page.evaluate(async (slack) => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const bad = [];
     for (const def of g.ROSTER) {
       g.start(def.id, 'ai', def.id === 'kin06s' ? 'kin09s' : 'kin06s');
@@ -1140,7 +1140,7 @@ try {
   // one of those is false there is no guess to make and the guard goes back
   // to being a button you hold.
   const mix = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const out = {};
     const bout = async (slot, crouchBlock) => {
       g.start('kin06s', 'ai', 'kin09s');
@@ -1182,7 +1182,7 @@ try {
   // movement option. Walking the same number of frames is the control -- a
   // dash that covers the same ground is a walk with a different name.
   const dash = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.start('kin06s', 'ai', 'kin09s');
     await new Promise((r) => setTimeout(r, 300));
     const m = g.match;
@@ -1229,7 +1229,7 @@ try {
   // cannot cover is a combo on paper only -- and that a whiff cannot be
   // cancelled, which is what keeps a heavy a commitment.
   const chains = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const out = {};
     const run = async (id, foe, slots, connectFirst) => {
       g.start(id, 'ai', foe);
@@ -1277,7 +1277,7 @@ try {
   // body. It reads as the pair occupying the same space, and it is the thing
   // people actually point at when they say the fighters overlap.
   const zOrder = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.start('kin06s', 'ai', 'kin09s');
     await new Promise((r) => setTimeout(r, 300));
     const m = g.match;
@@ -1305,12 +1305,12 @@ try {
   // Each of the ten was rigged from its own illustration, so a bad polygon or a
   // pose naming a part that character does not have would only ever show up on
   // that one character. Run them all.
-  const roster = await page.evaluate(() => window.__REBELKIN__.ROSTER.map((d) => d.id));
+  const roster = await page.evaluate(() => window.__KINWAR__.ROSTER.map((d) => d.id));
   const broken = [];
   for (const id of roster) {
     const foe = id === 'kin06s' ? 'kin09s' : 'kin06s';
     const report = await page.evaluate(async ([who, against]) => {
-      const g = window.__REBELKIN__;
+      const g = window.__KINWAR__;
       const errs = [];
       const onErr = (e) => errs.push(String(e.message || e.error?.message || e));
       addEventListener('error', onErr);
@@ -1345,12 +1345,12 @@ try {
   }
   if (broken.length) console.log(`  broken: ${broken.join('; ')}`);
 
-  await page.evaluate(() => window.__REBELKIN__.start('kin06s', 'ai', 'kin09s'));
+  await page.evaluate(() => window.__KINWAR__.start('kin06s', 'ai', 'kin09s'));
   await page.waitForTimeout(1500);
 
   console.log('\nloadout');
   const loadout = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const W = await import('./src/data/weapons.js');
     const out = { badReach: [], badTable: [], armedPairs: 0, wrongScope: [], offered: [], rank: null, persisted: null };
 
@@ -1443,7 +1443,7 @@ try {
     const promoted = g.progress.winMatch();
     out.rank = { atStart, midway, atTop, total: W.WEAPONS.length,
       promoted: promoted.promoted, wins: promoted.wins };
-    out.persisted = JSON.parse(localStorage.getItem('rebelkin.progress') || 'null');
+    out.persisted = JSON.parse(localStorage.getItem('kinwar.progress') || 'null');
     g.progress.setWins(0);
     return out;
   });
@@ -1468,7 +1468,7 @@ try {
   // and one combination driven through the real simulation, to prove the
   // wiring and not just the arithmetic
   const armedHit = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const swing = async (weaponId) => {
       g.setWeapon(weaponId);
       g.start('kin06s', 'ai', 'kin09s');
@@ -1523,7 +1523,7 @@ try {
   const swing = async (holdGuard, startHp) => {
     if (holdGuard) await page.keyboard.down('ShiftRight');
     const dealt = await page.evaluate(async (hp) => {
-      const g = window.__REBELKIN__;
+      const g = window.__KINWAR__;
       const m = g.match;
       m.phase = 'fight';
       m.b.health = hp;
@@ -1552,7 +1552,7 @@ try {
     return dealt;
   };
 
-  await page.evaluate(() => window.__REBELKIN__.start('kin06s', '2p', 'kin09s'));
+  await page.evaluate(() => window.__KINWAR__.start('kin06s', '2p', 'kin09s'));
   await page.waitForTimeout(1500);
   const clean = await swing(false, 1120);
   const blocked = await swing(true, 1120);
@@ -1580,10 +1580,10 @@ try {
   // is not worth trying: a fighter put into block without the intent behind it
   // leaves block again on its own next frame, so the swings land clean and the
   // measurement quietly becomes one about something else.
-  await page.evaluate(() => { window.__REBELKIN__.start('kin06s', '2p', 'kin09s'); });
+  await page.evaluate(() => { window.__KINWAR__.start('kin06s', '2p', 'kin09s'); });
   await page.waitForTimeout(600);
   await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.match.phase = 'fight';
     g.match.b.guard = 1;
     window.__breaks = 0;
@@ -1599,14 +1599,14 @@ try {
 
   await page.keyboard.down('ShiftRight');       // P2 guard, held
   await page.waitForTimeout(1500);
-  const afterHold = await page.evaluate(() => window.__REBELKIN__.match.b.guard);
+  const afterHold = await page.evaluate(() => window.__KINWAR__.match.b.guard);
   await page.keyboard.up('ShiftRight');
   await page.waitForTimeout(1200);
-  const afterRest = await page.evaluate(() => window.__REBELKIN__.match.b.guard);
+  const afterRest = await page.evaluate(() => window.__KINWAR__.match.b.guard);
 
   await page.keyboard.down('ShiftRight');
   const meter = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const m = g.match;
     const frame = () => new Promise((r) => requestAnimationFrame(r));
     const bx = m.b.x;
@@ -1651,7 +1651,7 @@ try {
   // itself forever. This is pure frame data, so it is checked on every move
   // rather than sampled.
   const loops = await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const bad = [];
     for (const d of g.ROSTER) {
       for (const [slot, m] of Object.entries(d.moves)) {
@@ -1669,12 +1669,12 @@ try {
   // Driven through the real keys, because the bug was in the state machine's
   // reading of the intent and a hand-made intent would have hidden it.
   await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.start('kin06s', 'ai', 'kin09s');
   });
   await page.waitForTimeout(500);
   await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.ai.set('still');
     g.match.phase = 'fight';
     window.__saw = { block: false, attack: false };
@@ -1686,7 +1686,7 @@ try {
   });
   await page.keyboard.down('Space');            // P1 guard
   await page.waitForTimeout(200);
-  const guardingNow = await page.evaluate(() => window.__saw.block && window.__REBELKIN__.match.a.state === 'block');
+  const guardingNow = await page.evaluate(() => window.__saw.block && window.__KINWAR__.match.a.state === 'block');
   await page.keyboard.down('KeyJ');             // P1 light, guard still held
   await page.waitForTimeout(260);
   const outOfBlock = await page.evaluate(() => {
@@ -1702,7 +1702,7 @@ try {
   // A mirror match: the two fighters are the same character, so a pose cache
   // keyed by character collides and both are drawn in one of the two poses.
   const mirror = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.start('kin06s', '2p', 'kin06s');
     await new Promise((r) => setTimeout(r, 400));
     const m = g.match;
@@ -1730,7 +1730,7 @@ try {
 
   console.log('\nbest of three');
   const rounds = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.start('kin06s', 'ai', 'kin09s');
     await new Promise((r) => setTimeout(r, 80));
     g.ai.set('still');            // an opponent that holds still to be measured
@@ -1774,7 +1774,7 @@ try {
   // characters occupy, which is what legibility needs: how far each character
   // pixel sits from the backdrop pixel directly behind it.
   const look = await page.evaluate(async (ids) => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const cv = document.getElementById('stage');
     const c2 = cv.getContext('2d');
     const lumOf = (data) => {
@@ -1861,7 +1861,7 @@ try {
   // matters: a renderer slow enough to need catch-up ticks gets a bigger
   // denominator, so per-tick fill falls as the real cost rises.
   const fillPerFrame = async () => page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     window.__DRAW__.calls = 0;
     window.__DRAW__.px = 0;
     const r0 = g.loop.renders;
@@ -1877,12 +1877,12 @@ try {
   const arenaIds = await arenaIdsForLook();
   for (const id of arenaIds) {
     await page.evaluate(([a]) => {
-      window.__REBELKIN__.setArena(a);
-      window.__REBELKIN__.start('kin06s', 'ai', 'kin09s');
+      window.__KINWAR__.setArena(a);
+      window.__KINWAR__.start('kin06s', 'ai', 'kin09s');
     }, [id]);
     await page.waitForTimeout(1800);
     // keep the crowd and the bounce light live while measuring
-    await page.evaluate(() => { window.__REBELKIN__.arena().hit(1); });
+    await page.evaluate(() => { window.__KINWAR__.arena().hit(1); });
     // Median of seven samples, not one. loop.fps is a half-second average, and
     // a single one of those is decided as much by what else the host is doing
     // as by the renderer -- the same build measured 60 and 45 on consecutive
@@ -1890,10 +1890,10 @@ try {
     // hold up, not did it stutter once.
     const fill = await fillPerFrame();
     const r = await page.evaluate(() => ({
-      name: window.__REBELKIN__.arena().def.name,
-      people: window.__REBELKIN__.arena().people.length,
-      bits: window.__REBELKIN__.arena().bits.length,
-      fps: window.__REBELKIN__.loop.fps,
+      name: window.__KINWAR__.arena().def.name,
+      people: window.__KINWAR__.arena().people.length,
+      bits: window.__KINWAR__.arena().bits.length,
+      fps: window.__KINWAR__.loop.fps,
     }));
     r.px = fill.px;
     r.calls = fill.calls;
@@ -1921,7 +1921,7 @@ try {
     // to the rows that have paint in them; uncropped, these four come to more
     // than three screens of compositing every frame.
     const layers = await page.evaluate(() => {
-      const L = window.__REBELKIN__.arena().layers;
+      const L = window.__KINWAR__.arena().layers;
       const cv = document.getElementById('stage');
       const h = cv.height / (cv.width / window.innerWidth);
       return {
@@ -1937,7 +1937,7 @@ try {
   }
 
   console.log('\nperformance');
-  await page.evaluate(() => window.__REBELKIN__.start('kin06s', 'ai', 'kin09s'));
+  await page.evaluate(() => window.__KINWAR__.start('kin06s', 'ai', 'kin09s'));
   await page.waitForTimeout(1200);
   s = await state();
   check('runs at 50fps or better', s.fps >= 50, `${s.fps} fps`);
@@ -1951,7 +1951,7 @@ try {
   // chains running, which pushed it to 67 and quietly ate a third of the
   // framerate. Counted across a restart, because that is where it broke.
   const clock = await page.evaluate(async () => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const take = async () => {
       const f0 = g.loop.frame;
       const r0 = g.loop.renders;
@@ -1990,17 +1990,17 @@ try {
   // grow until their shoes leave the bottom of the frame. The phone cannot
   // catch that -- there, width binds whatever the camera does.
   await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     g.start('kin06s', 'ai', 'kin09s');
   });
   await page.waitForTimeout(1500);
   await page.evaluate(() => {
-    const m = window.__REBELKIN__.match;
+    const m = window.__KINWAR__.match;
     m.a.x = -60; m.b.x = 60;
   });
   await page.waitForTimeout(700);
   const wide = await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const cv = document.getElementById('stage');
     const dpr = cv.width / window.innerWidth;
     const m = g.match;
@@ -2041,13 +2041,13 @@ try {
     `${phoneMenu.faceSize.toFixed(0)}px tiles, ${phoneMenu.faces} of them`);
   await shot('5-phone-select');
 
-  await page.evaluate(() => window.__REBELKIN__.start('kin06s', 'ai', 'kin09s'));
+  await page.evaluate(() => window.__KINWAR__.start('kin06s', 'ai', 'kin09s'));
   await page.waitForTimeout(1800);
   // Measured at fighting distance, which is where the camera spends the round,
   // rather than at the opening spacing -- but measured, not assumed: the camera
   // is left to settle on its own after they are placed.
   await page.evaluate(() => {
-    const m = window.__REBELKIN__.match;
+    const m = window.__KINWAR__.match;
     m.a.x = -60; m.b.x = 60;
   });
   await page.waitForTimeout(700);
@@ -2055,7 +2055,7 @@ try {
   // they were the size of a thumbnail with two thirds of the frame empty. What
   // matters is how big they are and where the floor is, so that is measured.
   const phoneFight = await page.evaluate(() => {
-    const g = window.__REBELKIN__;
+    const g = window.__KINWAR__;
     const cv = document.getElementById('stage');
     const m = g.match;
     const dpr = cv.width / window.innerWidth;

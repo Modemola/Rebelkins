@@ -1,4 +1,4 @@
-# REBELKIN — side-view character sheet brief
+# KIN WAR — side-view character sheet brief
 
 **This replaces every earlier brief, ART-RESOLUTION.md included. Use only
 this file.**

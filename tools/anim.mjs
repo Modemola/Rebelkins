@@ -136,7 +136,7 @@ const frames = await page.evaluate(async ({ id, what, pad, CW, CH, onion, skin }
   return out;
 }, { id: ID, what: WHAT, pad: PAD, CW, CH, onion: ONION, skin: SKIN });
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebelkin-anim-'));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kinwar-anim-'));
 frames.forEach((d, i) => {
   fs.writeFileSync(path.join(dir, `f${String(i).padStart(4, '0')}.png`), Buffer.from(d.split(',')[1], 'base64'));
 });

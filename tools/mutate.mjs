@@ -599,7 +599,7 @@ if (!args.includes('--here')) {
     console.error('commit first, or pass --here to mutate this checkout in place.');
     process.exit(1);
   }
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rebelkin-mutate-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kinwar-mutate-'));
   git('worktree', 'add', '--detach', dir, 'HEAD');
   try {
     const r = spawnSync('node', ['tools/mutate.mjs', ...args, '--here'], { cwd: dir, stdio: 'inherit' });

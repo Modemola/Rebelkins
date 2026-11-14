@@ -1,4 +1,4 @@
-# RebelKin — fighter
+# KIN WAR — fighter
 
 A one-on-one fighting game. You play the Kin.
 

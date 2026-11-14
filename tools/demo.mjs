@@ -124,7 +124,7 @@ const port = await new Promise((resolve, reject) => {
   attempt();
 });
 
-const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rebelkin-demo-'));
+const work = fs.mkdtempSync(path.join(os.tmpdir(), 'kinwar-demo-'));
 const framesDir = path.join(work, 'frames');
 fs.mkdirSync(framesDir);
 
@@ -141,7 +141,7 @@ await page.goto(`http://127.0.0.1:${port}/${PHONE ? '?pad=1' : ''}`, { waitUntil
 // Against the roster, not a literal: a count of 10 here hung for thirty
 // seconds the first time a character was added.
 const { IDS } = await import('./spar.mjs');
-await page.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+await page.waitForFunction((n) => window.__KINWAR__ && Object.keys(window.__KINWAR__.rigs).length === n,
   IDS.length, { timeout: 30000 });
 
 // A gesture, so the mixer opens. Nothing is heard -- there is no device --
@@ -151,7 +151,7 @@ await page.mouse.click(W / 2, H - 40);
 await page.waitForTimeout(250);
 
 await page.evaluate(async () => {
-  const g = window.__REBELKIN__;
+  const g = window.__KINWAR__;
   const { AI } = await import('/src/fight/ai.js');
   const d = { p1: new AI('mean'), held: new Set(), sound: [], frame: 0,
     touchMode: new URLSearchParams(location.search).get('pad') === '1' };
@@ -300,7 +300,7 @@ for (const scene of SCENES) {
     // The arena is chosen before the match so the opening frame is already in
     // it; starting first and switching after shows one frame of the old one.
     await page.evaluate(({ a, b, arena }) => {
-      const g = window.__REBELKIN__;
+      const g = window.__KINWAR__;
       window.__DEMO__.release();
       g.setArena(arena);
       g.start(a, 'ai', b);
@@ -315,7 +315,7 @@ for (const scene of SCENES) {
     // by frame -- the only thing arranged is the health it starts from.
     if (scene.finish && i === frames - scene.finish) {
       await page.evaluate(() => {
-        const m = window.__REBELKIN__.match;
+        const m = window.__KINWAR__.match;
         if (m && m.phase === 'fight') m.b.health = Math.min(m.b.health, m.b.def.health * 0.08);
       });
     }

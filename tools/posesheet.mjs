@@ -59,11 +59,11 @@ await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle' });
 // Against the roster, not a literal: this read 10 and hung for thirty
 // seconds the first time a character was added.
 const { IDS } = await import('./spar.mjs');
-await page.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__REBELKIN__.rigs).length === n,
+await page.waitForFunction((n) => window.__KINWAR__ && Object.keys(window.__KINWAR__.rigs).length === n,
   IDS.length, { timeout: 30000 });
 
 const sheet = await page.evaluate(async ({ CW, CH }) => {
-  const g = window.__REBELKIN__;
+  const g = window.__KINWAR__;
   const roster = g.ROSTER;
   const slots = ['light', 'low', 'heavy', 'special'];
   // stance, then three phases of each move: the wind-up, the frame the hitbox

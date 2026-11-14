@@ -1,5 +1,5 @@
 /**
- * REBELKIN — boot and the render pass.
+ * KIN WAR — boot and the render pass.
  *
  * The simulation runs at a fixed 60Hz and knows nothing about the screen; this
  * file reads the state it produced and photographs it.
@@ -585,7 +585,7 @@ function wireMenu() {
   });
 
   let muted = false;
-  try { muted = localStorage.getItem('rebelkin.muted') === '1'; } catch { /* private window */ }
+  try { muted = localStorage.getItem('kinwar.muted') === '1'; } catch { /* private window */ }
   const muteBtn = el('muteBtn');
   const paintMute = () => {
     sfx.setMuted(muted);
@@ -594,7 +594,7 @@ function wireMenu() {
   };
   muteBtn.addEventListener('click', () => {
     muted = !muted;
-    try { localStorage.setItem('rebelkin.muted', muted ? '1' : '0'); } catch { /* ignore */ }
+    try { localStorage.setItem('kinwar.muted', muted ? '1' : '0'); } catch { /* ignore */ }
     paintMute();
   });
   paintMute();
@@ -642,7 +642,7 @@ wireMenu();
 loadRigs().then(() => {
   const loop = new Loop({ update, render });
   loop.start();
-  window.__REBELKIN__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
+  window.__KINWAR__ = { get match() { return match; }, rigs, fx, cam, loop, DEFS, ai, sfx,
     ROSTER, ARENAS, arena, debugDraw, STAGE, WEAPONS, progress, skinner, meshes,
     get drawOrder() { return drawOrder; },
     setWeapon: (id) => { p1Weapon = id; p2Weapon = id; repaintLoadout(); },
@@ -659,6 +659,6 @@ loadRigs().then(() => {
       startMatch();
     } };
 }).catch((err) => {
-  el('select').innerHTML = `<div class="selWrap"><h1>REBELKIN</h1>
+  el('select').innerHTML = `<div class="selWrap"><h1>KIN WAR</h1>
     <p class="tag">${err.message}</p></div>`;
 });

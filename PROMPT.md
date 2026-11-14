@@ -1,4 +1,4 @@
-# REBELKIN — the standing brief
+# KIN WAR — the standing brief
 
 Paste this at the top of any session working on this game. It is not a pep
 talk; every rule in it exists because something shipped broken without it.
@@ -7,8 +7,8 @@ talk; every rule in it exists because something shipped broken without it.
 
 ## 1. The job
 
-Build REBELKIN: a browser fighting game starring ten RebelKin characters, each
-rigged from a single illustration. Cinematic, not photoreal — the art is
+Build KIN WAR: a browser fighting game whose characters are each rigged from
+a single illustration. Cinematic, not photoreal — the art is
 stylised and the rendering should flatter it: real lighting, real depth, real
 weight, on characters that still look drawn.
 
@@ -107,7 +107,7 @@ Every arena must have:
   backdrop, a KO changes the lighting, the crowd responds. The stage is not
   wallpaper behind the fight; it is in the fight.
 - **Its own identity.** Each arena has a palette, a time of day and a reason to
-  exist in the RebelKin world. Name it. If you cannot say what the place *is*,
+  exist in the KIN WAR world. Name it. If you cannot say what the place *is*,
   it will look like nothing.
 
 **Legibility outranks spectacle.** The fighters must read instantly against any

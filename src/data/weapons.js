@@ -1,5 +1,5 @@
 /**
- * What a RebelKin brings to the fight, and what it changes.
+ * What a fighter brings to the fight, and what it changes.
  *
  * A weapon is not a new moveset. It is a modifier on the moves a character
  * already has, plus something drawn in the hand or on the boot -- which keeps
