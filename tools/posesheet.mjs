@@ -65,7 +65,7 @@ await page.waitForFunction((n) => window.__REBELKIN__ && Object.keys(window.__RE
 const sheet = await page.evaluate(async ({ CW, CH }) => {
   const g = window.__REBELKIN__;
   const roster = g.ROSTER;
-  const slots = ['light', 'heavy', 'special'];
+  const slots = ['light', 'low', 'heavy', 'special'];
   // stance, then three phases of each move: the wind-up, the frame the hitbox
   // is live, and partway back through the recovery.
   const cols = 1 + slots.length * 3;

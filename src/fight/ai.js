@@ -111,7 +111,9 @@ function reachNow(move, foe) {
 /** Cached per fighter: the ranges only change when the loadout does. */
 function profile(f) {
   if (f._aiProfile && f._aiProfile.weapon === f.weapon) return f._aiProfile;
-  const slots = ['light', 'heavy', 'special'];
+  // From the character, not a literal: a move the profile cannot see is a
+  // move the AI will never throw, and the low sweep was invisible to it.
+  const slots = Object.keys(f.def.moves);
   const moves = slots
     .filter((s) => f.def.moves[s])
     .map((s) => {
@@ -135,6 +137,30 @@ export class AI {
   }
 
   set(level) { this.level = level; this.cfg = DIFFICULTY[level] || DIFFICULTY.brisk; }
+
+  /**
+   * Guard high or crouch, when something is already coming.
+   *
+   * A guess, not a lookup, and `block` is how often it guesses right -- the
+   * same dial that decides whether it guards at all, used for the same kind
+   * of question. A tier that always read the low would make the sweep
+   * pointless and one that never did would make it unanswerable; the mix-up
+   * only exists in the space between.
+   *
+   * Held for the length of the swing rather than rerolled every frame, or it
+   * would land on the right height at some point during every attack.
+   */
+  guardLow(foe) {
+    if (foe.state !== STATE.ATTACK || !foe.move) return false;
+    const swing = foe.move.name;
+    if (swing !== this._heightFor) {
+      this._heightFor = swing;
+      this._crouching = foe.move.low
+        ? Math.random() < this.cfg.block
+        : Math.random() > this.cfg.block;
+    }
+    return this._crouching;
+  }
 
   think(me, foe, frame) {
     const intent = { move: 0, dash: 0, crouch: false, jump: false, guard: false, attack: null };

@@ -110,6 +110,16 @@ export const KIN09S = {
         armL: { rot: -0.3 }, foreL: { rot: -0.5 }, armR: { rot: -0.2 }, foreR: { rot: -0.45 },
         legL: { rot: 0.12 }, legR: { rot: -0.14 }, shinL: { rot: 0.24 }, shinR: { rot: 0.2 } };
     },
+    /**
+     * The crouching guard. Without one, a low attack would be unblockable
+     * rather than a mix-up, which is a worse game than having no low at all.
+     */
+    blockLow(t) {
+      const j = Math.sin(t * 6.4) * 0.03;
+      return { torso: { rot: 0.14 + j, y: 88 }, hips: { rot: -0.07 }, head: { rot: 0.12 },
+        armR: { rot: -0.22 }, foreR: { rot: -0.38 }, armL: { rot: -0.30 }, foreL: { rot: -0.46 },
+        legL: { rot: 0.3 }, legR: { rot: -0.34 }, shinL: { rot: 0.5 }, shinR: { rot: 0.46 } };
+    },
     hurt(f) {
       const k = easeOut(seg(f, 0, 3)) - easeOut(seg(f, 5, 16));
       return { torso: { rot: 0.3 * k, x: 62 * k }, hips: { rot: -0.12 * k }, head: { rot: 0.44 * k },
@@ -316,6 +326,49 @@ export const KIN09S = {
           legR: { rot: -0.14 }, shinR: { rot: 0.24 }, legL: { rot: 0.03 } },
 
         { at: 34, rest: true, ease: 'inout' },
+      ]),
+    }),
+
+    /**
+     * A crouching sweep, and the only move in the game that has to be
+     * blocked low.
+     *
+     * Everything else can be guarded standing, so guard was a button you
+     * held and never thought about again. This is the thing that makes the
+     * guard a guess: hold it high and the sweep goes under it, crouch for
+     * the sweep and the Cross lands on your head.
+     *
+     * It stays low on purpose. The thigh only comes to -0.52, which keeps
+     * the boot near the floor instead of lifting it into the Stomp's
+     * territory -- a low that arrives at chest height is just a worse kick.
+     */
+    low: move(RIG, {
+      name: 'scythe', label: 'Scythe',
+      startup: 5, active: 4, recovery: 12,
+      damage: 34, knockback: 180, lift: 0, drive: 130,
+      strikePart: 'shinR', reach: 128, range: 135, low: true,
+      pose: anim({}, [
+        { at: 3, ease: 'out',
+          torso: { rot: 0.14, y: 86 }, hips: { rot: -0.08 }, head: { rot: 0.14 },
+          legL: { rot: 0.32 }, shinL: { rot: 0.54 },
+          legR: { rot: -0.20 }, shinR: { rot: 1.12 },
+          armR: { rot: -0.18 }, foreR: { rot: -0.30 }, armL: { rot: -0.24 } },
+
+        { at: 8, ease: 'whip',
+          torso: { rot: 0.18, x: 18, y: 90 }, hips: { rot: -0.14 }, head: { rot: 0.16 },
+          legL: { rot: 0.34 }, shinL: { rot: 0.56 },
+          legR: { rot: -0.52 }, shinR: { rot: 0.06 },
+          armR: { rot: -0.14 }, foreR: { rot: -0.26 }, armL: { rot: -0.20 } },
+
+        { at: 10, ease: 'back',
+          torso: { rot: 0.19, x: 24, y: 91 },
+          legR: { rot: -0.56 }, shinR: { rot: -0.02 } },
+
+        { at: 16, ease: 'snap',
+          torso: { rot: 0.14, x: 8, y: 87 }, hips: { rot: -0.08 },
+          legR: { rot: -0.22 }, shinR: { rot: 0.86 } },
+
+        { at: 23, rest: true, ease: 'inout' },
       ]),
     }),
   },

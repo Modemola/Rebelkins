@@ -200,8 +200,12 @@ export class Match {
 
       attacker.hitConnected = true;
       const m = box.move;
+      // A low has to be guarded crouching. Everything else can be guarded
+      // either way, so the only guess is whether the low is coming -- which
+      // is one guess, cleanly, rather than a height system nobody asked for.
       const guarding = defender.state === STATE.BLOCK
-        && Math.sign(attacker.x - defender.x) === defender.facing;
+        && Math.sign(attacker.x - defender.x) === defender.facing
+        && (!m.low || defender.blockLow);
 
       const contact = { x: (box.x + hurt.x) / 2, y: (box.y + hurt.y) / 2 };
 

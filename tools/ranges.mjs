@@ -88,7 +88,7 @@ export function measure(onRow = () => {}) {
   const found = {};
   for (const id of ids) {
     found[id] = {};
-    for (const slot of ['light', 'heavy', 'special']) {
+    for (const slot of Object.keys(DEFS[id].moves)) {
       if (!DEFS[id].moves[slot]) continue;
       // Find a gap that works before searching for the furthest one.
       //

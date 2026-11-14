@@ -1099,7 +1099,7 @@ try {
       const m = g.match;
       m.phase = 'fight';
       g.ai.set('still');          // an opponent that holds still to be measured
-      for (const slot of ['light', 'heavy', 'special']) {
+      for (const slot of Object.keys(m.a.def.moves)) {
         const mv = m.a.def.moves[slot];
         const shipped = mv.reach;
         mv.reach = shipped - slack;
@@ -1133,6 +1133,48 @@ try {
   }, SLACK);
   check(`every move connects with ${SLACK} units of reach to spare`, reachReport.length === 0,
     reachReport.length ? reachReport.join(', ') : `${IDS.length * 3} of ${IDS.length * 3}`);
+
+  console.log('\nthe mix-up');
+  // Three claims. A low beats a standing guard, a crouching guard stops it,
+  // and the guard that stops the low does not also stop everything -- if any
+  // one of those is false there is no guess to make and the guard goes back
+  // to being a button you hold.
+  const mix = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    const out = {};
+    const bout = async (slot, crouchBlock) => {
+      g.start('kin06s', 'ai', 'kin09s');
+      await new Promise((r) => setTimeout(r, 200));
+      const m = g.match;
+      m.phase = 'fight';
+      g.ai.set('still');
+      let kind = null;
+      const prev = m.onEvent;
+      m.onEvent = (k, d) => { prev(k, d); if (!kind && (k === 'hit' || k === 'block')) kind = k; };
+      const mv = m.a.def.moves[slot];
+      m.a.x = m.b.x - ((mv.range ?? 140) - 20);
+      m.a.startMove(slot);
+      for (let i = 0; i < 50 && !kind; i++) {
+        // the defender holds the guard at the height being tested
+        m.b.blockLow = crouchBlock;
+        m.b.setState('block');
+        m.b.blockFrames = 2;
+        await new Promise((r) => requestAnimationFrame(r));
+      }
+      m.onEvent = prev;
+      return kind;
+    };
+    out.lowVsHigh = await bout('low', false);
+    out.lowVsCrouch = await bout('low', true);
+    out.heavyVsCrouch = await bout('heavy', true);
+    return out;
+  });
+  check('a low beats a standing guard', mix.lowVsHigh === 'hit',
+    `standing guard against the sweep: ${mix.lowVsHigh || 'nothing happened'}`);
+  check('a crouching guard stops a low', mix.lowVsCrouch === 'block',
+    `crouching guard against the sweep: ${mix.lowVsCrouch || 'nothing happened'}`);
+  check('crouching does not block everything', mix.heavyVsCrouch === 'block',
+    `crouching guard against the heavy: ${mix.heavyVsCrouch || 'nothing happened'}`);
 
   console.log('\ndashing');
   // Through the keyboard, not by calling startDash: the double tap has to
@@ -1276,7 +1318,7 @@ try {
         g.start(who, 'ai', against);
         const m = g.match;
         // drive it through every state this character can be in
-        for (const slot of ['light', 'heavy', 'special']) {
+        for (const slot of Object.keys(m.a.def.moves)) {
           m.a.x = m.b.x - 100;
           m.a.startMove(slot);
           for (let i = 0; i < 46; i++) await new Promise((r) => requestAnimationFrame(r));

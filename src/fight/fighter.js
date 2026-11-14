@@ -54,8 +54,13 @@ const DASH = {
   back: { frames: 9, recover: 7, speed: 2.05 },
 };
 
-/** The chain. A move cancels only into a strictly higher rank. */
-export const RANK = { light: 0, heavy: 1, special: 2 };
+/**
+ * The chain. A move cancels only into a strictly higher rank.
+ *
+ * The low sweep shares the light's rank: it is a poke that opens a guard, so
+ * it should buy the same pressure a light does and lead to the same places.
+ */
+export const RANK = { light: 0, low: 0, heavy: 1, special: 2 };
 
 export class Fighter {
   constructor(def, { x, facing, pad, weapon = null }) {
@@ -76,6 +81,7 @@ export class Fighter {
     this.hitConnected = false;
     this.clock = 0;          // free-running, for idle breathing
     this.walkDir = 0;
+    this.blockLow = false;
     this.dashDir = 0;
     this.dashFrames = 0;
     this.dashRecover = 0;
@@ -260,7 +266,11 @@ export class Fighter {
         // unreachable, and for the player it meant the attack button did
         // nothing until they let go of guard first.
         if (this.blockFrames > 0) { this.blockFrames--; this.physics(0.80); return; }
-        if (intent.guard && !intent.attack) { this.physics(0.80); return; }
+        if (intent.guard && !intent.attack) {
+          this.blockLow = !!intent.crouch;
+          this.physics(0.80);
+          return;
+        }
         this.setState(STATE.IDLE);
         break;
 
@@ -331,11 +341,25 @@ export class Fighter {
     }
 
     // ---- grounded and free
-    if (intent.attack && this.startMove(intent.attack)) return;
+    // Crouching turns the light into the low. It is the same button, which
+    // is what makes it a mix-up rather than a fourth thing to remember.
+    const wanted = intent.attack === 'light' && intent.crouch && this.def.moves.low
+      ? 'low' : intent.attack;
+    if (wanted && this.startMove(wanted)) return;
 
     if (intent.dash) { this.startDash(intent.dash); this.physics(1); return; }
 
-    if (intent.guard) { this.setState(STATE.BLOCK); this.blockFrames = 0; this.physics(0.7); return; }
+    if (intent.guard) {
+      // Guard height is read every frame, not latched when the block starts:
+      // a player has to be able to switch between a high guard and a crouch
+      // while a string is already coming at them, or the mix-up is decided
+      // before it is thrown.
+      this.blockLow = !!intent.crouch;
+      this.setState(STATE.BLOCK);
+      this.blockFrames = 0;
+      this.physics(0.7);
+      return;
+    }
 
     if (intent.jump) {
       this.vy = -this.def.jumpVel;
@@ -445,7 +469,8 @@ export class Fighter {
       case STATE.ATTACK: return this.move.pose(this.moveFrame, this.move);
       case STATE.HURT: return s.hurt(this.stateFrame);
       case STATE.KO: return s.ko(this.stateFrame);
-      case STATE.BLOCK: return s.block(this.clock);
+      case STATE.BLOCK:
+        return this.blockLow && s.blockLow ? s.blockLow(this.clock) : s.block(this.clock);
       case STATE.CROUCH: return s.crouch();
       case STATE.AIR: return s.air(this.vy);
       case STATE.DASH:

@@ -214,6 +214,25 @@ const MUTANTS = [
     expect: 'reaches the mixer',
   },
   {
+    name: 'a low that can be blocked standing',
+    why: 'the sweep is the only reason the guard is a decision; blockable '
+      + 'high it is a slower light and the guard goes back to a held button',
+    file: 'src/fight/match.js',
+    find: "        && (!m.low || defender.blockLow);",
+    with: "        && (!m.low || true);",
+    expect: 'a low beats a standing guard',
+  },
+  {
+    name: 'a crouching guard that does not crouch',
+    why: 'a low nobody can block is not a mix-up, it is an unblockable',
+    file: 'src/fight/fighter.js',
+    find: '      this.blockLow = !!intent.crouch;\n'
+      + '      this.setState(STATE.BLOCK);',
+    with: '      this.blockLow = false;\n'
+      + '      this.setState(STATE.BLOCK);',
+    expect: 'a crouching guard stops a low',
+  },
+  {
     name: 'a dash that covers no more ground than a walk',
     why: 'a dash exists to do the distance walking is bad at; at walking '
       + 'speed it is a walk with a different name and a recovery attached',
