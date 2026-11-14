@@ -49,6 +49,10 @@ import { execFileSync, spawnSync } from 'node:child_process';
  *
  * The generator is still there and still the path a generated character would
  * take. If one comes back, so do these.
+ *
+ * A fourth was found there later -- the pelvis one, below -- and did not need
+ * retiring, because the bug it describes shipped in a hand-authored pose as
+ * well. It is anchored on that one now.
  */
 const MUTANTS = [
   {
