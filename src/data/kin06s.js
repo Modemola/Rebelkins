@@ -172,31 +172,46 @@ export const KIN06S = {
      */
     light: move(RIG, {
       name: 'jab', label: 'Jab',
-      startup: 4, active: 3, recovery: 10,
+      // Four active frames and a held peak. His lead arm is drawn
+      // foreshortened and tops out 108 units from the root against a body
+      // front edge at 46 -- it cannot be made longer by rotating it, so what
+      // little extension exists has to be visible for long enough to read.
+      startup: 4, active: 4, recovery: 11,
       damage: 44, knockback: 210, lift: 0, drive: 140,
-      strikePart: 'foreL', reach: 112, range: 158,
+      strikePart: 'foreL', reach: 112, range: 170,
       pose: anim({}, [
         // Barely any wind-up -- a jab that telegraphs is not a jab.
         { at: 2, ease: 'out',
           torso: { rot: 0.02, x: -9 }, hips: { rot: 0.03 },
           armL: { rot: 0.10 }, foreL: { rot: -0.14 }, armR: { rot: 0.06 } },
 
+        // The rear hand stays where it is. Pulling it back to clear the line
+        // for the lead glove -- which is what KIN 09's heavy needed -- opens
+        // a hole in his chest here: `armR` is covering a region of the torso
+        // bitmap that was never painted, because in the source drawing the
+        // arm is in front of it. The guard is load-bearing scenery.
         { at: 6, ease: 'whip',
           torso: { rot: 0.15, x: 24, y: 5 }, hips: { rot: -0.12 }, head: { rot: 0.04 },
-          armL: { rot: -0.92 }, foreL: { rot: 1.26 },
+          armL: { rot: -1.18 }, foreL: { rot: 1.74 },
           armR: { rot: 0.12 }, foreR: { rot: -0.10 },
           legR: { rot: -0.08 }, legL: { rot: 0.08 } },
 
         { at: 8, ease: 'back',
           torso: { rot: 0.17, x: 30, y: 6 },
-          armL: { rot: -1.00 }, foreL: { rot: 1.36 } },
+          armL: { rot: -1.34 }, foreL: { rot: 2.02 } },
+
+        // Held out for three frames. A jab is short on this drawing however
+        // it is posed, so the only thing left that can make it read is time.
+        { at: 11, ease: 'inout',
+          torso: { rot: 0.16, x: 31, y: 6 },
+          armL: { rot: -1.30 }, foreL: { rot: 1.98 } },
 
         // Back behind the guard faster than it went out.
-        { at: 12, ease: 'snap',
+        { at: 15, ease: 'snap',
           torso: { rot: 0.05, x: 8, y: 2 }, hips: { rot: -0.04 },
           armL: { rot: -0.18 }, foreL: { rot: 0.26 }, armR: { rot: 0.04 } },
 
-        { at: 17, rest: true, ease: 'inout' },
+        { at: 19, rest: true, ease: 'inout' },
       ]),
     }),
 
@@ -272,9 +287,13 @@ export const KIN06S = {
      */
     special: move(RIG, {
       name: 'stomp', label: 'Stomp',
-      startup: 10, active: 6, recovery: 22,
+      // Nine active frames, not six, and the extension is held through all of
+      // them. At six it snapped out and back inside a sixth of a second,
+      // which reads as the leg being withdrawn rather than driven -- the eye
+      // never gets to register the shape it was thrown into.
+      startup: 10, active: 9, recovery: 23,
       damage: 96, knockback: 540, lift: -70, drive: 380,
-      strikePart: 'shinR', reach: 156, range: 227,
+      strikePart: 'shinR', reach: 156, range: 232,
       pose: anim({}, [
         // Sit down into the back leg. He is heavy, so he loads visibly. The
         // torso coils a little forward here and nowhere else in the move:
@@ -309,19 +328,26 @@ export const KIN06S = {
           torso: { rot: -0.34, x: 30, y: 12 },
           legR: { rot: -1.54 }, shinR: { rot: -0.10 } },
 
+        // Held. Almost nothing moves between 16 and 19 on purpose: the leg
+        // stays out, the body keeps drifting a few units forward, and that
+        // pause is what makes it a kick rather than a flick.
+        { at: 19, ease: 'inout',
+          torso: { rot: -0.33, x: 34, y: 12 },
+          legR: { rot: -1.52 }, shinR: { rot: -0.08 } },
+
         // Back to the chamber before the foot comes down.
-        { at: 22, ease: 'snap',
+        { at: 26, ease: 'snap',
           torso: { rot: -0.12, x: 16, y: 10 }, hips: { rot: -0.16 },
           legR: { rot: -1.10 }, shinR: { rot: 1.20 },
           armR: { rot: 0.20 }, foreR: { rot: 0.14 }, armL: { rot: -0.20 } },
 
         // Plant it. He is 1120 health of platform boot; it lands hard and the
         // settle is in `phases`, not here.
-        { at: 30, ease: 'out',
+        { at: 34, ease: 'out',
           torso: { rot: 0.04, x: 4, y: 6 }, hips: { rot: -0.04 },
           legR: { rot: -0.16 }, shinR: { rot: 0.28 }, legL: { rot: 0.04 } },
 
-        { at: 38, rest: true, ease: 'inout' },
+        { at: 42, rest: true, ease: 'inout' },
       ]),
     }),
   },
