@@ -234,13 +234,32 @@ const MUTANTS = [
     expect: 'a low beats a standing guard',
   },
   {
-    name: 'a crouching guard that does not crouch',
-    why: 'a low nobody can block is not a mix-up, it is an unblockable',
+    name: 'a guard that starts at the wrong height',
+    why: 'the height has to be the one the player is asking for from the '
+      + 'first frame of the guard, not from the second',
     file: 'src/fight/fighter.js',
+    // The height is derived twice: once entering the block, and again on
+    // every frame the block is held. This breaks the entry only, so the
+    // guard is the wrong height for exactly one frame and then corrects
+    // itself -- which is why it does not stop a low from being blocked, and
+    // why it was aimed at the wrong check for a long time. The frame itself
+    // is real: a low arriving on it goes through.
     find: '      this.blockLow = !!intent.crouch;\n'
       + '      this.setState(STATE.BLOCK);',
     with: '      this.blockLow = false;\n'
       + '      this.setState(STATE.BLOCK);',
+    expect: 'the guard height follows the crouch key',
+  },
+  {
+    name: 'a crouching guard that does not crouch',
+    why: 'a low nobody can block is not a mix-up, it is an unblockable',
+    file: 'src/fight/fighter.js',
+    // The other derivation: the one that holds while the guard is held, and
+    // so the one a sweep thrown at a crouching player actually meets.
+    find: '        if (intent.guard && !intent.attack) {\n'
+      + '          this.blockLow = !!intent.crouch;',
+    with: '        if (intent.guard && !intent.attack) {\n'
+      + '          this.blockLow = false;',
     expect: 'a crouching guard stops a low',
   },
   {
