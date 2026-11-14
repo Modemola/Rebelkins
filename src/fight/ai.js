@@ -118,7 +118,8 @@ function profile(f) {
     .filter((s) => f.def.moves[s])
     .map((s) => {
       const m = applyWeapon(f.weapon, f.def.moves[s], f.def);
-      return { slot: s, range: rangeOf(f.def, f.weapon, s), startup: m.startup, total: totalFrames(m), damage: m.damage };
+      return { slot: s, range: rangeOf(f.def, f.weapon, s), startup: m.startup,
+        total: totalFrames(m), damage: m.damage, low: !!m.low };
     })
     .sort((x, y) => x.range - y.range);
   const p = { weapon: f.weapon, moves, longest: moves[moves.length - 1], fastest: moves.slice().sort((x, y) => x.startup - y.startup)[0] };
@@ -412,8 +413,15 @@ export class AI {
       // chosen that way landed 2.3% of the time against 23.9% for an
       // opponent throwing mostly jabs. Big moves are for punishes and broken
       // guards, where the opening is already paid for.
+      // Against a guard there are two answers and the low is one of them.
+      // Picking the heaviest every time made the sweep unreachable for the
+      // AI -- it is the weakest move in the list, so it loses the damage sort
+      // and the startup sort both, and across a thirty-second fight it was
+      // thrown exactly never. A blocker is the one opponent it is for.
+      const lows = inRange.filter((x) => x.low);
+      const mixLow = lows.length && Math.random() < 0.25 + this.cfg.chain * 0.45;
       const pick = foe.state === STATE.BLOCK
-        ? inRange.slice().sort((x, y) => y.damage - x.damage)[0]
+        ? (mixLow ? lows[0] : inRange.slice().sort((x, y) => y.damage - x.damage)[0])
         : inRange.slice().sort((x, y) => x.startup - y.startup)[0];
       intent.attack = pick.slot;
       me._aiReason = 'poke';
