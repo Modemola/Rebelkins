@@ -274,46 +274,52 @@ export const KIN06S = {
       name: 'stomp', label: 'Stomp',
       startup: 10, active: 6, recovery: 22,
       damage: 96, knockback: 540, lift: -70, drive: 380,
-      strikePart: 'shinR', reach: 156, range: 196,
+      strikePart: 'shinR', reach: 156, range: 227,
       pose: anim({}, [
-        // Sit down into the back leg. He is heavy, so he loads visibly.
+        // Sit down into the back leg. He is heavy, so he loads visibly. The
+        // torso coils a little forward here and nowhere else in the move:
+        // everything after this leans away from the kick.
         { at: 5, ease: 'out',
-          torso: { rot: 0.13, x: -26, y: 20 }, hips: { rot: -0.09 }, head: { rot: 0.09 },
-          legR: { rot: -0.22 }, shinR: { rot: 0.58 },
-          legL: { rot: 0.10 }, shinL: { rot: 0.30 },
+          torso: { rot: 0.08, x: -30, y: 18 }, hips: { rot: -0.08 }, head: { rot: 0.10 },
+          legR: { rot: -0.34 }, shinR: { rot: 0.74 },
+          legL: { rot: 0.04 }, shinL: { rot: 0.22 },
           armR: { rot: 0.14 }, armL: { rot: -0.12 } },
 
-        // Knee to the chest, heel tucked under: the chamber.
+        // Knee to the chest, heel tucked under: the chamber. The knee has to
+        // get genuinely high here or the extension has nowhere to come from,
+        // and a kick thrown from a low chamber is a step.
         { at: 10, ease: 'whip',
-          torso: { rot: 0.24, x: -10, y: 10 }, hips: { rot: -0.24 }, head: { rot: 0.07 },
-          legR: { rot: -0.86 }, shinR: { rot: 1.34 },
-          legL: { rot: 0.14 }, shinL: { rot: 0.26 },
-          armR: { rot: 0.28 }, foreR: { rot: 0.20 }, armL: { rot: -0.26 } },
+          torso: { rot: -0.10, x: -14, y: 8 }, hips: { rot: -0.18 }, head: { rot: 0.06 },
+          legR: { rot: -1.20 }, shinR: { rot: 1.60 },
+          legL: { rot: 0.02 }, shinL: { rot: 0.16 },
+          armR: { rot: 0.30 }, foreR: { rot: 0.22 }, armL: { rot: -0.28 } },
 
         // The sole goes through. The thigh barely moves between here and the
         // chamber -- it is the knee that throws the kick, and the hips that
-        // drive it.
+        // drive it. The torso leans back over the standing foot: that is what
+        // a body does to put a leg out at this height, and leaning into it
+        // instead is what made this read as a stride.
         { at: 13, ease: 'back',
-          torso: { rot: 0.34, x: 46, y: 22 }, hips: { rot: -0.34 }, head: { rot: 0.02 },
-          legR: { rot: -1.04 }, shinR: { rot: 0.08 },
-          legL: { rot: 0.22 }, shinL: { rot: 0.18 },
-          armR: { rot: 0.38 }, foreR: { rot: 0.32 }, armL: { rot: -0.38 } },
+          torso: { rot: -0.30, x: 20, y: 10 }, hips: { rot: -0.30 }, head: { rot: 0.04 },
+          legR: { rot: -1.48 }, shinR: { rot: -0.02 },
+          legL: { rot: -0.02 }, shinL: { rot: 0.12 },
+          armR: { rot: 0.42 }, foreR: { rot: 0.34 }, armL: { rot: -0.42 } },
 
         { at: 16, ease: 'back',
-          torso: { rot: 0.37, x: 64, y: 26 },
-          legR: { rot: -1.10 }, shinR: { rot: -0.08 } },
+          torso: { rot: -0.34, x: 30, y: 12 },
+          legR: { rot: -1.54 }, shinR: { rot: -0.10 } },
 
         // Back to the chamber before the foot comes down.
         { at: 22, ease: 'snap',
-          torso: { rot: 0.24, x: 30, y: 18 }, hips: { rot: -0.20 },
-          legR: { rot: -0.70 }, shinR: { rot: 1.00 },
+          torso: { rot: -0.12, x: 16, y: 10 }, hips: { rot: -0.16 },
+          legR: { rot: -1.10 }, shinR: { rot: 1.20 },
           armR: { rot: 0.20 }, foreR: { rot: 0.14 }, armL: { rot: -0.20 } },
 
         // Plant it. He is 1120 health of platform boot; it lands hard and the
         // settle is in `phases`, not here.
         { at: 30, ease: 'out',
-          torso: { rot: 0.05, x: 4, y: 6 }, hips: { rot: -0.05 },
-          legR: { rot: -0.14 }, shinR: { rot: 0.26 }, legL: { rot: 0.04 } },
+          torso: { rot: 0.04, x: 4, y: 6 }, hips: { rot: -0.04 },
+          legR: { rot: -0.16 }, shinR: { rot: 0.28 }, legL: { rot: 0.04 } },
 
         { at: 38, rest: true, ease: 'inout' },
       ]),

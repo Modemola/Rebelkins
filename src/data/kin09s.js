@@ -271,44 +271,49 @@ export const KIN09S = {
       name: 'lunge', label: 'Lunge',
       startup: 9, active: 6, recovery: 20,
       damage: 88, knockback: 500, lift: -80, drive: 420,
-      strikePart: 'shinR', reach: 148, range: 204,
+      strikePart: 'shinR', reach: 148, range: 232,
       pose: anim({}, [
-        // Load onto the back foot and gather the knee.
+        // Load onto the back foot and gather the knee. The only forward lean
+        // in the move is here; from the chamber on she leans away from it.
         { at: 4, ease: 'out',
-          torso: { rot: 0.10, x: -22, y: 12 }, hips: { rot: -0.08 }, head: { rot: 0.08 },
-          legR: { rot: -0.26 }, shinR: { rot: 0.62 },
-          legL: { rot: 0.07 }, shinL: { rot: 0.16 },
+          torso: { rot: 0.07, x: -26, y: 11 }, hips: { rot: -0.07 }, head: { rot: 0.09 },
+          legR: { rot: -0.36 }, shinR: { rot: 0.78 },
+          legL: { rot: 0.03 }, shinL: { rot: 0.12 },
           armL: { rot: 0.12 }, armR: { rot: -0.10 } },
 
-        // Knee up to the chest, heel tucked under: the chamber.
+        // Knee up to the chest, heel tucked under: the chamber. It has to get
+        // genuinely high, or the extension has nowhere to come from and the
+        // kick reads as a step taken forward.
         { at: 9, ease: 'whip',
-          torso: { rot: 0.20, x: -9, y: 6 }, hips: { rot: -0.20 }, head: { rot: 0.06 },
-          legR: { rot: -0.78 }, shinR: { rot: 1.28 },
-          legL: { rot: 0.12 }, shinL: { rot: 0.22 },
-          armL: { rot: 0.24 }, foreL: { rot: 0.18 }, armR: { rot: -0.22 } },
+          torso: { rot: -0.12, x: -12, y: 5 }, hips: { rot: -0.16 }, head: { rot: 0.06 },
+          legR: { rot: -1.16 }, shinR: { rot: 1.54 },
+          legL: { rot: 0.02 }, shinL: { rot: 0.12 },
+          armL: { rot: 0.26 }, foreL: { rot: 0.20 }, armR: { rot: -0.24 } },
 
         // The shin snaps out of the chamber. The thigh barely moves between
-        // here and the chamber -- it is the knee that throws the kick.
+        // here and the chamber -- it is the knee that throws the kick. The
+        // torso leans back over the standing foot, which is what a body does
+        // to hold a leg out at this height.
         { at: 12, ease: 'back',
-          torso: { rot: 0.30, x: 43, y: 18 }, hips: { rot: -0.30 }, head: { rot: 0.02 },
-          legR: { rot: -0.96 }, shinR: { rot: 0.10 },
-          legL: { rot: 0.20 }, shinL: { rot: 0.14 },
-          armL: { rot: 0.34 }, foreL: { rot: 0.30 }, armR: { rot: -0.34 } },
+          torso: { rot: -0.32, x: 18, y: 8 }, hips: { rot: -0.28 }, head: { rot: 0.04 },
+          legR: { rot: -1.44 }, shinR: { rot: 0.00 },
+          legL: { rot: -0.02 }, shinL: { rot: 0.10 },
+          armL: { rot: 0.38 }, foreL: { rot: 0.32 }, armR: { rot: -0.38 } },
 
         { at: 14, ease: 'back',
-          torso: { rot: 0.33, x: 59, y: 22 },
-          legR: { rot: -1.02 }, shinR: { rot: -0.06 } },
+          torso: { rot: -0.36, x: 28, y: 10 },
+          legR: { rot: -1.50 }, shinR: { rot: -0.10 } },
 
         // Back to the chamber before the foot comes down, which is what stops
         // a kick looking like a leg being lowered.
         { at: 19, ease: 'snap',
-          torso: { rot: 0.22, x: 28, y: 15 }, hips: { rot: -0.18 },
-          legR: { rot: -0.66 }, shinR: { rot: 0.96 },
+          torso: { rot: -0.12, x: 15, y: 8 }, hips: { rot: -0.15 },
+          legR: { rot: -1.06 }, shinR: { rot: 1.16 },
           armL: { rot: 0.18 }, foreL: { rot: 0.12 }, armR: { rot: -0.18 } },
 
         { at: 26, ease: 'out',
-          torso: { rot: 0.04, x: 3, y: 3 }, hips: { rot: -0.04 },
-          legR: { rot: -0.12 }, shinR: { rot: 0.22 }, legL: { rot: 0.03 } },
+          torso: { rot: 0.03, x: 3, y: 3 }, hips: { rot: -0.03 },
+          legR: { rot: -0.14 }, shinR: { rot: 0.24 }, legL: { rot: 0.03 } },
 
         { at: 34, rest: true, ease: 'inout' },
       ]),
