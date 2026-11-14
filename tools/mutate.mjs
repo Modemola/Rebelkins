@@ -433,8 +433,8 @@ const MUTANTS = [
     // jab's full extension is keyed at frame 8; with no startup the hitbox is
     // live on frames 0 to 2, when the arm has barely left the guard. Total
     // length stays at 17 so nothing length-dependent moves.
-    find: '      startup: 4, active: 3, recovery: 10,',
-    with: '      startup: 0, active: 3, recovery: 14,',
+    find: '      startup: 4, active: 4, recovery: 11,',
+    with: '      startup: 0, active: 4, recovery: 15,',
     expect: 'at full stretch when its hitbox is live',
   },
   {
