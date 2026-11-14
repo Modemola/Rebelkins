@@ -382,7 +382,26 @@ export class AI {
     // while only attacking inside 0.86 of it, this hovered permanently just
     // beyond its own trigger: against an opponent that never advanced it
     // threw literally zero swings in 180 rounds.
-    const want = reachNow(mine.longest, foe) * (0.92 - this.cfg.poise * 0.06) + this.drift;
+    /**
+     * The range it is trying to hold, and it is not always the longest.
+     *
+     * Anchoring on the longest move permanently parks it at kick distance,
+     * where the only thing in range is the kick: measured over twelve rounds
+     * it threw 405 specials against 98 heavies, 79 lights and no sweeps at
+     * all, which is one move with decoration. A fighter that only ever plays
+     * one range is not reading as a fighter.
+     *
+     * So it picks a move to build around and holds that move's distance for
+     * a couple of seconds before choosing again. Coming inside kick range is
+     * a real decision with a real cost, which is the point, and it is the
+     * only way the short moves and the low ever become reachable.
+     */
+    if (this._planUntil === undefined || frame >= this._planUntil) {
+      this._planUntil = frame + 90 + Math.floor(Math.random() * 90);
+      this._plan = mine.moves[Math.floor(Math.random() * mine.moves.length)];
+    }
+    const anchor = this._plan || mine.longest;
+    const want = reachNow(anchor, foe) * (0.92 - this.cfg.poise * 0.06) + this.drift;
     const hurt = me.health < me.def.health * 0.3;
 
     // Feeding a guard is cheap but not free -- chip is real and blockstun keeps
@@ -413,16 +432,21 @@ export class AI {
       // chosen that way landed 2.3% of the time against 23.9% for an
       // opponent throwing mostly jabs. Big moves are for punishes and broken
       // guards, where the opening is already paid for.
-      // Against a guard there are two answers and the low is one of them.
-      // Picking the heaviest every time made the sweep unreachable for the
-      // AI -- it is the weakest move in the list, so it loses the damage sort
-      // and the startup sort both, and across a thirty-second fight it was
-      // thrown exactly never. A blocker is the one opponent it is for.
+      // The low is mixed in before either sort, not after.
+      //
+      // It is the weakest move in the list, so it loses the damage sort and
+      // the startup sort both, and gating it behind "only when they are
+      // already blocking" was not enough either: over twelve rounds it was
+      // thrown exactly zero times. A mix-up the opponent never uses is not
+      // in the game. It goes in as its own branch, which is also honest
+      // about what a low is -- a fast poke that happens to beat a high
+      // guard, not a punish.
       const lows = inRange.filter((x) => x.low);
       const mixLow = lows.length && Math.random() < 0.25 + this.cfg.chain * 0.45;
-      const pick = foe.state === STATE.BLOCK
-        ? (mixLow ? lows[0] : inRange.slice().sort((x, y) => y.damage - x.damage)[0])
-        : inRange.slice().sort((x, y) => x.startup - y.startup)[0];
+      const pick = mixLow ? lows[0]
+        : foe.state === STATE.BLOCK
+          ? inRange.slice().sort((x, y) => y.damage - x.damage)[0]
+          : inRange.slice().sort((x, y) => x.startup - y.startup)[0];
       intent.attack = pick.slot;
       me._aiReason = 'poke';
       // Blockstun leaves the attacker ahead, so a swing that was guarded is

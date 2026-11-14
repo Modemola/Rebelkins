@@ -67,7 +67,21 @@ const ROUNDS_TO_WIN = 2;
  * a compromise; if they come back, measure again rather than assuming these
  * carry over.
  */
-const MIN_GAP = 150;
+/**
+ * The walking floor, and it is bounded from above as well as below.
+ *
+ * At 150 it was further than four of the eight moves can reach, so those four
+ * could never be started from neutral at all -- they only ever came out as
+ * chain continuations or punishes. The low sweep is the one that matters:
+ * a mix-up nobody can reach for is not in the game, and over twelve rounds
+ * the AI threw it zero times at 150 for exactly that reason.
+ *
+ * 148 clears the shorter of the two sweeps, which the AI discounts to 155
+ * for the ground the defender can give during its startup. It leaves 25
+ * units of daylight between two chests that meet at 123, and 20 units for an
+ * attacker to crowd into, which is what makes closing worth anything.
+ */
+const MIN_GAP = 148;
 const ATTACK_GAP = 128;
 /** No move closes past this, however short its reach. */
 const CLINCH_GAP = 96;

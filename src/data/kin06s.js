@@ -373,12 +373,22 @@ export const KIN06S = {
      * It stays low on purpose. The thigh only comes to -0.52, which keeps
      * the boot near the floor instead of lifting it into the Stomp's
      * territory -- a low that arrives at chest height is just a worse kick.
+     *
+     * Its hitbox is deliberately generous -- 345 source units of radius
+     * against a boot that only gets 48 units ahead of the root. That is not
+     * a mistake and it is worth saying why. A sweep wants to reach, and this
+     * artwork will not let it: driving the thigh further forward lifts the
+     * foot off the floor instead of extending it, so a low that reaches is
+     * not a pose this drawing can hold. The alternative was a mix-up nobody
+     * could start -- at a walking floor of 148 and a real reach of 132, the
+     * AI threw it zero times in twelve rounds, and a player could not have
+     * thrown it either. The hitbox buys the range the leg cannot.
      */
     low: move(RIG, {
       name: 'sweep', label: 'Sweep',
       startup: 6, active: 4, recovery: 13,
       damage: 38, knockback: 190, lift: 0, drive: 120,
-      strikePart: 'shinR', reach: 132, range: 132, low: true,
+      strikePart: 'shinR', reach: 345, range: 180, low: true,
       pose: anim({}, [
         { at: 3, ease: 'out',
           torso: { rot: 0.16, y: 92 }, hips: { rot: -0.08 }, head: { rot: 0.14 },
