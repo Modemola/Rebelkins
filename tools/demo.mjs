@@ -87,12 +87,25 @@ const SR = 48000;
  * swings in the cast. The front-facing pairs follow so the video is the game
  * as it stands rather than only its best corner.
  */
-const SCENES = PAIR ? [
+const INTRO_SCRIPT = (a, b) => [
+  { at: 70, sel: `#rosterA .face[data-kin="${a}"]` },
+  { at: 130, sel: `#rosterB .face[data-kin="${b}"]` },
+  { at: 200, sel: '#arenaRow button:nth-child(2)' },
+  { at: 270, sel: '#arenaRow button:nth-child(1)' },
+  { at: 340, sel: '#startBtn' },
+];
+
+const SCENES = PAIR ? (flag('--from-menu') ? [
+  // The whole thing from the top: the menu, both fighters picked, an arena
+  // chosen, FIGHT pressed, and then the match that press started.
+  { kind: 'intro', a: PAIR[0], b: PAIR[1], frames: 400, script: INTRO_SCRIPT(PAIR[0], PAIR[1]) },
+  { kind: 'play', frames: Math.round(Number(arg('--seconds', 30)) * FPS), finish: 320 },
+] : [
   // One matchup, no select screen: a clip for a post opens on the fight or it
   // loses the viewer before anything happens.
   { kind: 'fight', a: PAIR[0], b: PAIR[1], arena: arg('--arena', 'towers'),
     frames: Math.round(Number(arg('--seconds', 30)) * FPS), finish: 320 },
-] : [
+]) : [
   { kind: 'select', frames: 96 },
   { kind: 'fight', a: 'kin06s', b: 'kin09s', arena: 'towers', frames: 620 },
   { kind: 'fight', a: 'kin09s', b: 'kin06s', arena: 'cut', frames: 580 },
@@ -253,8 +266,14 @@ await page.evaluate(async () => {
 
   // One simulation tick, then one render. The loop is stopped: this is the
   // only thing advancing the game.
+  //
+  // It renders with or without a match, which it did not have to before: the
+  // menu used to be static HTML over a cleared canvas, and now the arena runs
+  // live behind it and both fighters idle on it. A menu scene that only
+  // pumped timers recorded six seconds of a frozen title card.
   window.__STEP__ = () => {
     d.pumpTimers();
+    if (g.match) d.hookMatch();
     const m = g.match;
     if (m && m.phase === 'fight') {
       const it = d.p1.think(m.a, m.b, g.loop.frame);
@@ -269,9 +288,21 @@ await page.evaluate(async () => {
       // express, and only P2 ever swept.
       if (it.attack) tap(KEYS[it.attack === 'low' ? 'light' : it.attack]);
     }
-    g.loop.update(g.loop.frame++);
+    if (g.match) g.loop.update(g.loop.frame++);
     g.loop.render(0, 1 / 60);
     d.frame++;
+  };
+
+  /** Press something on the menu, the way a finger would. */
+  window.__TAP__ = (sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    for (const type of ['pointerdown', 'pointerup']) {
+      el.dispatchEvent(new PointerEvent(type,
+        { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' }));
+    }
+    el.click();
+    return true;
   };
   g.loop.stop();
 });
@@ -306,8 +337,27 @@ for (const scene of SCENES) {
       g.start(a, 'ai', b);
       window.__DEMO__.hookMatch();
     }, scene);
+  } else if (scene.kind === 'intro') {
+    // No match is started here: the page already boots on the menu. The two
+    // slots are flipped by pressing the roster chips, so the picks the script
+    // makes afterwards visibly change something rather than re-selecting what
+    // was already chosen. `match` is behind a getter, so it cannot be nulled
+    // from outside anyway -- pressing the real controls is both the only way
+    // and the honest one.
+    await page.evaluate(({ a, b }) => {
+      window.__TAP__(`#rosterA .face[data-kin="${b}"]`);
+      window.__TAP__(`#rosterB .face[data-kin="${a}"]`);
+    }, scene);
   }
   for (let i = 0; i < frames; i++) {
+    // Scripted menu presses: pick each fighter, choose an arena, hit FIGHT.
+    if (scene.script) {
+      for (const step of scene.script) {
+        if (step.at !== i) continue;
+        const ok = await page.evaluate((sel) => window.__TAP__(sel), step.sel);
+        if (!ok) console.log(`\n  menu press missed: ${step.sel}`);
+      }
+    }
     // A reel that cuts away from every fight mid-round never shows the one
     // thing a round is for. `finish` puts the loser on their last sliver with
     // time left to take the hit that ends it, so the K.O., the slow motion
@@ -319,8 +369,7 @@ for (const scene of SCENES) {
         if (m && m.phase === 'fight') m.b.health = Math.min(m.b.health, m.b.def.health * 0.08);
       });
     }
-    if (scene.kind === 'fight') await page.evaluate(() => window.__STEP__());
-    else await page.evaluate(() => { window.__DEMO__.pumpTimers(); window.__DEMO__.frame++; });
+    await page.evaluate(() => window.__STEP__());
     // CDP rather than page.screenshot: Playwright's wrapper waits for fonts
     // and for the page to go quiet, and under paused virtual time that wait
     // never ends -- the compositor frame it is waiting on cannot arrive while

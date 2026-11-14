@@ -324,3 +324,26 @@ body.touch .keys { display: none; }
   .fighter .read { font-size: 10px; min-height: 3.2em; }
   .vsMark { padding-bottom: 46px; }
 }
+
+/* ---- the opener on a short screen (a phone held sideways)
+   390 CSS pixels of height cannot hold a 54px title, two 200px fighters and
+   three rows of chips, so the menu scrolled and the FIGHT button was never on
+   screen. Everything gives up some height and the tagline goes: it is the one
+   line that can be read later. */
+@media (max-height: 520px) {
+  #select { padding: 8px 14px; }
+  .selWrap { gap: 7px; }
+  h1 { font-size: clamp(26px, 5.6vh, 40px); letter-spacing: .08em; }
+  .brand .tag { display: none; }
+  .hero { height: clamp(104px, 30vh, 150px); }
+  .fighter { gap: 4px; }
+  .fighter .read { font-size: 9.5px; min-height: 2.5em; line-height: 1.25; }
+  .fighter .who { font-size: 9px; }
+  .face { width: 32px; }
+  .vsMark { font-size: 20px; padding-bottom: 34px; }
+  .opts { gap: 6px; }
+  .opt .read { display: none; }
+  .opt button { padding: 6px 5px; font-size: 10px; }
+  #startBtn { padding: 10px; font-size: 14px; }
+  .mute, .keys { display: none; }
+}
