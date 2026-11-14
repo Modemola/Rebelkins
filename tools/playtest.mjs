@@ -648,14 +648,34 @@ async function fightChecks() {
   // A recovery window is the one moment an opponent cannot answer. The gated
   // version of this branch took 5.7% of the windows it was handed.
   const vsSlow = spar({ AiA: AI, AiB: Slow, DEFS, rigs, rounds: 1, pairs: 90, levelA: 'mean', seed: 11 });
-  // 0.45, not 0.30. Against a fixture this generous the AI still punishes 35%
-  // of its swings with the branch re-gated behind the poke cooldown -- the
-  // regression that cost it 85% of its wins against pressure. A threshold
-  // below that number cannot see the thing the check is named after, and the
-  // measured clean rate is 55.8%, so this sits between them with room.
-  const punishRate = vsSlow.stats[0].punishes / Math.max(1, vsSlow.stats[0].swings);
-  check('the AI punishes a recovery', punishRate > 0.45,
-    `${vsSlow.stats[0].punishes} punishes in ${vsSlow.stats[0].swings} swings (${pct(vsSlow.stats[0].punishes, vsSlow.stats[0].swings)})`);
+  // 0.25, lowered from 0.45 when chains landed, and the reason matters
+  // because lowering a threshold to make a check pass is how a suite stops
+  // meaning anything.
+  //
+  // The rate fell from 67.3% to 37.1% the moment moves could be cancelled.
+  // That is not the AI getting worse at taking openings -- against this same
+  // fixture it went from 83/90 rounds to 86/90, from 89,480 damage dealt to
+  // 119,026, and from 15,038 taken to 9,875. It takes a smaller share of
+  // windows because it now spends those frames converting one opening into
+  // three hits instead of trading single pokes, which is strictly the better
+  // use of them.
+  //
+  // So the threshold is set against the failure it exists to catch, not
+  // against the old style: the regression this check was written for sat at
+  // 5.7%, and anything near that is still caught with a wide margin.
+  // Against the windows it was handed, not against its own swings.
+  //
+  // This divided by swings, which worked only while every swing was a fresh
+  // decision. Once moves could be cancelled into each other the denominator
+  // filled with chain continuations that were never a chance to punish
+  // anything, and the rate fell by half while the behaviour was unchanged --
+  // so the proxy went and the thing the check is named after is measured
+  // directly: a recovery window is a span where the opponent cannot answer,
+  // counted whether or not anyone swung into it.
+  const punishRate = vsSlow.stats[0].punishes / Math.max(1, vsSlow.stats[0].windows);
+  check('the AI punishes a recovery', punishRate > 0.25,
+    `${vsSlow.stats[0].punishes} of ${vsSlow.stats[0].windows} recovery windows taken `
+    + `(${pct(vsSlow.stats[0].punishes, vsSlow.stats[0].windows)})`);
 
   // The ladder has to be a ladder. `sight` was inverted for a while and the
   // hardest tier was the one that spotted heavies last, which no amount of
@@ -1097,6 +1117,52 @@ try {
   }, SLACK);
   check(`every move connects with ${SLACK} units of reach to spare`, reachReport.length === 0,
     reachReport.length ? reachReport.join(', ') : `${IDS.length * 3} of ${IDS.length * 3}`);
+
+  console.log('\nchains');
+  // The whole reason pressing buttons in order is worth anything. Three
+  // separate claims, because they fail separately: that the cancel is
+  // allowed, that the follow-up actually CONNECTS -- a cancel the hitstun
+  // cannot cover is a combo on paper only -- and that a whiff cannot be
+  // cancelled, which is what keeps a heavy a commitment.
+  const chains = await page.evaluate(async () => {
+    const g = window.__REBELKIN__;
+    const out = {};
+    const run = async (id, foe, slots, connectFirst) => {
+      g.start(id, 'ai', foe);
+      await new Promise((r) => setTimeout(r, 160));
+      const m = g.match;
+      m.phase = 'fight';
+      g.ai.set('still');
+      const hits = [];
+      const prev = m.onEvent;
+      m.onEvent = (k, d) => { prev(k, d); if (k === 'hit') hits.push(d.attacker.moveSlot); };
+      const first = m.a.def.moves[slots[0]];
+      // In range to connect, or far out of it to prove a whiff cannot chain.
+      m.a.x = m.b.x - (connectFirst ? (first.range ?? 140) - 14 : 520);
+      m.a.startMove(slots[0]);
+      let step = 1;
+      for (let i = 0; i < 120; i++) {
+        if (!connectFirst) m.a.x = m.b.x - 520;
+        if (step < slots.length && m.a.canCancelInto(slots[step])) {
+          if (m.a.startMove(slots[step])) step++;
+        }
+        await new Promise((r) => requestAnimationFrame(r));
+        if (m.a.state !== 'attack') break;
+      }
+      m.onEvent = prev;
+      return { hits, reached: step };
+    };
+    out.chain = await run('kin06s', 'kin09s', ['light', 'heavy', 'special'], true);
+    out.whiff = await run('kin06s', 'kin09s', ['light', 'heavy'], false);
+    return out;
+  });
+  check('a connected light chains into heavy into special',
+    chains.chain.hits.join() === 'light,heavy,special',
+    chains.chain.hits.length ? chains.chain.hits.join(' -> ') : 'nothing landed');
+  check('a whiffed move cannot be cancelled',
+    chains.whiff.reached === 1 && chains.whiff.hits.length === 0,
+    chains.whiff.reached === 1 ? 'the follow-up never came out'
+      : `cancelled ${chains.whiff.reached - 1} time(s) off a move that hit nothing`);
 
   console.log('\ndraw order');
   // The fighters used to be sorted on x, a depth cue from a plane this game

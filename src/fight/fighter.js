@@ -2,8 +2,25 @@
  * One fighter: state machine, movement, and the frame data that drives both.
  *
  * Everything is counted in frames rather than seconds. A move owns the
- * character for startup + active + recovery and cannot be cancelled, which is
- * what makes a heavy feel like a commitment instead of a button.
+ * character for startup + active + recovery, and a whiffed one owns it to the
+ * last frame -- that is what makes a heavy a commitment instead of a button.
+ *
+ * A move that CONNECTS is different. It can be cancelled into a heavier one,
+ * which is the chain every fighting game is built on and the reason pressing
+ * buttons in order is worth anything. Without it each swing is an isolated
+ * event: throw, wait out the recovery, throw again. There are no combos, no
+ * blockstrings and no pressure, and the game reads as a toy to anyone who has
+ * played the real thing.
+ *
+ * The rules are the standard magic series, and each one is load-bearing:
+ *
+ *   - Only upward. light -> heavy -> special, never sideways or back, so the
+ *     longest chain is three and loops are impossible by construction.
+ *   - Only once it has connected. `hitConnected` covers a block as well as a
+ *     hit, so a blocked light still buys the pressure -- that is a
+ *     blockstring, and it is why holding guard has to cost something.
+ *   - Only from the active frames on. Cancelling during startup would let a
+ *     player skip the wind-up that makes a heavy readable.
  */
 
 import { TICK } from '../engine/loop.js';
@@ -17,6 +34,9 @@ export const STATE = {
   IDLE: 'idle', WALK: 'walk', CROUCH: 'crouch', AIR: 'air',
   ATTACK: 'attack', BLOCK: 'block', HURT: 'hurt', KO: 'ko',
 };
+
+/** The chain. A move cancels only into a strictly higher rank. */
+export const RANK = { light: 0, heavy: 1, special: 2 };
 
 export class Fighter {
   constructor(def, { x, facing, pad, weapon = null }) {
@@ -67,14 +87,39 @@ export class Fighter {
     this.stateFrame = 0;
   }
 
+  /**
+   * Can what is on screen right now be cancelled into `key`?
+   *
+   * Startup is excluded on purpose, and not only for readability: a move
+   * cannot have connected during its own startup anyway, so the frame test is
+   * really about the recovery -- a chain continues out of the tail of the
+   * move that landed, which is where the window lives in every game that has
+   * one.
+   */
+  canCancelInto(key) {
+    if (this.state !== STATE.ATTACK || !this.move) return false;
+    if (!this.hitConnected) return false;
+    if (this.moveFrame < this.move.startup) return false;
+    const from = RANK[this.moveSlot];
+    const to = RANK[key];
+    return from !== undefined && to !== undefined && to > from;
+  }
+
   startMove(key) {
     const base = this.def.moves[key];
     if (!base) return false;
+    // Mid-move, this is a cancel and has to earn it. Otherwise a fighter
+    // already swinging cannot start anything.
+    if (this.state === STATE.ATTACK && !this.canCancelInto(key)) return false;
     // The weapon rewrites the numbers, not the animation: reach, damage,
     // knockback and startup, and only on the moves that strike with the limb
     // it is held in.
     const m = applyWeapon(this.weapon, base, this.def);
+    // A cancel keeps the combo count -- that is what the damage scaling in
+    // resolveHits reads -- and a fresh swing starts one.
+    if (this.state !== STATE.ATTACK) this.comboCount = 0;
     this.move = m;
+    this.moveSlot = key;
     this.moveFrame = 0;
     this.hitConnected = false;
     this.setState(STATE.ATTACK);
@@ -188,6 +233,14 @@ export class Fighter {
         break;
 
       case STATE.ATTACK: {
+        // The cancel is read before the frame advances, so a press buffered
+        // on the frame the hit landed comes out on the next one rather than
+        // a frame late.
+        if (intent.attack && this.canCancelInto(intent.attack)
+          && this.startMove(intent.attack)) {
+          this.physics(this.grounded ? 0.82 : 0.995);
+          return;
+        }
         this.moveFrame++;
         const m = this.move;
         const total = totalFrames(m);
@@ -209,6 +262,7 @@ export class Fighter {
         this.physics(this.grounded ? 0.82 : 0.995);
         if (this.moveFrame >= total) {
           this.move = null;
+          this.comboCount = 0;        // the chain ended with this move
           this.setState(STATE.IDLE);
         }
         return;

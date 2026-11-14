@@ -96,7 +96,7 @@ function seedRandom(seed) {
 }
 
 export const blankStats = () => ({
-  swings: 0, hits: 0, blocked: 0, punished: 0, punishes: 0, counters: 0,
+  swings: 0, opens: 0, windows: 0, hits: 0, blocked: 0, punished: 0, punishes: 0, counters: 0,
   breaks: 0, broken: 0, dealt: 0, chip: 0, by: {},
 });
 
@@ -143,14 +143,48 @@ function round(defA, defB, rigs, aiA, aiB, stats, weapon) {
     return out;
   };
 
+  // A swing is a move coming out, and a cancel is a second move coming out
+  // without leaving the attack state. Watching the state edge alone counted a
+  // three-hit chain as one swing while recording three hits, which is how
+  // "swings mostly arrive somewhere" came to report 123% landing. The move
+  // identity is what changes; the state does not.
   const wasAttacking = [false, false];
+  const wasSlot = [null, null];
+  const wasRecovering = [false, false];
   for (let frame = 0; frame < 20000; frame++) {
     for (const f of m.fighters) {
       const i = side(f);
       const now = f.state === STATE.ATTACK;
-      if (now && !wasAttacking[i]) {
+      const fresh = now && (!wasAttacking[i] || f.moveSlot !== wasSlot[i]);
+      wasSlot[i] = now ? f.moveSlot : null;
+      // A recovery window: the frames after this fighter's active ones, when
+      // they cannot answer. Counted as windows HANDED TO the other side, so
+      // "did it take the openings it was given" divides by something that
+      // exists whether or not anyone swung at it. Cancelling closes windows
+      // -- a chained move never reaches its recovery -- which is the point of
+      // chains and is why a rate measured per swing moved when they landed.
+      const inRecovery = now && f.move
+        && f.moveFrame >= f.move.startup + f.move.active;
+      // Only if the other side was free to take it. A window that opens
+      // while they are committed to their own move, or being hit, was never
+      // theirs -- counting those measures how often the fixture happened to
+      // be vulnerable at a convenient moment, not whether the AI took what
+      // it was offered.
+      if (inRecovery && !wasRecovering[i]) {
+        const them = m.fighters[1 - i];
+        const free = them.state !== STATE.ATTACK && them.state !== STATE.HURT
+          && them.state !== STATE.KO;
+        if (free) stats[1 - i].windows++;
+      }
+      wasRecovering[i] = inRecovery;
+      if (fresh) {
         stats[i].swings++;
         const why = f._aiReason || 'other';
+        // An opening swing is one the AI chose from neutral. A chain
+        // continuation is not a decision about whether to attack -- it is a
+        // decision about what to attack with, taken after the first one
+        // already landed -- so rates about choosing to swing divide by this.
+        if (why !== 'chain') stats[i].opens++;
         const b = (stats[i].by[why] ||= { n: 0, hit: 0, blocked: 0, broke: 0 });
         b.n++;
         f._aiPending = b;

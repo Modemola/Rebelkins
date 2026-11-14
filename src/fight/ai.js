@@ -42,9 +42,14 @@ const DIFFICULTY = {
   // Worth recording that the gap to the harder tiers widened to about 97%
   // whichever dials are used, the old ones included. That is the jab, not the
   // tuning: a tier that punishes well now beats one that does not, decisively.
-  calm: { sight: 4, aggression: 0.42, block: 0.45, punish: 0.22, poise: 0.35 },
-  brisk: { sight: 13, aggression: 0.68, block: 0.76, punish: 0.6, poise: 0.7 },
-  mean: { sight: 24, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95 },
+  // chain:  chance of continuing a connected move into the next rank up.
+  //         A tier that never chains cannot convert the openings it earns,
+  //         and a player who learns to combo would be fighting an opponent
+  //         playing a different game. It is the clearest single difference
+  //         between the tiers to watch, which is why calm barely does it.
+  calm: { sight: 4, aggression: 0.42, block: 0.45, punish: 0.22, poise: 0.35, chain: 0.15 },
+  brisk: { sight: 13, aggression: 0.68, block: 0.76, punish: 0.6, poise: 0.7, chain: 0.6 },
+  mean: { sight: 24, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95, chain: 0.92 },
   // An opponent that does nothing, for measuring against. Zeroing the dials by
   // hand no longer produces one: a punish, an interrupt and a stun conversion
   // are deliberately not gated by `aggression`, so the playtest's old trick of
@@ -117,7 +122,31 @@ export class AI {
   think(me, foe, frame) {
     const intent = { move: 0, crouch: false, jump: false, guard: false, attack: null };
     if (this.level === 'still') return intent;
+
+    // Bookkeeping first, because every branch below can return early and this
+    // has to tick on every frame regardless. It used to sit further down, and
+    // the chain branch added underneath it stopped the poke cooldown counting
+    // down for the whole of any move that had connected -- so the AI came out
+    // of a combo still on cooldown and stood there. Measured against a fixture
+    // that hands out free recovery windows, it took 37% of them instead of
+    // 67%, which is most of an AI.
+    if (this.cool > 0) this.cool--;
+
     if (me.state === STATE.KO || me.state === STATE.HURT) { this.holdGuard = 0; return intent; }
+
+    /* ---- the chain, before anything else: a move that has connected is a
+       decision about what comes next, and nothing else in here applies while
+       one is on screen. Blocked counts as connected, which is what turns a
+       blocked light into pressure instead of a wasted swing. */
+    if (me.state === STATE.ATTACK && me.hitConnected) {
+      const up = me.moveSlot === 'light' ? 'heavy' : me.moveSlot === 'heavy' ? 'special' : null;
+      if (up && me.def.moves[up] && me.canCancelInto(up)
+        && Math.random() < (this.cfg.chain ?? 0)) {
+        intent.attack = up;
+        me._aiReason = 'chain';
+      }
+      return intent;
+    }
 
     const dx = foe.x - me.x;
     const dist = Math.abs(dx);
@@ -205,7 +234,6 @@ export class AI {
     }
 
     if (me.state === STATE.ATTACK) return intent;
-    if (this.cool > 0) this.cool--;
 
     /* ---- a broken guard, or any stun: the biggest thing that reaches.
        Not subject to the cooldown. The swing that breaks a guard sets one,

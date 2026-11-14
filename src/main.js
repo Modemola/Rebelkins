@@ -159,7 +159,7 @@ function startMatch() {
 
 function onMatchEvent(kind, data) {
   if (kind === 'hit') {
-    fx.hit(data.contact, data.move, data.ko);
+    fx.hit(data.contact, { ...data.move, damage: data.damage ?? data.move.damage }, data.ko);
     arena().hit(Math.min(1, data.move.damage / 110));
     if (data.ko) arena().ko();
     sfx.hit(data.move.damage, data.ko);

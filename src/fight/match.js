@@ -8,7 +8,7 @@
  */
 
 import { TICK } from '../engine/loop.js';
-import { Fighter, STATE, GROUND } from './fighter.js';
+import { Fighter, STATE, GROUND, RANK } from './fighter.js';
 
 /**
  * How far apart they can get. Mutable, because it depends on the window: a
@@ -39,6 +39,17 @@ const MIN_GAP = 118;
 // fighter 118px apart means half the cast's moves can never touch anyone. An
 // attacker may close to this instead, and is pushed back out on recovery.
 const ATTACK_GAP = 84;
+
+/**
+ * What each successive hit of a chain is worth.
+ *
+ * Unscaled, light into heavy into special is 242 damage on a 980-health
+ * fighter -- a quarter of the bar for one confirm, which turns the game into
+ * whoever lands first. Scaling it to 188 keeps the chain worth doing and
+ * keeps a round longer than two openings. The first hit is always full price,
+ * so a single clean heavy is never worse for having been one.
+ */
+const COMBO_SCALE = [1, 0.8, 0.65];
 
 export const PHASE = { INTRO: 'intro', FIGHT: 'fight', ROUND_END: 'roundEnd', MATCH_END: 'matchEnd' };
 
@@ -149,16 +160,20 @@ export class Match {
 
       const contact = { x: (box.x + hurt.x) / 2, y: (box.y + hurt.y) / 2 };
 
+      // Read before the counter goes up, so the opening hit is full price.
+      const scale = COMBO_SCALE[Math.min(COMBO_SCALE.length - 1, attacker.comboCount)];
+      const dealt = Math.round(m.damage * scale);
+
       if (guarding) {
-        defender.blocked(m.blockstun, m.knockback, m.damage);
-        defender.health = Math.max(1, defender.health - m.damage * 0.12);
+        defender.blocked(m.blockstun, m.knockback, dealt);
+        defender.health = Math.max(1, defender.health - dealt * 0.12);
         this.hitstop = 5;
         if (defender.guard <= 0) {
           defender.breakGuard();
           this.hitstop = 12;
-          this.onEvent('guardBreak', { contact, move: m, attacker, defender });
+          this.onEvent('guardBreak', { contact, move: m, attacker, defender, damage: dealt });
         } else {
-          this.onEvent('block', { contact, move: m, attacker, defender });
+          this.onEvent('block', { contact, move: m, attacker, defender, damage: dealt });
         }
       } else {
         // Read before the hit lands: hurt() clears their move, so anything
@@ -168,11 +183,22 @@ export class Match {
           ? (defender.moveFrame >= defender.move.startup + defender.move.active
             ? 'recovery' : 'startup')
           : null;
-        defender.hurt(m.damage, m.hitstun, m.knockback, m.lift);
+        // Pushback is cut on anything that can still be chained. KIN 09's
+        // Point sends them 200 units back and her Lash only reaches 106, so
+        // at full knockback her light-into-heavy was a chain that existed on
+        // paper and dropped every time it was tried. The special keeps its
+        // full knockback, so a chain still ends with someone sent across the
+        // floor -- and a special thrown on its own is unchanged.
+        const chainable = RANK[attacker.moveSlot] < RANK.special;
+        defender.hurt(dealt, m.hitstun, chainable ? m.knockback * 0.45 : m.knockback, m.lift);
         attacker.comboCount++;
         this.hitstop = Math.min(16, 6 + Math.round(m.damage / 12));
         if (!defender.alive) this.slowmo = 110;
-        this.onEvent('hit', { contact, move: m, attacker, defender, counter, ko: !defender.alive });
+        // `damage` is what was actually taken and `move.damage` is what the
+        // move is worth; the floating number has to be the first or a scaled
+        // hit in a chain lies about itself.
+        this.onEvent('hit', { contact, move: m, attacker, defender, counter,
+          damage: dealt, combo: attacker.comboCount, ko: !defender.alive });
       }
     }
   }
