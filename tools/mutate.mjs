@@ -31,6 +31,25 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 
+/**
+ * Three mutants were retired here, and the reason is worth keeping.
+ *
+ * They aimed at the pose generator in src/data/kit.js -- `swingOf`, the punch
+ * pose and the joint clamp inside it. `move()` computes a generated pose and
+ * then lets `...spec` override it, and every move on both remaining
+ * characters brings its own hand-authored `anim()`. So the generator is
+ * computed and discarded on all eight, and a mutation of it cannot change
+ * anything the suite can see.
+ *
+ * The full gate caught this rather than any reasoning: `swing direction not
+ * measured` came back SURVIVED. A mutant in code the roster never runs is
+ * not coverage, it is a number that makes the gate look better than it is --
+ * the same fault as the two that were anchored in kin01.js and kin03.js when
+ * the roster was cut, and the third time this project has found one.
+ *
+ * The generator is still there and still the path a generated character would
+ * take. If one comes back, so do these.
+ */
 const MUTANTS = [
   {
     name: 'hitbox back on the joint',
@@ -38,14 +57,6 @@ const MUTANTS = [
     file: 'src/render/rig.js',
     find: '  strikePoint(M, partName, facing = 1, lead = 0.88) {',
     with: '  strikePoint(M, partName, facing = 1, lead = 0) {',
-    expect: 'every move connects',
-  },
-  {
-    name: 'swing direction not measured',
-    why: 'which way a limb turns to reach is read off the artwork',
-    file: 'src/data/kit.js',
-    find: '  return turn;',
-    with: '  return turn * 0 + 1.2;',
     expect: 'every move connects',
   },
   {
@@ -430,30 +441,6 @@ const MUTANTS = [
     expect: 'difficulty tiers are in order',
   },
   {
-    name: 'punches that do not move the arm',
-    why: 'the hitbox rides the limb, so a frozen limb is a move that only pretends to swing',
-    file: 'src/data/kit.js',
-    // This used to zero the shoulder's rotation instead, which looked like the
-    // same thing and is not: the elbow is a separate channel two lines down
-    // and still whips, so the fist travels 44 to 83 and the limb genuinely
-    // does swing -- from a shoulder that never turns. That mutant was caught,
-    // correctly, by the reach and frame-advantage checks rather than by this
-    // one, and it left the frozen-limb check with nothing aimed at it at all.
-    // Leaving the striking limb out of the pose is the bug this check is
-    // about: KIN 06's jab, whose pose was still the leg pose he had before he
-    // was given arms.
-    find: `      [arm]: { rot: (() => {
-        const start = mix(self, -0.30 * swing, a);
-        const target = swing * (1 + power * 0.08);
-        const t = elbow ? reach : strike;
-        return (sweepPast ? start + target * t : mix(start, target, t)) + settle * 0.07;
-      })() },
-      // Folded at the chin through the wind-up, straight at full extension.
-      ...(elbow ? { [elbow]: { rot: mix(restElbow, FOLD * 1.3, a) * (1 - snap) } } : {}),`,
-    with: '      // MUTANT: the striking limb is left out of the pose entirely.',
-    expect: 'swings the limb it strikes with',
-  },
-  {
     name: 'a hitbox that goes live before the swing arrives',
     why: 'the active frame is the one the hit freeze holds up for the player, '
       + 'so a strike caught on its wind-up reads as a miss that hurt',
@@ -473,15 +460,6 @@ const MUTANTS = [
     find: '      startup: 4, active: 4, recovery: 11,',
     with: '      startup: 0, active: 4, recovery: 15,',
     expect: 'at full stretch when its hitbox is live',
-  },
-  {
-    name: 'a shoulder turned past the joint it has',
-    why: 'limits were data nothing read; every rear hand in the cast finished '
-      + 'its heavy more than half a turn over, pointing down and behind',
-    file: 'src/data/kit.js',
-    find: '        return (sweepPast ? start + target * t : mix(start, target, t)) + settle * 0.07;',
-    with: '        return start + target * t * 1.6 + settle * 0.07;',
-    expect: 'turns a joint past the rig',
   },
   {
     name: 'a stored range that no longer matches the move',

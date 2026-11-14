@@ -113,7 +113,11 @@ export class Input {
   bind(el, pad, action) {
     const down = (e) => {
       e.preventDefault();
-      el.setPointerCapture?.(e.pointerId);
+      // Capture is an optimisation, not a requirement: it keeps a finger that
+      // slides off the button from sticking it down. It throws for a pointer
+      // the element does not own, which a synthetic event is, and an
+      // exception here would take the press with it.
+      try { el.setPointerCapture?.(e.pointerId); } catch { /* not ours to capture */ }
       el.classList.add('on');
       this.press(pad, action);
     };

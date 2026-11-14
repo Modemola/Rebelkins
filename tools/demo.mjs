@@ -37,6 +37,7 @@
  *   node tools/demo.mjs [--out demo.mp4] [--fps 60] [--quick] [--silent]
  *                       [--width 1280] [--height 720] [--keep-frames]
  *                       [--gain <x>] [--pair a:b] [--seconds 30] [--arena id]
+ *                       [--phone landscape|portrait]
  *
  * `--quick` cuts every scene short, for checking the thing runs before
  * spending the full render on it.
@@ -60,6 +61,18 @@ const QUICK = flag('--quick');
 const SILENT = flag('--silent');
 const KEEP = flag('--keep-frames');
 const GAIN = arg('--gain', null) === null ? null : Number(arg('--gain'));
+/**
+ * `--phone` records what a player on a phone sees, including the pad.
+ *
+ * It is not just a smaller window. P1 is driven by pressing the on-screen
+ * buttons rather than by key events, so the buttons light up as the fight
+ * goes on -- which is the entire point of a recording meant to show the
+ * controls. Driven by the keyboard the pad sits there inert and the video
+ * says nothing about how it is played.
+ */
+const PHONE = arg('--phone', null);          // 'landscape' | 'portrait'
+const PHONE_VIEW = PHONE === 'portrait'
+  ? { width: 390, height: 844 } : { width: 844, height: 390 };
 /** `--pair kin06s:kin09s` records that one matchup and nothing else. */
 const PAIR = arg('--pair', null) ? arg('--pair').split(':') : null;
 const SR = 48000;
@@ -116,10 +129,15 @@ const framesDir = path.join(work, 'frames');
 fs.mkdirSync(framesDir);
 
 const browser = await chromium.launch({ args: ['--no-sandbox', '--use-gl=swiftshader'] });
-const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
+const context = await browser.newContext({
+  viewport: PHONE ? PHONE_VIEW : { width: W, height: H },
+  deviceScaleFactor: PHONE ? 2 : 1,
+  hasTouch: !!PHONE,
+  isMobile: !!PHONE,
+});
 const page = await context.newPage();
 page.on('console', (m) => { if (m.type() === 'error') console.error('page:', m.text()); });
-await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle' });
+await page.goto(`http://127.0.0.1:${port}/${PHONE ? '?pad=1' : ''}`, { waitUntil: 'networkidle' });
 // Against the roster, not a literal: a count of 10 here hung for thirty
 // seconds the first time a character was added.
 const { IDS } = await import('./spar.mjs');
@@ -135,7 +153,8 @@ await page.waitForTimeout(250);
 await page.evaluate(async () => {
   const g = window.__REBELKIN__;
   const { AI } = await import('/src/fight/ai.js');
-  const d = { p1: new AI('mean'), held: new Set(), sound: [], frame: 0 };
+  const d = { p1: new AI('mean'), held: new Set(), sound: [], frame: 0,
+    touchMode: new URLSearchParams(location.search).get('pad') === '1' };
   window.__DEMO__ = d;
 
   // What actually landed, and when. A reel is made to show particular moves
@@ -167,16 +186,40 @@ await page.evaluate(async () => {
 
   const KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS',
     light: 'KeyJ', heavy: 'KeyK', special: 'KeyL', guard: 'Space' };
+
+  // On a phone the same intents go through the pad's own buttons, so the
+  // highlight a real thumb would leave is in the recording.
+  const pads = {};
+  const touch = (el, type) => el.dispatchEvent(new PointerEvent(type,
+    { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: 'touch' }));
+  const padFor = (name) => {
+    if (!pads[name]) pads[name] = document.querySelector(`#pad .pb[data-act="${name}"]`);
+    return pads[name];
+  };
+
   const set = (code, want) => {
     if (want === d.held.has(code)) return;
     if (want) d.held.add(code); else d.held.delete(code);
-    dispatchEvent(new KeyboardEvent(want ? 'keydown' : 'keyup', { code, bubbles: true }));
+    const name = Object.keys(KEYS).find((k) => KEYS[k] === code);
+    const el = d.touchMode && padFor(name);
+    if (el) touch(el, want ? 'pointerdown' : 'pointerup');
+    else dispatchEvent(new KeyboardEvent(want ? 'keydown' : 'keyup', { code, bubbles: true }));
   };
   const tap = (code) => {
+    const name = Object.keys(KEYS).find((k) => KEYS[k] === code);
+    const el = d.touchMode && padFor(name);
+    if (el) {
+      touch(el, 'pointerdown');
+      // Held for three frames, not released on the next line: a highlight
+      // that lasts one frame is invisible at sixty, and a thumb does not
+      // move that fast either.
+      setTimeout(() => touch(el, 'pointerup'), 50);
+      return;
+    }
     dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
     setTimeout(() => dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })), 34);
   };
-  d.release = () => { for (const c of d.held) set(c, false); };
+  d.release = () => { for (const c of [...d.held]) set(c, false); };
 
   // The page's own clock, advanced a frame at a time. Everything the game
   // schedules -- the announcement titles, the guard-break flash, the keyup
@@ -234,6 +277,14 @@ await page.evaluate(async () => {
 });
 
 const cdp = await context.newCDPSession(page);
+// Page.captureScreenshot works in CSS pixels and ignores the context's
+// deviceScaleFactor, so a phone recording came out at 844x390. Overriding the
+// device metrics is what the capture actually reads.
+if (PHONE) {
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width: PHONE_VIEW.width, height: PHONE_VIEW.height, deviceScaleFactor: 2, mobile: true,
+  });
+}
 await cdp.send('Animation.enable');
 // Starts at the ratio a 42ms capture implies and is corrected from the real
 // rate once there is one to measure.
@@ -241,6 +292,7 @@ let cssRate = (1000 / FPS) / 42;
 await cdp.send('Animation.setPlaybackRate', { playbackRate: cssRate });
 
 let n = 0;
+let lit = 0;
 const started = Date.now();
 for (const scene of SCENES) {
   const frames = QUICK ? Math.min(scene.frames, 90) : scene.frames;
@@ -273,6 +325,9 @@ for (const scene of SCENES) {
     // and for the page to go quiet, and under paused virtual time that wait
     // never ends -- the compositor frame it is waiting on cannot arrive while
     // the clock is stopped. This asks the renderer for what it has.
+    // A pressed button is the thing a controls recording is for, so it is
+    // counted rather than hoped for.
+    if (PHONE) lit += await page.evaluate(() => (document.querySelector('#pad .pb.on') ? 1 : 0));
     const shot = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 94 });
     fs.writeFileSync(path.join(framesDir, `${String(n).padStart(6, '0')}.jpg`),
       Buffer.from(shot.data, 'base64'));
@@ -290,6 +345,10 @@ for (const scene of SCENES) {
   }
 }
 process.stdout.write(`\r  ${n} frames captured in ${((Date.now() - started) / 1000).toFixed(0)}s\n`);
+if (PHONE) {
+  console.log(`  a pad button is lit on ${lit} of ${n} frames `
+    + `(${((lit / Math.max(1, n)) * 100).toFixed(0)}%)`);
+}
 const landed = await page.evaluate(() => window.__DEMO__.landed);
 const tally = {};
 for (const e of landed) tally[e.move] = (tally[e.move] || 0) + 1;
