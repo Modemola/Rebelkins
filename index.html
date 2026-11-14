@@ -40,18 +40,65 @@
 
   <div id="select">
     <div class="selWrap">
-      <h1>KIN WAR</h1>
-      <p class="tag">Two characters, each rigged from a single illustration.</p>
-      <p class="tag">Chain light into heavy into special. Double tap to dash. Crouch for the low.</p>
+      <header class="brand">
+        <h1>KIN WAR</h1>
+        <p class="tag">Every fighter rigged and animated from one illustration.</p>
+      </header>
 
-      <div class="keys">
+      <!-- The two fighters, drawn live rather than shown as portraits: the
+           whole point of the project is that these are rigs, so they breathe
+           here instead of sitting still as 192px crops. -->
+      <div class="versus">
+        <div class="fighter">
+          <span class="who" id="whoA">PLAYER 1</span>
+          <canvas class="hero" id="heroA" width="520" height="720"></canvas>
+          <span class="read" id="readA"></span>
+          <div class="grid" id="rosterA"></div>
+        </div>
+        <div class="vsMark"><span>VS</span></div>
+        <div class="fighter">
+          <span class="who" id="whoB">CPU</span>
+          <canvas class="hero" id="heroB" width="520" height="720"></canvas>
+          <span class="read" id="readB"></span>
+          <div class="grid" id="rosterB"></div>
+        </div>
+      </div>
+
+      <div class="opts">
+        <div class="opt">
+          <span class="lbl">ARENA</span>
+          <div class="chooser small" id="arenaRow"></div>
+          <span class="read" id="arenaRead"></span>
+        </div>
+        <div class="opt">
+          <span class="lbl">OPPONENT</span>
+          <div class="chooser small">
+            <button class="mode" data-mode="ai" aria-pressed="true">vs CPU</button>
+            <button class="mode" data-mode="2p" aria-pressed="false">2 players</button>
+          </div>
+          <div class="chooser small" id="diffRow">
+            <button class="diff" data-diff="calm" aria-pressed="false">Calm</button>
+            <button class="diff" data-diff="brisk" aria-pressed="true">Brisk</button>
+            <button class="diff" data-diff="mean" aria-pressed="false">Mean</button>
+          </div>
+        </div>
+        <div class="opt">
+          <span class="lbl">LOADOUT <i id="rankLabel"></i></span>
+          <div class="chooser small" id="weaponRow"></div>
+          <span class="read" id="weaponRead"></span>
+        </div>
+      </div>
+
+      <button id="startBtn">FIGHT</button>
+
+      <details class="keys">
+        <summary>Controls</summary>
         <div class="krow"><b>P1</b>
           <kbd>A</kbd><kbd>D</kbd><span>move</span><kbd>W</kbd><span>jump</span><kbd>S</kbd><span>crouch</span>
           <kbd>J</kbd><span>light</span><kbd>K</kbd><span>heavy</span><kbd>L</kbd><span>special</span>
           <kbd class="wide">SPACE</kbd><span>guard</span>
           <kbd>S</kbd><kbd>J</kbd><span>low sweep</span>
           <kbd>A</kbd><kbd>A</kbd><span>dash</span>
-          <kbd class="wide">SPACE</kbd><kbd>S</kbd><span>block low</span>
         </div>
         <div class="krow" id="p2keys" hidden><b>P2</b>
           <kbd>&larr;</kbd><kbd>&rarr;</kbd><span>move</span><kbd>&uarr;</kbd><span>jump</span><kbd>&darr;</kbd><span>crouch</span>
@@ -60,43 +107,7 @@
           <kbd>&darr;</kbd><kbd>,</kbd><span>low sweep</span>
           <kbd>&larr;</kbd><kbd>&larr;</kbd><span>dash</span>
         </div>
-      </div>
-      <div class="roster" role="group" aria-label="Fighters">
-        <div class="side">
-          <span class="who" id="whoA">PLAYER 1</span>
-          <div class="grid" id="rosterA"></div>
-          <span class="read" id="readA"></span>
-        </div>
-        <div class="vs">VS</div>
-        <div class="side">
-          <span class="who" id="whoB">CPU</span>
-          <div class="grid" id="rosterB"></div>
-          <span class="read" id="readB"></span>
-        </div>
-      </div>
-
-      <div class="stageRow">
-        <span class="who">LOADOUT <i id="rankLabel"></i></span>
-        <div class="chooser small" id="weaponRow"></div>
-        <span class="read" id="weaponRead"></span>
-      </div>
-
-      <div class="stageRow">
-        <span class="who">ARENA</span>
-        <div class="chooser small" id="arenaRow"></div>
-        <span class="read" id="arenaRead"></span>
-      </div>
-
-      <div class="chooser small">
-        <button class="mode" data-mode="ai" aria-pressed="true">vs CPU</button>
-        <button class="mode" data-mode="2p" aria-pressed="false">2 players</button>
-      </div>
-      <div class="chooser small" id="diffRow">
-        <button class="diff" data-diff="calm" aria-pressed="false">Calm</button>
-        <button class="diff" data-diff="brisk" aria-pressed="true">Brisk</button>
-        <button class="diff" data-diff="mean" aria-pressed="false">Mean</button>
-      </div>
-      <button id="startBtn">FIGHT</button>
+      </details>
       <button id="muteBtn" class="mute" aria-pressed="false">SOUND ON</button>
     </div>
   </div>

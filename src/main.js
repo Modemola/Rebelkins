@@ -304,7 +304,26 @@ const debugDraw = { hideFighters: false };
 /* ---------------------------------------------------------------- render */
 
 function render(alpha, dt) {
-  if (!match) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, view.w, view.h); return; }
+  if (!match) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, view.w, view.h);
+    // The menu sits on the arena rather than on flat black. It is the same
+    // draw the fight uses, with the camera parked instead of following
+    // anyone, so the rain, the lights and the crowd are all still running
+    // behind the title.
+    if (!el('select').hidden) {
+      arena().update(dt);
+      cam.x = 0;
+      cam.y = -150;
+      cam.zoom = 0.78;
+      drawStage(ctx, view, cam, performance.now() / 1000, dpr);
+      cam.apply(ctx, view, dpr);
+      drawFloor(ctx, cam, view);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawHeroes();
+    }
+    return;
+  }
 
   fx.step(dt);
   arena().update(dt);
@@ -450,9 +469,35 @@ function paintHud() {
 /* ---------------------------------------------------------------- roster */
 
 /**
- * Two grids of the same ten portraits, one per corner. Both sides are pickable
- * because with ten characters the old "you get whoever you didn't choose" rule
- * stops being a choice at all.
+ * The two fighters on the menu, drawn from their own rigs.
+ *
+ * They were 68px buttons showing a 192px portrait crop, on a screen whose
+ * entire claim is that these characters are rigged from single illustrations.
+ * Drawing the rig is both better looking and the honest demonstration: what
+ * is on the menu is the thing the game runs, breathing, at the size the art
+ * deserves. They face each other, because a fighting game menu should.
+ */
+function drawHeroes() {
+  for (const [side, facing] of [['A', 1], ['B', -1]]) {
+    const cv = el(`hero${side}`);
+    const def = DEFS[side === 'A' ? p1Kin : p2Kin];
+    const rig = rigs[def.id];
+    if (!cv || !rig) continue;
+    const c = cv.getContext('2d');
+    c.clearRect(0, 0, cv.width, cv.height);
+    const t = performance.now() / 1000;
+    // Scaled to the canvas rather than to the world: the menu figure wants to
+    // fill its slot, and the fight's own scale is set against the arena.
+    const scale = (cv.height * 0.86) / def.bodyHeight;
+    rig.draw(c, rig.solve(def.stance.idle(t), {
+      x: cv.width / 2, y: cv.height - 14, scale, facing,
+    }));
+  }
+}
+
+/**
+ * Both corners are pickable. The chips under each fighter switch who is
+ * standing there, and the figure above them changes with it.
  */
 function buildRoster() {
   for (const side of ['A', 'B']) {
@@ -473,6 +518,7 @@ function buildRoster() {
       b.title = `${d.name} - ${d.subtitle}`;
       b.setAttribute('aria-label', `${d.name}, ${d.subtitle}`);
       b.style.backgroundImage = `url(assets/portraits/${d.id}.png)`;
+      b.style.backgroundSize = 'cover';
       b.addEventListener('click', () => {
         if (side === 'A') p1Kin = d.id; else p2Kin = d.id;
         paint();
@@ -510,7 +556,10 @@ function buildWeaponPicker() {
       const unlocked = w.rank <= p.rank;
       b.hidden = !holdable;
       b.classList.toggle('locked', !unlocked);
-      b.textContent = unlocked ? w.name : `${w.name} - RANK ${w.rank}`;
+      // "STEEL TOES - RANK 1" is three lines inside a chip on a phone. The
+      // rank is the only part that matters once you know it is locked, and
+      // the lock styling already says that.
+      b.textContent = unlocked ? w.name : `${w.name} · R${w.rank}`;
       b.setAttribute('aria-pressed', String(w.id === chosen.id));
       b.disabled = !unlocked;
     }
