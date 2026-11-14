@@ -17,16 +17,8 @@ import { FX } from './render/fx.js';
 import { Match, PHASE, STAGE, fitStage } from './fight/match.js';
 import { AI } from './fight/ai.js';
 import { STATE } from './fight/fighter.js';
-import { KIN01 } from './data/kin01.js';
-import { KIN02 } from './data/kin02.js';
-import { KIN03 } from './data/kin03.js';
-import { KIN04 } from './data/kin04.js';
-import { KIN05 } from './data/kin05.js';
 import { KIN06 } from './data/kin06.js';
-import { KIN07 } from './data/kin07.js';
-import { KIN08 } from './data/kin08.js';
 import { KIN09 } from './data/kin09.js';
-import { KIN10 } from './data/kin10.js';
 import { KIN06S } from './data/kin06s.js';
 import { KIN09S } from './data/kin09s.js';
 import { Sfx } from './audio/sfx.js';
@@ -46,7 +38,15 @@ import { Sfx } from './audio/sfx.js';
  * They are at the end rather than beside their front-facing namesakes so the
  * first two rows of the select grid stay the set people already know.
  */
-const ROSTER = [KIN01, KIN02, KIN03, KIN04, KIN05, KIN06, KIN07, KIN08, KIN09, KIN10, KIN06S, KIN09S];
+// The two characters drawn for a side-on camera, and only those.
+//
+// The other ten are still in src/data and still build; they are out of the
+// roster, not deleted, so this is one line to undo. They were drawn
+// front-facing, and a front-facing limb pointing at the opponent cannot read
+// as a strike -- five of them have no separable arms at all and can never
+// throw a punch. Shipping them beside two that work makes the whole cast look
+// like the worst of it.
+const ROSTER = [KIN06S, KIN09S];
 const DEFS = Object.fromEntries(ROSTER.map((d) => [d.id, d]));
 const cv = document.getElementById('stage');
 const ctx = cv.getContext('2d');
@@ -129,8 +129,8 @@ function drawFighters(ctx, list, alpha) {
 let match = null;
 let ai = new AI('brisk');
 let mode = 'ai';
-let p1Kin = 'kin08';
-let p2Kin = 'kin06';
+let p1Kin = 'kin06s';
+let p2Kin = 'kin09s';
 let arenaId = 'towers';
 let awarded = false;   // one rank-up per match, however many times roundEnd fires
 let drawOrder = [];    // back to front, as the last render decided it

@@ -30,8 +30,7 @@ import { STATE } from '../src/fight/fighter.js';
 import { totalFrames } from '../src/data/common.js';
 import { byId as weaponById } from '../src/data/weapons.js';
 
-export const IDS = ['kin01', 'kin02', 'kin03', 'kin04', 'kin05', 'kin06', 'kin07', 'kin08', 'kin09',
-  'kin10', 'kin06s', 'kin09s'];
+export const IDS = ['kin06s', 'kin09s'];
 
 /**
  * Which of IDS were drawn for the side-on camera.
@@ -200,7 +199,8 @@ function round(defA, defB, rigs, aiA, aiB, stats, weapon) {
 }
 
 /**
- * Run a sweep. `pairs` caps how many of the 90 orderings are used, taken in a
+ * Run a sweep. `pairs` is how many matchups to run; the orderings are cycled
+ * if the cast has fewer distinct ones than that. It used to cap, taken in a
  * fixed order so a smaller sweep is a subset of the big one and not a
  * different experiment. Returns { stats: [A, B], winsA, total }.
  */
@@ -220,7 +220,16 @@ export function spar({
   try {
     const orderings = [];
     for (const x of ids) for (const y of ids) if (x !== y) orderings.push([x, y]);
-    for (const [x, y] of orderings.slice(0, pairs)) {
+    // `pairs` is how many matchups to run, not a cap on how many exist. With
+    // twelve characters there were 132 orderings and asking for 90 took the
+    // first 90, so this read as a cap; with two there are two, and the same
+    // request silently returned two rounds of evidence for thresholds set
+    // against ninety. Four checks went red on sample size alone when the
+    // roster was cut. Cycling the list keeps the ask honest either way.
+    const run = Number.isFinite(pairs)
+      ? Array.from({ length: pairs }, (_, i) => orderings[i % orderings.length])
+      : orderings;
+    for (const [x, y] of run) {
       for (let r = 0; r < rounds; r++) {
         // Both AIs fight from both corners across the round repeats, so a
         // difference cannot be an artefact of who started on the left.

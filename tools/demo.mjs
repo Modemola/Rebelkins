@@ -81,9 +81,9 @@ const SCENES = PAIR ? [
     frames: Math.round(Number(arg('--seconds', 30)) * FPS), finish: 320 },
 ] : [
   { kind: 'select', frames: 96 },
-  { kind: 'fight', a: 'kin06s', b: 'kin09s', arena: 'towers', frames: 660 },
-  { kind: 'fight', a: 'kin01', b: 'kin08', arena: 'cut', frames: 600 },
-  { kind: 'fight', a: 'kin06', b: 'kin10', arena: 'bloom', frames: 660, finish: 300 },
+  { kind: 'fight', a: 'kin06s', b: 'kin09s', arena: 'towers', frames: 620 },
+  { kind: 'fight', a: 'kin09s', b: 'kin06s', arena: 'cut', frames: 580 },
+  { kind: 'fight', a: 'kin06s', b: 'kin09s', arena: 'bloom', frames: 660, finish: 300 },
 ];
 
 const { chromium } = await load();

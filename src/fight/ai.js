@@ -47,7 +47,13 @@ const DIFFICULTY = {
   //         and a player who learns to combo would be fighting an opponent
   //         playing a different game. It is the clearest single difference
   //         between the tiers to watch, which is why calm barely does it.
-  calm: { sight: 4, aggression: 0.42, block: 0.45, punish: 0.22, poise: 0.35, chain: 0.15 },
+  // Eased again when the roster was cut to the two side-view characters.
+  // The dials were set against a cast of twelve, most of which could barely
+  // throw a punch; the two that remain are the best-armed in it and have
+  // chains, so the same numbers beat a masher in 78 of 90 rounds. Measured
+  // back down to 49 of 90 -- a masher winning a little under half, which is
+  // what the easiest tier is for.
+  calm: { sight: 4, aggression: 0.42, block: 0.32, punish: 0.10, poise: 0.35, chain: 0.15 },
   brisk: { sight: 13, aggression: 0.68, block: 0.76, punish: 0.6, poise: 0.7, chain: 0.6 },
   mean: { sight: 24, aggression: 0.9, block: 0.93, punish: 0.9, poise: 0.95, chain: 0.92 },
   // An opponent that does nothing, for measuring against. Zeroing the dials by

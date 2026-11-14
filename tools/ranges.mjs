@@ -54,7 +54,11 @@ const bare = byId('bare');
  * other fighter happened to walk into it.
  */
 function connects(attacker, slot, gap) {
-  const m = new Match(DEFS[attacker], DEFS.kin06, rigs, [bare, bare]);
+  // The dummy is whoever is not the attacker, taken from the roster rather
+  // than named: this said DEFS.kin06, which stopped existing the moment the
+  // roster was cut to the two side-view characters.
+  const dummy = ids.find((x) => x !== attacker) || attacker;
+  const m = new Match(DEFS[attacker], DEFS[dummy], rigs, [bare, bare]);
   m.onEvent = () => {};
   m.phase = 'fight';
   const solve = () => {

@@ -188,9 +188,9 @@ async function fightChecks() {
   // who blocked is free to act, and it has to cover the quickest startup in
   // the cast or there is no answer to a jab at all. Measured on every
   // character, because it comes out of each move's own frame data.
-  const onBlock = IDS.map((x) => ({ x, ...exchange(x, 'kin08', 'light', true) }));
-  const heavyBlock = IDS.map((x) => ({ x, ...exchange(x, 'kin08', 'heavy', true) }));
-  const onHit = IDS.map((x) => ({ x, ...exchange(x, 'kin08', 'light', false) }));
+  const onBlock = IDS.map((x) => ({ x, ...exchange(x, 'kin06s', 'light', true) }));
+  const heavyBlock = IDS.map((x) => ({ x, ...exchange(x, 'kin06s', 'heavy', true) }));
+  const onHit = IDS.map((x) => ({ x, ...exchange(x, 'kin06s', 'light', false) }));
   const blockedAll = onBlock.every((r) => r.outcome === 'block');
   const worst = Math.min(...onBlock.map((r) => r.adv));
   check('a light is blocked by every character', blockedAll,
@@ -359,10 +359,10 @@ async function fightChecks() {
   // the next left-facing drawing will need, the case is made up: a rig built
   // from a real one with art flipped must solve to the mirror of it. That is
   // the whole contract, and it holds with nobody in the cast relying on it.
-  const mirrorRig = new Rig({ ...DEFS.kin01.rig, art: -1 }, null);
-  const plain = rigs.kin01.solve({}, { x: 0, y: 0, scale: 1, facing: 1 });
+  const mirrorRig = new Rig({ ...DEFS.kin06s.rig, art: -1 }, null);
+  const plain = rigs.kin06s.solve({}, { x: 0, y: 0, scale: 1, facing: 1 });
   const mirrored = mirrorRig.solve({}, { x: 0, y: 0, scale: 1, facing: 1 });
-  const flipped = DEFS.kin01.rig.parts.every((part) => {
+  const flipped = DEFS.kin06s.rig.parts.every((part) => {
     const a = plain[part.name];
     const b = mirrored[part.name];
     return Math.abs(a[4] + b[4]) < 1e-6 && Math.abs(a[5] - b[5]) < 1e-6;
@@ -565,7 +565,7 @@ async function fightChecks() {
   // at all. It is measured directly instead: how close the two actually get
   // while somebody is mid-swing, against how close they get while neither is.
   const closing = (() => {
-    const m = new Match(DEFS.kin01, DEFS.kin06, rigs, [bare, bare]);
+    const m = new Match(DEFS.kin06s, DEFS.kin09s, rigs, [bare, bare]);
     const solve = () => {
       const out = {};
       for (const f of m.fighters) {
@@ -593,7 +593,7 @@ async function fightChecks() {
     `${closing.swinging} apart mid-swing against ${closing.walking} while walking`);
 
   check('a left-facing illustration is mirrored to face the opponent', flipped,
-    flipped ? `all ${DEFS.kin01.rig.parts.length} parts mirror about the root`
+    flipped ? `all ${DEFS.kin06s.rig.parts.length} parts mirror about the root`
       : 'art: -1 solved to the same transforms as art: 1');
 
   console.log('\nthe opponent');
@@ -754,7 +754,7 @@ try {
   // same turn the match is made, before any frame can have run.
   const posesReady = await page.evaluate(() => {
     const g = window.__REBELKIN__;
-    g.start('kin08', 'ai', 'kin06');
+    g.start('kin06s', 'ai', 'kin09s');
     return {
       solved: Object.keys(g.poses).length,
       hasParts: !!(g.poses[g.match.a.pad] && g.poses[g.match.a.pad].torso
@@ -775,7 +775,15 @@ try {
   await page.waitForTimeout(1600);               // intro
   let s = await state();
   check('match started', s.match && s.phase === 'fight', s.phase);
-  check('both fighters at full health', s.a.hp === 1000 && s.b.hp === 1120, `${s.a.hp} / ${s.b.hp}`);
+  // Against the roster rather than two literals: this read 1000 and 1120,
+  // which were whoever happened to be the default pair, and broke the moment
+  // the roster changed without anything being wrong.
+  const startHp = await page.evaluate(() => {
+    const m = window.__REBELKIN__.match;
+    return { a: m.a.def.health, b: m.b.def.health };
+  });
+  check('both fighters at full health', s.a.hp === startHp.a && s.b.hp === startHp.b,
+    `${s.a.hp}/${startHp.a} and ${s.b.hp}/${startHp.b}`);
   await shot('1-start');
 
   // The skinned renderer, forced on.
@@ -795,7 +803,7 @@ try {
       IDS.length, { timeout: 15000 });
     const out = await p2.evaluate(async () => {
       const g = window.__REBELKIN__;
-      g.start('kin01', 'ai', 'kin02');
+      g.start('kin06s', 'ai', 'kin09s');
       await new Promise((r) => setTimeout(r, 1200));
       g.match.phase = 'fight';
       g.renderOnce();
@@ -1019,7 +1027,7 @@ try {
     let calls = 0;
     g.sfx.hit = (...a) => { calls++; return real(...a); };
     try {
-      g.start('kin05', 'ai', 'kin10');
+      g.start('kin06s', 'ai', 'kin09s');
       await new Promise((r) => setTimeout(r, 80));
       const m = g.match;
       m.phase = 'fight';
@@ -1078,7 +1086,7 @@ try {
     const g = window.__REBELKIN__;
     const bad = [];
     for (const def of g.ROSTER) {
-      g.start(def.id, 'ai', def.id === 'kin06' ? 'kin08' : 'kin06');
+      g.start(def.id, 'ai', def.id === 'kin06s' ? 'kin09s' : 'kin06s');
       await new Promise((r) => setTimeout(r, 60));
       const m = g.match;
       m.phase = 'fight';
@@ -1204,7 +1212,7 @@ try {
   const roster = await page.evaluate(() => window.__REBELKIN__.ROSTER.map((d) => d.id));
   const broken = [];
   for (const id of roster) {
-    const foe = id === 'kin06' ? 'kin08' : 'kin06';
+    const foe = id === 'kin06s' ? 'kin09s' : 'kin06s';
     const report = await page.evaluate(async ([who, against]) => {
       const g = window.__REBELKIN__;
       const errs = [];
@@ -1241,7 +1249,7 @@ try {
   }
   if (broken.length) console.log(`  broken: ${broken.join('; ')}`);
 
-  await page.evaluate(() => window.__REBELKIN__.start('kin08', 'ai', 'kin06'));
+  await page.evaluate(() => window.__REBELKIN__.start('kin06s', 'ai', 'kin09s'));
   await page.waitForTimeout(1500);
 
   console.log('\nloadout');
@@ -1367,7 +1375,7 @@ try {
     const g = window.__REBELKIN__;
     const swing = async (weaponId) => {
       g.setWeapon(weaponId);
-      g.start('kin08', 'ai', 'kin06');
+      g.start('kin06s', 'ai', 'kin09s');
       await new Promise((r) => setTimeout(r, 80));
       const m = g.match;
       m.phase = 'fight';
@@ -1448,7 +1456,7 @@ try {
     return dealt;
   };
 
-  await page.evaluate(() => window.__REBELKIN__.start('kin08', '2p', 'kin06'));
+  await page.evaluate(() => window.__REBELKIN__.start('kin06s', '2p', 'kin09s'));
   await page.waitForTimeout(1500);
   const clean = await swing(false, 1120);
   const blocked = await swing(true, 1120);
@@ -1476,7 +1484,7 @@ try {
   // is not worth trying: a fighter put into block without the intent behind it
   // leaves block again on its own next frame, so the swings land clean and the
   // measurement quietly becomes one about something else.
-  await page.evaluate(() => { window.__REBELKIN__.start('kin08', '2p', 'kin06'); });
+  await page.evaluate(() => { window.__REBELKIN__.start('kin06s', '2p', 'kin09s'); });
   await page.waitForTimeout(600);
   await page.evaluate(() => {
     const g = window.__REBELKIN__;
@@ -1566,7 +1574,7 @@ try {
   // reading of the intent and a hand-made intent would have hidden it.
   await page.evaluate(() => {
     const g = window.__REBELKIN__;
-    g.start('kin08', 'ai', 'kin06');
+    g.start('kin06s', 'ai', 'kin09s');
   });
   await page.waitForTimeout(500);
   await page.evaluate(() => {
@@ -1599,7 +1607,7 @@ try {
   // keyed by character collides and both are drawn in one of the two poses.
   const mirror = await page.evaluate(async () => {
     const g = window.__REBELKIN__;
-    g.start('kin08', '2p', 'kin08');
+    g.start('kin06s', '2p', 'kin06s');
     await new Promise((r) => setTimeout(r, 400));
     const m = g.match;
     m.phase = 'fight';
@@ -1627,7 +1635,7 @@ try {
   console.log('\nbest of three');
   const rounds = await page.evaluate(async () => {
     const g = window.__REBELKIN__;
-    g.start('kin08', 'ai', 'kin06');
+    g.start('kin06s', 'ai', 'kin09s');
     await new Promise((r) => setTimeout(r, 80));
     g.ai.set('still');            // an opponent that holds still to be measured
     const seen = [];
@@ -1685,7 +1693,7 @@ try {
     const rows = [];
     for (const id of ids) {
       g.setArena(id);
-      g.start('kin03', 'ai', 'kin07');
+      g.start('kin06s', 'ai', 'kin09s');
       await new Promise((r) => setTimeout(r, 1500));
       g.loop.stop();
 
@@ -1774,7 +1782,7 @@ try {
   for (const id of arenaIds) {
     await page.evaluate(([a]) => {
       window.__REBELKIN__.setArena(a);
-      window.__REBELKIN__.start('kin03', 'ai', 'kin07');
+      window.__REBELKIN__.start('kin06s', 'ai', 'kin09s');
     }, [id]);
     await page.waitForTimeout(1800);
     // keep the crowd and the bounce light live while measuring
@@ -1833,7 +1841,7 @@ try {
   }
 
   console.log('\nperformance');
-  await page.evaluate(() => window.__REBELKIN__.start('kin08', 'ai', 'kin06'));
+  await page.evaluate(() => window.__REBELKIN__.start('kin06s', 'ai', 'kin09s'));
   await page.waitForTimeout(1200);
   s = await state();
   check('runs at 50fps or better', s.fps >= 50, `${s.fps} fps`);
@@ -1887,7 +1895,7 @@ try {
   // catch that -- there, width binds whatever the camera does.
   await page.evaluate(() => {
     const g = window.__REBELKIN__;
-    g.start('kin08', 'ai', 'kin06');
+    g.start('kin06s', 'ai', 'kin09s');
   });
   await page.waitForTimeout(1500);
   await page.evaluate(() => {
@@ -1937,7 +1945,7 @@ try {
     `${phoneMenu.faceSize.toFixed(0)}px tiles, ${phoneMenu.faces} of them`);
   await shot('5-phone-select');
 
-  await page.evaluate(() => window.__REBELKIN__.start('kin05', 'ai', 'kin10'));
+  await page.evaluate(() => window.__REBELKIN__.start('kin06s', 'ai', 'kin09s'));
   await page.waitForTimeout(1800);
   // Measured at fighting distance, which is where the camera spends the round,
   // rather than at the opening spacing -- but measured, not assumed: the camera

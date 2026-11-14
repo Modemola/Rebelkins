@@ -451,9 +451,12 @@ const MUTANTS = [
     why: 'range is generated and the AI holds its distance by it, so a stale '
       + 'number parks the opponent where it cannot hit; it went stale twice '
       + 'with nothing to say so',
-    file: 'src/data/kin03.js',
-    find: "      strikePart: 'foreL', reach: 30, range: 190,",
-    with: "      strikePart: 'foreL', reach: 30, range: 240,",
+    // Was aimed at kin03, which left the roster with the other nine
+    // front-facing characters. A mutant in a file nothing loads cannot be
+    // caught by anything, and would have sat here reading as coverage.
+    file: 'src/data/kin09s.js',
+    find: "      strikePart: 'foreL', reach: 105, range: 149,",
+    with: "      strikePart: 'foreL', reach: 105, range: 210,",
     expect: 'stored range matches what the move reaches',
   },
   {
@@ -535,17 +538,17 @@ const MUTANTS = [
     name: 'a light that recovers as slowly as a heavy',
     why: 'a big slow punch has to be the risky one, or there is no reason to '
       + 'ever throw the small one',
-    file: 'src/data/kin01.js',
+    file: 'src/data/kin09s.js',
+    // Was aimed at kin01, which left the roster; re-aimed at KIN 09's Point.
+    //
     // Shortening the HEAVY was the obvious mutation and it survived. capStun
     // clamps blockstun to `active - 1 + recovery - 6`, which makes every
     // move's advantage-on-block exactly max(raw, 6) -- so a heavy cannot go
-    // below 6 however short you make it, and every light in the cast sits on
-    // that floor at exactly 6. Nothing strictly below 6 exists to find.
-    // Raising a LIGHT above its own heavy is the breakable direction: at 22
-    // frames of recovery kin01's jab is +13 on block against a heavy that is
-    // +8, which is the ordering this check forbids.
-    find: '      startup: 5, active: 3, recovery: 10,',
-    with: '      startup: 5, active: 3, recovery: 22,',
+    // below 6 however short you make it, and every light sits on that floor
+    // at exactly 6. Nothing strictly below 6 exists to find. Raising a LIGHT
+    // above its own heavy is the breakable direction.
+    find: '      startup: 4, active: 3, recovery: 9,',
+    with: '      startup: 4, active: 3, recovery: 24,',
     expect: 'a heavy is never safer on block',
   },
 ];
