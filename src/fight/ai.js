@@ -448,6 +448,11 @@ export class AI {
           ? inRange.slice().sort((x, y) => y.damage - x.damage)[0]
           : inRange.slice().sort((x, y) => x.startup - y.startup)[0];
       intent.attack = pick.slot;
+      // A low is crouch plus light, so the intent has to say crouch. Set only
+      // here, it keeps the two paths into the move identical: the fighter
+      // reading this directly and a keyboard replaying it both end up
+      // crouching and pressing the same button.
+      if (pick.low) intent.crouch = true;
       me._aiReason = 'poke';
       // Blockstun leaves the attacker ahead, so a swing that was guarded is
       // the cheapest moment to throw the next one. A swing that touched

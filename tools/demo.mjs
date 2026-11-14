@@ -220,7 +220,11 @@ await page.evaluate(async () => {
       set(KEYS.guard, !!it.guard);
       set(KEYS.down, !!it.crouch);
       if (it.jump) tap(KEYS.up);
-      if (it.attack) tap(KEYS[it.attack]);
+      // The low has no key of its own: it is crouch plus light, and the
+      // crouch arrives through `it.crouch` above like any other. Without the
+      // mapping the AI driving P1 asked for a move the keyboard could not
+      // express, and only P2 ever swept.
+      if (it.attack) tap(KEYS[it.attack === 'low' ? 'light' : it.attack]);
     }
     g.loop.update(g.loop.frame++);
     g.loop.render(0, 1 / 60);
